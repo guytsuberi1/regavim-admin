@@ -116,7 +116,9 @@
   var TABLE = 'admin_state';
   var SUB_TABLE = 'admin_submissions';
   var BUCKET = 'admin-approvals';
-  var sb = (global.supabase && global.supabase.createClient) ? global.supabase.createClient(SB_URL, SB_KEY) : null;
+  // ?local=1 — מצב פיתוח מקומי בלבד (בלי ענן, הרשאת מנהל מלאה)
+  var LOCAL_DEV = /[?&]local=1/.test(String(location.search));
+  var sb = (!LOCAL_DEV && global.supabase && global.supabase.createClient) ? global.supabase.createClient(SB_URL, SB_KEY) : null;
   var cloudMode = !!sb;
 
   var pendingRecovery = false;
