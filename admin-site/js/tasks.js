@@ -311,8 +311,8 @@
     var all = Store.tasksAll();
     var s = Store.settings();
 
-    // בתצוגת טבלה מוסיפים דרך שורת ההוספה המהירה; בקנבן — דרך כפתור
-    var addBtn = viewMode === 'kanban' ? U.el('button', { class: 'btn', text: '➕ משימה חדשה', onclick: function () { openModal(null); } }) : null;
+    // שתי דרכים להוסיף: שורת הוספה מהירה בטבלה + כפתור חלון (זמין תמיד)
+    var addBtn = U.el('button', { class: 'btn', text: '➕ משימה חדשה', onclick: function () { openModal(null); } });
     var toggle = U.el('div', { class: 'subtabs', style: 'display:inline-flex;margin:0;' }, [
       U.el('button', { class: viewMode === 'table' ? 'active' : '', text: '☰ טבלה', onclick: function () { viewMode = 'table'; App.render(); } }),
       U.el('button', { class: viewMode === 'kanban' ? 'active' : '', text: '▤ קנבן', onclick: function () { viewMode = 'kanban'; App.render(); } })
@@ -321,7 +321,7 @@
       U.el('h2', { text: '✅ ניהול משימות' }),
       U.el('span', { class: 'spacer' }),
       toggle, addBtn
-    ].filter(Boolean)));
+    ]));
 
     // סיכום
     var open = all.filter(function (t) { return t.status === 'פתוח'; }).length;
