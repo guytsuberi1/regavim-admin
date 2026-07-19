@@ -21,9 +21,8 @@
     var hours = 0;
     Store.records('lc', month, function (r) { return r.empId === empId; })
       .forEach(function (r) { hours += U.num(r.hours); });
-    var t = Store.lcTravel(month, empId);
-    var travel = t ? U.num(t.km) * U.num(t.days) * s.kmRate : 0;
-    return { hours: hours, pay: hours * s.hourlyRate, travel: travel, total: hours * s.hourlyRate + travel };
+    var t = Store.lcAutoTravel(month, empId); // אוטומטי: ק"מ מכרטיס העובד × ימים שונים
+    return { hours: hours, pay: hours * s.hourlyRate, travel: t.pay, total: hours * s.hourlyRate + t.pay, tr: t };
   }
 
   function money(n) { return (Math.round(n * 100) / 100).toLocaleString('he-IL') + ' ₪'; }
@@ -60,32 +59,6 @@
     ]);
   }
 
-  function openTravelModal(month, empId) {
-    var t = Store.lcTravel(month, empId) || {};
-    var s = Store.settings();
-    var km = U.el('input', { type: 'number', step: '1', min: '0', value: t.km != null ? t.km : '', placeholder: 'ק"מ הלוך ושוב' });
-    var days = U.el('input', { type: 'number', step: '1', min: '0', value: t.days != null ? t.days : '', placeholder: 'ימי עבודה' });
-    var calc = U.el('div', { class: 'muted' });
-    function upd() {
-      calc.textContent = 'תשלום נסיעות: ' + U.num(km.value) + ' ק"מ × ' + U.num(days.value) + ' ימים × ' + s.kmRate + ' ₪ = ' + money(U.num(km.value) * U.num(days.value) * s.kmRate);
-    }
-    km.addEventListener('input', upd);
-    days.addEventListener('input', upd);
-    upd();
-    function fld(label, node) { return U.el('div', { class: 'field' }, [U.el('label', { text: label }), node]); }
-    Modal.open('🚗 נסיעות — ' + Store.empName(empId), U.el('div', null, [
-      U.el('div', { class: 'row' }, [fld('ק"מ הלוך ושוב', km), fld('כמות ימי עבודה', days)]),
-      calc
-    ]), [
-      { label: 'ביטול', class: 'secondary' },
-      { label: 'שמירה', onClick: function (close) {
-        Store.setLcTravel(month, empId, U.num(km.value), U.num(days.value));
-        close();
-        App.render();
-      } }
-    ]);
-  }
-
   function render(view) {
     var month = App.currentMonth();
     view.appendChild(App.monthHeader('📚 דוח מרכז למידה'));
@@ -115,15 +88,18 @@
     var s = Store.settings();
     var recs = Store.records('lc', month, function (r) { return r.empId === selectedEmpId; });
     var totals = empTotals(month, selectedEmpId);
-    var travel = Store.lcTravel(month, selectedEmpId);
 
     var card = U.el('div', { class: 'card' });
+    var noKm = !(parseFloat(emp.travelKm) > 0);
     card.appendChild(U.el('div', { class: 'page-head', style: 'margin-bottom:8px;' }, [
       U.el('h3', { text: Store.empName(emp) + (emp.phone ? ' · ' + emp.phone : '') }),
       U.el('span', { class: 'spacer' }),
-      U.el('button', { class: 'btn secondary', text: '🚗 נסיעות', onclick: function () { openTravelModal(month, selectedEmpId); } }),
       U.el('button', { class: 'btn', text: '➕ שורת תגבור', onclick: function () { openRecModal(month, selectedEmpId, null); } })
     ]));
+    if (noKm && Store.isAdmin()) {
+      card.appendChild(U.el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:6px;' },
+        '🚗 לא הוגדר ק"מ נסיעה למתגבר זה — הגדירו בכרטיס העובד (נתוני בסיס) כדי שהנסיעות יחושבו אוטומטית.'));
+    }
 
     if (!recs.length) {
       card.appendChild(U.el('div', { class: 'empty' }, 'אין עדיין שורות החודש — לחצו "➕ שורת תגבור"'));
@@ -153,14 +129,15 @@
       card.appendChild(U.el('div', { class: 'tbl-scroll' }, [tbl]));
     }
 
-    // פס סיכום
-    var travelTxt = travel && (U.num(travel.km) * U.num(travel.days)) > 0
-      ? travel.km + ' ק"מ × ' + travel.days + ' ימים = ' + money(totals.travel)
-      : 'ללא';
+    // פס סיכום — נסיעות אוטומטיות: ק"מ (כרטיס העובד) × ימים שונים
+    var tr = totals.tr;
+    var travelTxt = tr.pay > 0
+      ? tr.km + ' ק"מ × ' + tr.days + ' ימים = ' + money(tr.pay)
+      : (tr.days ? tr.days + ' ימים · ללא ק"מ מוגדר' : 'ללא');
     card.appendChild(U.el('div', { class: 'totbar' }, [
       U.el('span', null, ['סה"כ שעות: ', U.el('strong', { text: String(totals.hours) })]),
       U.el('span', null, ['תעריף: ', U.el('strong', { text: s.hourlyRate + ' ₪' })]),
-      U.el('span', null, ['נסיעות: ', U.el('strong', { text: travelTxt })]),
+      U.el('span', null, ['נסיעות (אוטומטי): ', U.el('strong', { text: travelTxt })]),
       U.el('span', null, ['סה"כ לתשלום: ', U.el('strong', { text: money(totals.total) })])
     ]));
     view.appendChild(card);

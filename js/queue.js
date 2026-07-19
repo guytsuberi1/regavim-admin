@@ -28,9 +28,10 @@
   function toRecord(s) {
     var p = s.payload || {};
     if (s.type === 'absence') {
-      return { kind: 'absence', name: s.employee_name, dates: p.dates || '', hours: p.hours || '',
+      return { kind: 'absence', name: s.employee_name,
+               fromDate: p.from || '', toDate: p.to || '', dates: p.dates || '', hours: p.hours || '',
                reason: p.reason || '', approval: s.file_path ? 'received' : 'missing',
-               deduction: '', note: p.note || '', filePath: s.file_path || '', fromPortal: true };
+               deduction: 'none', note: p.note || '', filePath: s.file_path || '', fromPortal: true };
     }
     if (s.type === 'travel') {
       return { kind: 'travel', name: s.employee_name, date: p.date || '', route: p.route || '',

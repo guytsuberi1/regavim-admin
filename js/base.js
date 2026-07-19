@@ -14,6 +14,7 @@
     var phone = U.el('input', { value: emp.phone || '', placeholder: '050-0000000', type: 'tel' });
     var email = U.el('input', { value: emp.email || '', placeholder: 'אימייל (לזיהוי משתמש מחובר)', type: 'email' });
     var tz = U.el('input', { value: emp.tz || '', placeholder: 'תעודת זהות' });
+    var travelKm = U.el('input', { type: 'number', step: '1', min: '0', value: emp.travelKm != null ? emp.travelKm : '', placeholder: 'ק"מ הלוך ושוב (למתגברי מרכז למידה)' });
     var role = U.el('select', null, [
       U.el('option', { value: '', text: 'ללא (עובד רגיל)' }),
       U.el('option', { value: 'secretary', text: 'מזכירות — הזנת מרכז למידה' }),
@@ -33,6 +34,7 @@
       U.el('div', { class: 'row' }, [fld('שם פרטי', first), fld('שם משפחה', last)]),
       fld('תפקיד בישיבה', jobTitle),
       U.el('div', { class: 'row' }, [fld('טלפון', phone), fld('אימייל', email)]),
+      fld('ק"מ נסיעה הלוך ושוב (למתגבר)', travelKm),
       U.el('div', { class: 'row' }, [fld('ת.ז', tz), fld('הרשאה באפליקציה', role)]),
       fld('תגיות', U.el('div', null, tagBoxes.map(function (t) { return t.node; }))),
       fld('הערות', notes),
@@ -49,6 +51,7 @@
         emp.phone = phone.value.trim();
         emp.email = email.value.trim();
         emp.tz = tz.value.trim();
+        emp.travelKm = travelKm.value.trim() === '' ? '' : U.num(travelKm.value);
         emp.role = role.value;
         emp.tags = tagBoxes.filter(function (t) { return t.cb.checked; }).map(function (t) { return t.tag; });
         emp.active = active.checked;

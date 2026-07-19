@@ -13,37 +13,45 @@
       .sort(function (a, b) { return Store.empName(a).localeCompare(Store.empName(b), 'he'); });
   }
 
-  function empSelect(value, opts) {
-    var sel = U.el('select', opts || null,
-      [U.el('option', { value: '', text: '— בחירת עובד —' })].concat(
-        Store.employees().map(function (e) {
-          return U.el('option', { value: e.id, text: Store.empName(e) });
-        })
-      ));
-    if (value) sel.value = value;
-    return sel;
+  // מפת "מורה נעדר → סיבה" מתוך דוח ההיעדרויות של החודש (רק מי שדיווח או שגיא רשם)
+  function absentMap(month) {
+    var map = {};
+    Store.records('abs', month, function (r) { return r.kind === 'absence'; }).forEach(function (r) {
+      if (r.name && !map[r.name]) map[r.name] = r.reason || '';
+    });
+    return map;
   }
 
   function openRecModal(month, empId, rec) {
     rec = rec || { empId: empId };
-    var emp = empId ? null : empSelect(rec.empId);
+    // המורה המחליף — חיפוש חופשי במצבת (רק כשמוסיפים שורה חדשה כללית)
+    var empNames = Store.employees().map(Store.empName);
+    var subPicker = empId ? null : U.dataListInput(rec.empId ? Store.empName(rec.empId) : '', empNames, 'חיפוש מורה מחליף…');
     var date = U.el('input', { type: 'date', value: rec.date || U.todayISO() });
-    // מורה נעדר: בחירה מהמצבת או טקסט חופשי
-    var absentSel = empSelect(null, { style: 'flex:1;' });
-    var absent = U.el('input', { value: rec.absentName || '', placeholder: 'שם המורה הנעדר', style: 'flex:1;' });
-    absentSel.addEventListener('change', function () {
-      if (absentSel.value) absent.value = Store.empName(absentSel.value);
-    });
+    // מורה נעדר — רק מי שמופיע בדוח ההיעדרויות של החודש
+    var amap = absentMap(month);
+    var absentNames = Object.keys(amap).sort(function (a, b) { return a.localeCompare(b, 'he'); });
+    var absent = U.dataListInput(rec.absentName || '', absentNames, absentNames.length ? 'בחירה מדוח ההיעדרויות…' : 'אין היעדרויות רשומות החודש');
     var reason = U.el('input', { value: rec.reason || '', placeholder: 'מיל׳ / מחלה / השתלמות…' });
+    // מילוי אוטומטי של סיבת ההיעדרות לפי המורה הנעדר
+    absent._input.addEventListener('change', function () {
+      var nm = absent.get();
+      if (amap[nm] != null && !reason.value.trim()) reason.value = amap[nm];
+    });
+    absent._input.addEventListener('input', function () {
+      var nm = absent.get();
+      if (amap[nm]) reason.value = amap[nm];
+    });
     var hours = U.el('input', { type: 'number', step: '0.5', min: '0', value: rec.hours != null ? rec.hours : 1, style: 'max-width:110px;' });
     var purpose = U.el('input', { value: rec.purpose || '', placeholder: 'תנ"ך / הוראה / ניהול תיכון…' });
     var note = U.el('input', { value: rec.note || '', placeholder: 'הערות' });
     var err = U.el('div', { class: 'field-err' });
     function fld(label, node) { return U.el('div', { class: 'field' }, [U.el('label', { text: label }), node]); }
     var body = U.el('div', null, [
-      emp ? fld('המורה המחליף', emp) : null,
+      subPicker ? fld('המורה המחליף', subPicker) : null,
       U.el('div', { class: 'row' }, [fld('תאריך', date), fld('מס׳ שעות', hours)]),
-      fld('המורה הנעדר', U.el('div', { style: 'display:flex;gap:6px;' }, [absent, absentSel])),
+      fld('המורה הנעדר', absent),
+      absentNames.length ? null : U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:-6px;' }, 'טיפ: מורים נעדרים נמשכים מדוח ההיעדרויות. רשמו שם היעדרות והם יופיעו כאן.'),
       U.el('div', { class: 'row' }, [fld('סיבת ההיעדרות', reason), fld('פירוט ייעוד השעה', purpose)]),
       fld('הערות', note),
       err
@@ -51,13 +59,19 @@
     Modal.open(rec.id ? '✏️ עריכת שורה' : '➕ שורת מילוי מקום', body, [
       { label: 'ביטול', class: 'secondary' },
       { label: 'שמירה', onClick: function (close) {
-        var targetEmp = empId || (emp && emp.value);
+        var targetEmp = empId;
+        if (!targetEmp && subPicker) {
+          var nm = subPicker.get();
+          var match = Store.employees().filter(function (e) { return Store.empName(e) === nm; })[0];
+          if (!match) { err.textContent = 'בחרו מורה מחליף מהרשימה'; return; }
+          targetEmp = match.id;
+        }
         if (!targetEmp) { err.textContent = 'נדרש לבחור את המורה המחליף'; return; }
         if (!date.value) { err.textContent = 'נדרש תאריך'; return; }
         if (!U.num(hours.value)) { err.textContent = 'נדרש מספר שעות'; return; }
         rec.empId = targetEmp;
         rec.date = date.value;
-        rec.absentName = absent.value.trim();
+        rec.absentName = absent.get();
         rec.reason = reason.value.trim();
         rec.hours = U.num(hours.value);
         rec.purpose = purpose.value.trim();

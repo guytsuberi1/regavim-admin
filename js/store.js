@@ -518,7 +518,20 @@
     return Math.round((d - today) / 86400000);
   }
 
-  // נסיעות מרכז למידה (פר מתגבר)
+  // נסיעות מרכז למידה — אוטומטי: ק"מ מכרטיס העובד × מספר ימים שונים (תאריכים ייחודיים) × תעריף
+  function lcAutoTravel(month, empId) {
+    var emp = empById(empId);
+    var km = emp ? (parseFloat(emp.travelKm) || 0) : 0;
+    var dates = {};
+    records('lc', month, function (r) { return r.empId === empId; }).forEach(function (r) {
+      if (r.date) dates[r.date] = 1;
+    });
+    var days = Object.keys(dates).length;
+    var rate = data.core.settings.kmRate || 0;
+    return { km: km, days: days, rate: rate, pay: km * days * rate };
+  }
+
+  // נסיעות מרכז למידה (פר מתגבר) — נשמר לתאימות לאחור; כבר לא בשימוש (נסיעות אוטומטיות)
   function lcTravel(month, empId) {
     var row = monthRow('lc', month, false);
     return (row && row.travel && row.travel[empId]) || null;
@@ -801,6 +814,7 @@
     records: records,
     lcTravel: lcTravel,
     setLcTravel: setLcTravel,
+    lcAutoTravel: lcAutoTravel,
     pstatEntry: pstatEntry,
     setPstat: setPstat,
     knownMonths: knownMonths,
