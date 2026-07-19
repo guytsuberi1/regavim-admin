@@ -108,122 +108,6 @@
     Modal.open(isNew ? '➕ משימה חדשה' : '✏️ ' + (task.num || 'משימה'), body, buttons);
   }
 
-  // ---------- ייבוא משימות מאקסל ----------
-  function toISODate(v) {
-    if (v == null || v === '') return '';
-    if (v instanceof Date && !isNaN(v)) {
-      return v.getFullYear() + '-' + String(v.getMonth() + 1).padStart(2, '0') + '-' + String(v.getDate()).padStart(2, '0');
-    }
-    if (typeof v === 'number') { // מספר סידורי של אקסל
-      var d = new Date(Math.round((v - 25569) * 86400000));
-      if (!isNaN(d)) return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
-    }
-    var s = String(v).trim(); // dd/mm/yy או dd.mm.yy
-    var m = s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{2,4})$/);
-    if (m) {
-      var yy = m[3].length === 2 ? '20' + m[3] : m[3];
-      return yy + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
-    }
-    return '';
-  }
-
-  function importExcel(file) {
-    var reader = new FileReader();
-    reader.onload = function () {
-      try {
-        var wb = XLSX.read(new Uint8Array(reader.result), { type: 'array', cellDates: true });
-        // מעדיפים גיליון בשם "משימות"; אחרת הראשון שיש בו כותרת "מזהה משימה"/"תיאור"
-        var sheetName = wb.SheetNames.filter(function (n) { return n.trim() === 'משימות'; })[0];
-        var rows;
-        function readSheet(n) { return XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, defval: '' }); }
-        function headRow(rws) {
-          for (var i = 0; i < Math.min(rws.length, 6); i++) {
-            var joined = rws[i].map(function (c) { return String(c); }).join('|');
-            if (joined.indexOf('תיאור') !== -1 || joined.indexOf('מזהה משימה') !== -1) return i;
-          }
-          return -1;
-        }
-        if (sheetName) rows = readSheet(sheetName);
-        else {
-          wb.SheetNames.forEach(function (n) { var r = readSheet(n); if (headRow(r) !== -1 && (!rows || r.length > rows.length)) rows = r; });
-        }
-        if (!rows || !rows.length) { U.toast('לא נמצא גיליון משימות מתאים', 'error'); return; }
-        var hi = headRow(rows);
-        if (hi === -1) { U.toast('לא נמצאה שורת כותרת (תיאור/מזהה משימה)', 'error'); return; }
-        var cols = {};
-        rows[hi].forEach(function (h, c) {
-          h = String(h).trim();
-          if (h.indexOf('מזהה') !== -1) cols.num = c;
-          else if (h === 'תחום' || h === 'ק"ק') cols.domain = c;
-          else if (h.indexOf('תיאור') !== -1) cols.desc = c;
-          else if (h.indexOf('באחריות') !== -1) cols.owner = c;
-          else if (h.indexOf('עדיפות') !== -1) cols.priority = c;
-          else if (h.indexOf('סטטוס') !== -1) cols.status = c;
-          else if (h.indexOf('תאריך יעד') !== -1) cols.due = c;
-          else if (h.indexOf('הערות') !== -1) cols.notes = c;
-          else if (h.indexOf('סוג') !== -1) cols.kind = c;
-        });
-        if (cols.desc == null) { U.toast('לא נמצאה עמודת "תיאור"', 'error'); return; }
-        var cell = function (row, key) { return cols[key] != null ? row[cols[key]] : ''; };
-        var validStatus = { 'פתוח': 1, 'בתהליך': 1, 'הושלם': 1 };
-        var validPr = { 'גבוה': 1, 'בינוני': 1, 'נמוך': 1 };
-        // מניעת ייבוא כפול — מזהים קיימים
-        var existingNums = {};
-        Store.tasksAll().forEach(function (t) { if (t.num) existingNums[t.num] = 1; });
-        var out = [], dup = 0, done = 0;
-        for (var r = hi + 1; r < rows.length; r++) {
-          var desc = String(cell(rows[r], 'desc') || '').trim();
-          if (!desc) continue; // מדלגים על שורות ריקות שכבר ממוספרות
-          var num = String(cell(rows[r], 'num') || '').trim();
-          if (num && existingNums[num]) { dup++; continue; }
-          var status = String(cell(rows[r], 'status') || '').trim();
-          if (status === 'הושלם') { done++; continue; } // מייבאים רק משימות שלא הסתיימו
-          var pr = String(cell(rows[r], 'priority') || '').trim();
-          var kind = String(cell(rows[r], 'kind') || '').trim();
-          var domain = String(cell(rows[r], 'domain') || '').trim();
-          var owner = String(cell(rows[r], 'owner') || '').trim();
-          out.push({
-            num: num,
-            domain: domain,
-            desc: desc,
-            owner: owner,
-            priority: validPr[pr] ? pr : 'בינוני',
-            status: validStatus[status] ? status : 'פתוח',
-            due: toISODate(cell(rows[r], 'due')),
-            notes: String(cell(rows[r], 'notes') || '').trim(),
-            kind: kind === 'קבוע' ? 'קבוע' : 'חד פעמי',
-            freq: kind === 'קבוע' ? 'monthly' : ''
-          });
-          rememberValue('taskDomains', domain);
-          rememberValue('taskOwners', owner);
-        }
-        if (!out.length) {
-          var why = done ? 'כל המשימות הפתוחות כבר קיימות או שכולן הסתיימו' : (dup ? 'כל המשימות כבר קיימות (' + dup + ' דילוגים)' : 'לא נמצאו משימות לייבוא');
-          U.toast(why, (done || dup) ? 'info' : 'error');
-          return;
-        }
-        Store.addTasksBulk(out);
-        var extra = [];
-        if (done) extra.push(done + ' שהסתיימו');
-        if (dup) extra.push(dup + ' קיימות');
-        U.toast('יובאו ' + out.length + ' משימות פתוחות' + (extra.length ? ' · דולגו ' + extra.join(' ו-') : ''));
-        App.render();
-      } catch (e) {
-        console.error(e);
-        U.toast('שגיאה בקריאת הקובץ: ' + e.message, 'error');
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  }
-
-  function pickExcel() {
-    var inp = U.el('input', { type: 'file', accept: '.xlsx,.xls', style: 'display:none;' });
-    inp.addEventListener('change', function () { if (inp.files[0]) importExcel(inp.files[0]); });
-    document.body.appendChild(inp);
-    inp.click();
-    setTimeout(function () { document.body.removeChild(inp); }, 500);
-  }
-
   function rememberValue(key, val) {
     val = (val || '').trim();
     if (!val) return;
@@ -364,11 +248,10 @@
       U.el('button', { class: viewMode === 'table' ? 'active' : '', text: '☰ טבלה', onclick: function () { viewMode = 'table'; App.render(); } }),
       U.el('button', { class: viewMode === 'kanban' ? 'active' : '', text: '▤ קנבן', onclick: function () { viewMode = 'kanban'; App.render(); } })
     ]);
-    var importBtn = U.el('button', { class: 'btn secondary', html: U.XLS_SVG + ' ייבוא מאקסל', onclick: pickExcel });
     view.appendChild(U.el('div', { class: 'page-head' }, [
       U.el('h2', { text: '✅ ניהול משימות' }),
       U.el('span', { class: 'spacer' }),
-      toggle, importBtn, addBtn
+      toggle, addBtn
     ]));
 
     // סיכום
