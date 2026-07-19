@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>דיווח עובדים — ישיבת רגבים בנימין</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📝</text></svg>" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Rubik", "Segoe UI", Arial, sans-serif;
+      margin: 0; background: #f1f5f9; color: #0f172a;
+      min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    }
+    .wrap { width: 100%; max-width: 480px; padding: 18px 14px 40px; }
+    .head { text-align: center; margin: 10px 0 18px; }
+    .head .logo { font-size: 42px; }
+    .head h1 { margin: 4px 0 2px; font-size: 22px; }
+    .head .sub { color: #64748b; font-size: 14px; }
+    .card { background: #fff; border-radius: 14px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 12px; }
+    label { display: block; font-size: 13px; font-weight: 600; margin: 10px 0 4px; }
+    input, select, textarea {
+      width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 10px;
+      font-size: 16px; font-family: inherit; background: #fff;
+    }
+    input:focus, select:focus, textarea:focus { outline: 2px solid #2563eb33; border-color: #2563eb; }
+    .row2 { display: flex; gap: 8px; } .row2 > div { flex: 1; }
+    .types { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 6px; }
+    .type-btn {
+      border: 2px solid #e2e8f0; background: #fff; border-radius: 12px; padding: 12px 4px;
+      font-family: inherit; font-size: 13px; cursor: pointer; text-align: center;
+    }
+    .type-btn .ic { font-size: 26px; display: block; margin-bottom: 4px; }
+    .type-btn.active { border-color: #2563eb; background: #eff6ff; font-weight: 700; }
+    .btn {
+      width: 100%; margin-top: 16px; padding: 13px; border: none; border-radius: 12px;
+      background: #2563eb; color: #fff; font-size: 17px; font-weight: 600; font-family: inherit; cursor: pointer;
+    }
+    .btn:disabled { opacity: .6; }
+    .file-drop {
+      border: 2px dashed #cbd5e1; border-radius: 12px; padding: 14px; text-align: center;
+      color: #64748b; font-size: 14px; cursor: pointer; background: #f8fafc;
+    }
+    .file-drop.has { border-color: #16a34a; color: #166534; background: #f0fdf4; }
+    .err { color: #dc2626; font-size: 14px; min-height: 18px; margin-top: 8px; text-align: center; }
+    .success { text-align: center; padding: 30px 10px; }
+    .success .big { font-size: 56px; }
+    .success h2 { margin: 8px 0 4px; }
+    .success p { color: #64748b; }
+    .again { background: #fff; color: #2563eb; border: 2px solid #2563eb; }
+    .loading { text-align: center; color: #64748b; padding: 40px 0; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <div class="logo">📝</div>
+      <h1>דיווח עובדים</h1>
+      <div class="sub">ישיבת רגבים בנימין · הדיווח מגיע ישירות לגיא</div>
+    </div>
+
+    <div id="loading" class="loading">טוען…</div>
+
+    <form id="form" class="hidden" autocomplete="off">
+      <div class="card">
+        <label for="empName">שם העובד</label>
+        <input list="empList" id="empName" placeholder="התחילו להקליד את השם…" required />
+        <datalist id="empList"></datalist>
+
+        <label>מה מדווחים?</label>
+        <div class="types">
+          <button type="button" class="type-btn active" data-type="absence"><span class="ic">🤒</span>היעדרות<br>(מחלה/מילואים)</button>
+          <button type="button" class="type-btn" data-type="travel"><span class="ic">🚗</span>נסיעות</button>
+          <button type="button" class="type-btn" data-type="trip"><span class="ic">🏕️</span>טיול / פעילות</button>
+        </div>
+      </div>
+
+      <!-- היעדרות -->
+      <div class="card" id="f-absence">
+        <label>סיבת ההיעדרות</label>
+        <select id="absReason">
+          <option>מחלה</option>
+          <option>מילואים</option>
+          <option>אחר</option>
+        </select>
+        <div class="row2">
+          <div><label>מתאריך</label><input type="date" id="absFrom" /></div>
+          <div><label>עד תאריך</label><input type="date" id="absTo" /></div>
+        </div>
+        <label>שעות שהוחסרו (לא חובה)</label>
+        <input id="absHours" inputmode="decimal" placeholder='למשל: 6, או "יום מלא"' />
+        <label>מסמך אישור (אישור מחלה / טופס 3010)</label>
+        <div class="file-drop" id="fileDrop">📎 לחצו לצילום או לבחירת קובץ</div>
+        <input type="file" id="fileInput" accept="image/*,.pdf" class="hidden" />
+        <label>הערות (לא חובה)</label>
+        <textarea id="absNote" rows="2"></textarea>
+      </div>
+
+      <!-- נסיעות -->
+      <div class="card hidden" id="f-travel">
+        <label>תאריך הנסיעה</label>
+        <input type="date" id="trvDate" />
+        <label>נתיב (מאיפה לאן, הלוך ושוב?)</label>
+        <input id="trvRoute" placeholder="למשל: עפרה ↔ רגבים, הלוך ושוב" />
+        <label>כמות ק"מ</label>
+        <input id="trvKm" type="number" inputmode="numeric" min="1" placeholder='סה"כ ק"מ' />
+        <label>הערות (לא חובה)</label>
+        <textarea id="trvNote" rows="2"></textarea>
+      </div>
+
+      <!-- טיול -->
+      <div class="card hidden" id="f-trip">
+        <label>מטרת הטיול / הפעילות</label>
+        <input id="tripPurpose" placeholder="למשל: טיול שנתי כיתה י" />
+        <div class="row2">
+          <div><label>יציאה</label><input type="datetime-local" id="tripDep" /></div>
+          <div><label>חזרה</label><input type="datetime-local" id="tripRet" /></div>
+        </div>
+        <div class="row2">
+          <div><label>מס׳ לילות</label><input type="number" id="tripNights" min="0" value="0" /></div>
+          <div><label>כיתה</label><input id="tripKlass" placeholder="י / יא…" /></div>
+        </div>
+        <label>הערות (לא חובה)</label>
+        <textarea id="tripNote" rows="2"></textarea>
+      </div>
+
+      <div class="err" id="err"></div>
+      <button type="submit" class="btn" id="sendBtn">שליחת הדיווח</button>
+    </form>
+
+    <div id="success" class="success hidden">
+      <div class="big">✅</div>
+      <h2>הדיווח נשלח!</h2>
+      <p id="successTxt">הדיווח ממתין לאישור של גיא וייכנס לדוח החודשי.</p>
+      <button class="btn again" id="againBtn">📝 דיווח נוסף</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    (function () {
+      'use strict';
+      var SB_URL = 'https://dcnndzrdimkogfjsvcku.supabase.co';
+      var SB_KEY = 'sb_publishable_LoALeRJVUqiyBwWhCF_0qQ_RpLwS4ew';
+      var sb = supabase.createClient(SB_URL, SB_KEY);
+
+      var currentType = 'absence';
+      var chosenFile = null;
+
+      function $(id) { return document.getElementById(id); }
+
+      // רשימת שמות מתוך שורת portal (קריאה אנונימית מותרת רק לשורה הזו)
+      sb.from('admin_state').select('data').eq('id', 'portal').maybeSingle().then(function (res) {
+        $('loading').classList.add('hidden');
+        $('form').classList.remove('hidden');
+        var names = (res.data && res.data.data && res.data.data.names) || [];
+        var dl = $('empList');
+        names.forEach(function (n) {
+          var o = document.createElement('option');
+          o.value = n;
+          dl.appendChild(o);
+        });
+      }, function () {
+        $('loading').classList.add('hidden');
+        $('form').classList.remove('hidden');
+      });
+
+      // בחירת סוג דיווח
+      Array.prototype.forEach.call(document.querySelectorAll('.type-btn'), function (btn) {
+        btn.addEventListener('click', function () {
+          currentType = btn.getAttribute('data-type');
+          Array.prototype.forEach.call(document.querySelectorAll('.type-btn'), function (b) {
+            b.classList.toggle('active', b === btn);
+          });
+          ['absence', 'travel', 'trip'].forEach(function (t) {
+            $('f-' + t).classList.toggle('hidden', t !== currentType);
+          });
+        });
+      });
+
+      // קובץ אישור
+      $('fileDrop').addEventListener('click', function () { $('fileInput').click(); });
+      $('fileInput').addEventListener('change', function () {
+        chosenFile = $('fileInput').files[0] || null;
+        var drop = $('fileDrop');
+        if (chosenFile) {
+          drop.classList.add('has');
+          drop.textContent = '✓ ' + chosenFile.name;
+        } else {
+          drop.classList.remove('has');
+          drop.textContent = '📎 לחצו לצילום או לבחירת קובץ';
+        }
+      });
+
+      function fmtDate(iso) {
+        if (!iso) return '';
+        var p = iso.split('-');
+        return parseInt(p[2], 10) + '.' + parseInt(p[1], 10) + '.' + p[0].slice(2);
+      }
+
+      function buildPayload() {
+        if (currentType === 'absence') {
+          var from = $('absFrom').value, to = $('absTo').value;
+          if (!from) return { err: 'נא למלא מתאריך' };
+          var dates = fmtDate(from) + (to && to !== from ? ' - ' + fmtDate(to) : '');
+          return { payload: { dates: dates, from: from, to: to || from, reason: $('absReason').value,
+                              hours: $('absHours').value.trim(), note: $('absNote').value.trim() } };
+        }
+        if (currentType === 'travel') {
+          if (!$('trvKm').value) return { err: 'נא למלא כמות ק"מ' };
+          return { payload: { date: $('trvDate').value, route: $('trvRoute').value.trim(),
+                              km: parseFloat($('trvKm').value) || 0, note: $('trvNote').value.trim() } };
+        }
+        if (!$('tripDep').value) return { err: 'נא למלא מועד יציאה' };
+        return { payload: { purpose: $('tripPurpose').value.trim(), depart: $('tripDep').value,
+                            ret: $('tripRet').value, nights: parseInt($('tripNights').value, 10) || 0,
+                            klass: $('tripKlass').value.trim(), note: $('tripNote').value.trim() } };
+      }
+
+      $('form').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var err = $('err');
+        err.textContent = '';
+        var name = $('empName').value.trim();
+        if (!name) { err.textContent = 'נא למלא את שם העובד'; return; }
+        var built = buildPayload();
+        if (built.err) { err.textContent = built.err; return; }
+
+        var btn = $('sendBtn');
+        btn.disabled = true;
+        btn.textContent = 'שולח…';
+
+        var filePromise = Promise.resolve(null);
+        if (currentType === 'absence' && chosenFile) {
+          var safe = chosenFile.name.replace(/[^\w.\-֐-׿]/g, '_');
+          var path = new Date().toISOString().slice(0, 7) + '/' + Date.now().toString(36) + '_' + safe;
+          filePromise = sb.storage.from('admin-approvals').upload(path, chosenFile).then(function (res) {
+            if (res.error) throw new Error('העלאת הקובץ נכשלה: ' + res.error.message);
+            return path;
+          });
+        }
+
+        filePromise.then(function (filePath) {
+          return sb.from('admin_submissions').insert({
+            employee_name: name,
+            type: currentType,
+            payload: built.payload,
+            file_path: filePath,
+            status: 'pending'
+          });
+        }).then(function (res) {
+          if (res.error) throw new Error(res.error.message);
+          $('form').classList.add('hidden');
+          $('success').classList.remove('hidden');
+          window.scrollTo(0, 0);
+        }).catch(function (e) {
+          err.textContent = 'השליחה נכשלה — ' + e.message;
+        }).finally(function () {
+          btn.disabled = false;
+          btn.textContent = 'שליחת הדיווח';
+        });
+      });
+
+      $('againBtn').addEventListener('click', function () { location.reload(); });
+    })();
+  </script>
+</body>
+</html>

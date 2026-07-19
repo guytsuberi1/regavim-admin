@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>תפעול — ישיבת רגבים בנימין</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💼</text></svg>" />
+  <link rel="stylesheet" href="styles.css?v=1" />
+  <style>
+    /* תג "ממתינים לאישור" על טאב בתפריט */
+    .tab-badge {
+      display: inline-block; min-width: 18px; padding: 0 5px; margin-inline-start: 6px;
+      border-radius: 9px; background: #dc2626; color: #fff;
+      font-size: 11px; font-weight: 700; line-height: 18px; text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <script>try { if (localStorage.getItem('admin_dark') === '1') document.body.classList.add('dark'); } catch (e) {}</script>
+  <!-- מסך התחברות (ענן) -->
+  <div id="loginOverlay" class="login-overlay" style="display:none">
+    <div class="login-box">
+      <div class="logo" style="font-size:40px">💼</div>
+      <h2>תפעול</h2>
+      <div class="muted" style="margin-bottom:14px">ישיבת רגבים בנימין · התחברות</div>
+      <input id="loginEmail" type="email" placeholder="אימייל" autocomplete="username" />
+      <div class="pass-wrap">
+        <input id="loginPass" type="password" placeholder="סיסמה" autocomplete="current-password" />
+        <button id="passEye" class="pass-eye" type="button" aria-label="הצגת סיסמה" title="הצגת סיסמה">👁️</button>
+      </div>
+      <div id="loginErr" class="login-err"></div>
+      <button id="loginBtn" class="btn" style="width:100%;justify-content:center;margin-top:8px">כניסה</button>
+      <button id="forgotBtn" class="login-forgot" type="button">שכחתי סיסמה</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <aside class="sidebar no-print" id="sidebar">
+      <div class="brand">
+        <span class="brand-logo">💼</span>
+        <span class="brand-txt">תפעול<small>ישיבת רגבים בנימין</small></span>
+        <button id="sbClose" class="sb-close no-print" aria-label="סגירת סרגל הצד" title="סגירת סרגל הצד">«</button>
+      </div>
+      <nav class="tabs" id="tabs">
+        <div class="nav-sec">שכר חודשי</div>
+        <button data-tab="status" class="active">📋 לוח שכר</button>
+        <button data-tab="queue">📥 תור אישורים</button>
+        <div class="nav-sec">דוחות</div>
+        <button data-tab="lc">📚 מרכז למידה</button>
+        <button data-tab="sub">🔁 מילוי מקום</button>
+        <button data-tab="abs">🪖 היעדרויות וגמולים</button>
+        <div class="nav-sec">הפקה</div>
+        <button data-tab="pdf">🖨️ חבילת PDF</button>
+        <div class="nav-sec">ניהול</div>
+        <button data-tab="base">🗂️ נתוני בסיס</button>
+      </nav>
+    </aside>
+    <div class="content">
+      <header class="topbar no-print">
+        <button id="sbToggle" class="sb-toggle" aria-label="תפריט">☰</button>
+        <span class="spacer"></span>
+        <div class="status"><span id="saveStatus">טוען…</span> <span id="headerSync"></span></div>
+      </header>
+      <main id="view">
+        <div class="skeleton">
+          <div class="sk-line lg"></div>
+          <div class="sk-line" style="width:70%"></div>
+          <div class="sk-card"></div>
+          <div class="sk-card"></div>
+          <div class="sk-line" style="width:50%"></div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ספריות ומודולים (סקריפטים קלאסיים — עובד גם מ-file://) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script src="js/util.js?v=1"></script>
+  <script src="js/store.js?v=1"></script>
+  <script src="js/base.js?v=1"></script>
+  <script src="js/queue.js?v=1"></script>
+  <script src="js/status.js?v=1"></script>
+  <script src="js/lc.js?v=1"></script>
+  <script src="js/sub.js?v=1"></script>
+  <script src="js/abs.js?v=1"></script>
+  <script src="js/pdf.js?v=1"></script>
+  <script src="js/app.js?v=1"></script>
+  <script>
+    (function () {
+      var sb = document.getElementById('sidebar'), tg = document.getElementById('sbToggle');
+      var sbClose = document.getElementById('sbClose'), layout = document.querySelector('.layout');
+      function mobile() { return window.innerWidth <= 860; }
+      function openSb() { if (mobile()) { if (sb) sb.classList.add('open'); } else if (layout) { layout.classList.remove('collapsed'); localStorage.setItem('admin_sidebar_collapsed', '0'); } }
+      function closeSb() { if (mobile()) { if (sb) sb.classList.remove('open'); } else if (layout) { layout.classList.add('collapsed'); localStorage.setItem('admin_sidebar_collapsed', '1'); } }
+      if (layout && localStorage.getItem('admin_sidebar_collapsed') === '1') layout.classList.add('collapsed');
+      if (tg) tg.addEventListener('click', openSb);
+      if (sbClose) sbClose.addEventListener('click', closeSb);
+      var tabs = document.getElementById('tabs');
+      if (tabs && sb) tabs.addEventListener('click', function (e) {
+        if (e.target.closest('button') && mobile()) sb.classList.remove('open');
+      });
+    })();
+  </script>
+</body>
+</html>
