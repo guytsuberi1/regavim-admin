@@ -102,11 +102,12 @@
           var t = [];
           var isLC = /מרכז\s*למידה/.test(title);
           var isDorm = /מדריך|פנימי|אם\s*בית/.test(title);
+          var isPrincipal = /מנהל\s*תיכון/.test(title); // מנהל תיכון נחשב מורה
           if (isLC) t.push('מתגבר');
           // מורה — אך לא מרכז למידה (שגם מכיל "רכז")
-          if (!isLC && /מורה|ר["׳']?מ|מ["׳']?מ|רכז|מלמד/.test(title)) t.push('מורה');
+          if (isPrincipal || (!isLC && /מורה|ר["׳']?מ|מ["׳']?מ|רכז|מלמד/.test(title))) t.push('מורה');
           if (isDorm) t.push('פנימיה');
-          if (/מזכיר|מנהלן/.test(title) || (/מנהל/.test(title) && !isDorm)) t.push('מנהלה');
+          if (!isPrincipal && (/מזכיר|מנהלן/.test(title) || (/מנהל/.test(title) && !isDorm))) t.push('מנהלה');
           return t.filter(function (x, i, a) { return a.indexOf(x) === i; });
         }
 
