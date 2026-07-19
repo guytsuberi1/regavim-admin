@@ -170,13 +170,14 @@
         // מניעת ייבוא כפול — מזהים קיימים
         var existingNums = {};
         Store.tasksAll().forEach(function (t) { if (t.num) existingNums[t.num] = 1; });
-        var out = [], dup = 0;
+        var out = [], dup = 0, done = 0;
         for (var r = hi + 1; r < rows.length; r++) {
           var desc = String(cell(rows[r], 'desc') || '').trim();
           if (!desc) continue; // מדלגים על שורות ריקות שכבר ממוספרות
           var num = String(cell(rows[r], 'num') || '').trim();
           if (num && existingNums[num]) { dup++; continue; }
           var status = String(cell(rows[r], 'status') || '').trim();
+          if (status === 'הושלם') { done++; continue; } // מייבאים רק משימות שלא הסתיימו
           var pr = String(cell(rows[r], 'priority') || '').trim();
           var kind = String(cell(rows[r], 'kind') || '').trim();
           var domain = String(cell(rows[r], 'domain') || '').trim();
@@ -196,9 +197,16 @@
           rememberValue('taskDomains', domain);
           rememberValue('taskOwners', owner);
         }
-        if (!out.length) { U.toast(dup ? 'כל המשימות כבר קיימות (' + dup + ' דילוגים)' : 'לא נמצאו משימות לייבוא', dup ? 'info' : 'error'); return; }
+        if (!out.length) {
+          var why = done ? 'כל המשימות הפתוחות כבר קיימות או שכולן הסתיימו' : (dup ? 'כל המשימות כבר קיימות (' + dup + ' דילוגים)' : 'לא נמצאו משימות לייבוא');
+          U.toast(why, (done || dup) ? 'info' : 'error');
+          return;
+        }
         Store.addTasksBulk(out);
-        U.toast('יובאו ' + out.length + ' משימות' + (dup ? ' · ' + dup + ' דילוגים (קיימות)' : ''));
+        var extra = [];
+        if (done) extra.push(done + ' שהסתיימו');
+        if (dup) extra.push(dup + ' קיימות');
+        U.toast('יובאו ' + out.length + ' משימות פתוחות' + (extra.length ? ' · דולגו ' + extra.join(' ו-') : ''));
         App.render();
       } catch (e) {
         console.error(e);
