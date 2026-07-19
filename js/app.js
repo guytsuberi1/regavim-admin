@@ -12,6 +12,7 @@
     abs: global.AbsView,
     pdf: global.PdfView,
     tasks: global.TasksView,
+    projects: global.ProjectsView,
     base: global.BaseView,
     settings: global.SettingsView
   };
@@ -28,6 +29,9 @@
     ] },
     { id: 'tasks', label: '✅ ניהול משימות', subs: [
       { id: 'tasks', label: '✅ משימות' }
+    ] },
+    { id: 'projects', label: '🏗️ ניהול פרויקטים', subs: [
+      { id: 'projects', label: '🏗️ פרויקטים' }
     ] }
   ];
   // פריטים עצמאיים (לא גיליונות)
@@ -42,7 +46,7 @@
 
   // הרשאות: admin רואה הכל; secretary רק מרכז למידה
   var ROLE_VIEWS = {
-    admin: ['status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'tasks', 'base', 'settings'],
+    admin: ['status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'tasks', 'projects', 'base', 'settings'],
     secretary: ['lc']
   };
   function roleKey() { return Store.currentRole(); }
