@@ -238,8 +238,20 @@
     return d;
   }
 
+  // שדה קלט עם רשימת השלמה (חיפוש/בחירה חופשית). מחזיר wrapper עם _input ו-get().
+  function dataListInput(value, options, placeholder) {
+    var id = 'dl_' + Math.random().toString(36).slice(2, 8);
+    var dl = el('datalist', { id: id }, (options || []).map(function (o) { return el('option', { value: o }); }));
+    var inp = el('input', { value: value || '', list: id, placeholder: placeholder || '', autocomplete: 'off' });
+    var wrap = el('div', null, [inp, dl]);
+    wrap._input = inp;
+    wrap.get = function () { return inp.value.trim(); };
+    return wrap;
+  }
+
   global.U = {
     el: el, clear: clear, $: $, $all: $all,
+    dataListInput: dataListInput,
     todayISO: todayISO, toISO: toISO, fromISO: fromISO, addDays: addDays,
     weekdayName: weekdayName, WEEKDAYS: WEEKDAYS,
     hebrewDate: hebrewDate, gregLabel: gregLabel,

@@ -15,14 +15,20 @@
       cols: ['שם', 'מטרת הטיול', 'יציאה', 'חזרה', 'לילות', 'הערות'] }
   ];
 
+  // שם עובד — חיפוש חופשי במצבת (כמו במילוי מקום)
   function nameField(rec) {
-    var input = U.el('input', { value: rec.name || '', placeholder: 'שם העובד', style: 'flex:1;' });
-    var sel = U.el('select', { style: 'flex:1;' },
-      [U.el('option', { value: '', text: '— בחירה מהמצבת —' })].concat(
-        Store.employees().map(function (e) { return U.el('option', { value: Store.empName(e), text: Store.empName(e) }); })
-      ));
-    sel.addEventListener('change', function () { if (sel.value) input.value = sel.value; });
-    return { input: input, node: U.el('div', { style: 'display:flex;gap:6px;' }, [input, sel]) };
+    var picker = U.dataListInput(rec.name || '', Store.employees().map(Store.empName), 'חיפוש עובד…');
+    return { input: picker._input, node: picker, get: picker.get };
+  }
+
+  // תצוגת טווח תאריכים: מ-fromDate/toDate החדשים, אחרת מחרוזת dates הישנה (מהפורטל)
+  function datesDisplay(rec) {
+    if (rec.fromDate) {
+      var f = U.gregLabel(rec.fromDate);
+      if (rec.toDate && rec.toDate !== rec.fromDate) return f + ' – ' + U.gregLabel(rec.toDate);
+      return f;
+    }
+    return rec.dates || '';
   }
 
   function fld(label, node) { return U.el('div', { class: 'field' }, [U.el('label', { text: label }), node]); }
@@ -34,8 +40,10 @@
     var fields = [], collect;
 
     if (kind === 'absence') {
-      var dates = U.el('input', { value: rec.dates || '', placeholder: 'למשל: 3.5 או 26-27.5 או 1-31.5' });
-      var hours = U.el('input', { value: rec.hours || '', placeholder: 'שעות (או "-")', style: 'max-width:130px;' });
+      // תאריכים — בורר תאריך יחיד + תאריך-עד אופציונלי (טווח)
+      var fromDate = U.el('input', { type: 'date', value: rec.fromDate || '' });
+      var toDate = U.el('input', { type: 'date', value: rec.toDate || '' });
+      var hours = U.el('input', { type: 'number', step: '0.5', min: '0', value: rec.hours != null && rec.hours !== '' && !isNaN(rec.hours) ? rec.hours : '', placeholder: 'מס׳ שעות', style: 'max-width:130px;' });
       var reason = U.el('select', null, ['מחלה', 'מילואים', 'חופשת לידה', 'אחר'].map(function (x) { return U.el('option', { value: x, text: x }); }));
       if (rec.reason) reason.value = rec.reason;
       var approval = U.el('select', null, [
@@ -44,22 +52,30 @@
         U.el('option', { value: 'none', text: 'לא נדרש' })
       ]);
       approval.value = rec.approval || 'missing';
-      var deduction = U.el('input', { value: rec.deduction || '', placeholder: 'ניכוי שכר: - / ללא ניכוי / פירוט' });
+      // ניכוי מהשכר — כן/לא (רק גיא ממלא; המסך ממילא למנהל בלבד)
+      var deduction = U.el('select', null, [
+        U.el('option', { value: 'none', text: 'ללא ניכוי' }),
+        U.el('option', { value: 'yes', text: 'יש ניכוי משכר' })
+      ]);
+      deduction.value = (rec.deduction === 'yes' || /יש/.test(rec.deduction || '')) ? 'yes' : 'none';
       var note = U.el('input', { value: rec.note || '', placeholder: 'הערות' });
       fields = [
         fld('שם העובד', name.node),
-        U.el('div', { class: 'row' }, [fld('תאריכים', dates), fld('שעות', hours)]),
-        U.el('div', { class: 'row' }, [fld('סיבת ההיעדרות', reason), fld('אישור היעדרות', approval)]),
-        U.el('div', { class: 'row' }, [fld('ניכוי שכר', deduction), fld('הערות', note)])
+        U.el('div', { class: 'row' }, [fld('מתאריך', fromDate), fld('עד תאריך (לטווח)', toDate)]),
+        U.el('div', { class: 'row' }, [fld('מס׳ שעות', hours), fld('סיבת ההיעדרות', reason)]),
+        U.el('div', { class: 'row' }, [fld('אישור היעדרות', approval), fld('ניכוי מהשכר', deduction)]),
+        fld('הערות', note)
       ];
       collect = function () {
-        rec.dates = dates.value.trim();
+        rec.fromDate = fromDate.value;
+        rec.toDate = toDate.value;
+        rec.dates = datesDisplay({ fromDate: fromDate.value, toDate: toDate.value });
         rec.hours = hours.value.trim();
         rec.reason = reason.value;
         rec.approval = approval.value;
-        rec.deduction = deduction.value.trim();
+        rec.deduction = deduction.value; // 'none' | 'yes'
         rec.note = note.value.trim();
-        return rec.dates ? null : 'נדרשים תאריכים';
+        return rec.fromDate ? null : 'נדרש תאריך';
       };
     } else if (kind === 'work') {
       var wdates = U.el('input', { value: rec.dates || '', placeholder: 'תאריכים' });
@@ -164,13 +180,14 @@
 
   function rowCells(r) {
     if (r.kind === 'absence') {
+      var ded = (r.deduction === 'yes' || /יש/.test(r.deduction || '')) ? 'יש ניכוי' : 'ללא ניכוי';
       return [
         U.el('td', null, U.el('strong', { text: r.name })),
-        U.el('td', { text: r.dates || '' }),
-        U.el('td', { text: r.hours || '-' }),
+        U.el('td', { text: datesDisplay(r) }),
+        U.el('td', { text: (r.hours === '' || r.hours == null) ? '-' : r.hours }),
         U.el('td', { text: r.reason || '' }),
         approvalCell(r),
-        U.el('td', { text: r.deduction || '-' }),
+        U.el('td', { text: ded }),
         U.el('td', { text: r.note || '' })
       ];
     }

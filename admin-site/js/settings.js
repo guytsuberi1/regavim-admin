@@ -42,39 +42,6 @@
     ]);
     view.appendChild(ratesCard);
 
-    // ---------- סטטוסים ----------
-    var statusesCard = U.el('div', { class: 'card', style: 'max-width:560px;margin-bottom:16px;' });
-    statusesCard.appendChild(U.el('h3', { text: '🏷️ סטטוסים בלוח השכר' }));
-    statusesCard.appendChild(U.el('p', { class: 'muted', style: 'margin-top:0;', text: 'הסטטוסים שאפשר לבחור לכל עובד בלוח השכר החודשי.' }));
-    var list = (s.statuses || []).map(function (st) { return { id: st.id, label: st.label, color: st.color }; });
-    var rowsWrap = U.el('div');
-    function renderStatuses() {
-      U.clear(rowsWrap);
-      list.forEach(function (st, i) {
-        var lbl = U.el('input', { value: st.label, style: 'flex:1;' });
-        lbl.addEventListener('input', function () { st.label = lbl.value; });
-        var color = U.el('input', { type: 'color', value: st.color || '#64748b', style: 'width:44px;padding:2px;' });
-        color.addEventListener('input', function () { st.color = color.value; });
-        var del = U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקה', onclick: function () { list.splice(i, 1); renderStatuses(); } });
-        rowsWrap.appendChild(U.el('div', { style: 'display:flex;gap:6px;margin-bottom:6px;align-items:center;' }, [lbl, color, del]));
-      });
-    }
-    renderStatuses();
-    statusesCard.appendChild(rowsWrap);
-    statusesCard.appendChild(U.el('div', { style: 'display:flex;gap:8px;margin-top:8px;' }, [
-      U.el('button', { class: 'btn secondary', text: '➕ סטטוס חדש', onclick: function () {
-        list.push({ id: Store.uid(), label: '', color: '#64748b' });
-        renderStatuses();
-      } }),
-      U.el('button', { class: 'btn', text: '💾 שמירת סטטוסים', onclick: function () {
-        s.statuses = list.filter(function (st) { return st.label.trim(); });
-        Store.saveSettings();
-        U.toast('הסטטוסים נשמרו');
-        App.render();
-      } })
-    ]));
-    view.appendChild(statusesCard);
-
     // ---------- גיבוי ושחזור ----------
     var backupCard = U.el('div', { class: 'card danger-zone', style: 'max-width:560px;' }, [
       U.el('h3', { text: '💾 גיבוי ושחזור' }),

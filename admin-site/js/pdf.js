@@ -33,8 +33,8 @@
       var rows = byEmp[empId];
       var hours = 0;
       rows.forEach(function (r) { hours += U.num(r.hours); });
-      var t = Store.lcTravel(month, empId);
-      var travelPay = t ? U.num(t.km) * U.num(t.days) * s.kmRate : 0;
+      var t = Store.lcAutoTravel(month, empId); // אוטומטי: ק"מ מכרטיס העובד × ימים שונים
+      var travelPay = t.pay;
       h += '<div class="block"><h3>' + esc(Store.empName(emp) || '—') + (emp && emp.phone ? ' · ' + esc(emp.phone) : '') + '</h3>';
       h += table(['תאריך', 'מקצוע תגבור', 'כיתה', 'תלמיד/ים', 'שעות'], rows.map(function (r) {
         return [esc(U.gregLabel(r.date)), esc(r.subject), esc(r.klass), esc(r.students), esc(r.hours)];
@@ -78,7 +78,9 @@
         ['שם', 'תאריכים', 'שעות', 'סיבה', 'אישור', 'ניכוי שכר', 'הערות'],
         abs.map(function (r) {
           var ap = { received: 'מצורף', missing: 'חסר', none: '—' }[r.approval] || 'חסר';
-          return [esc(r.name), esc(r.dates), esc(r.hours || '-'), esc(r.reason), ap, esc(r.deduction || '-'), esc(r.note)];
+          var dates = r.fromDate ? (r.toDate && r.toDate !== r.fromDate ? U.gregLabel(r.fromDate) + ' – ' + U.gregLabel(r.toDate) : U.gregLabel(r.fromDate)) : (r.dates || '');
+          var ded = (r.deduction === 'yes' || /יש/.test(r.deduction || '')) ? 'יש ניכוי' : 'ללא ניכוי';
+          return [esc(r.name), esc(dates), esc((r.hours === '' || r.hours == null) ? '-' : r.hours), esc(r.reason), ap, ded, esc(r.note)];
         })));
     }
     var work = Store.records('abs', month, function (r) { return r.kind === 'work'; });
