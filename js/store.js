@@ -26,6 +26,16 @@
     ];
   }
 
+  // ערכי ברירת מחדל לגיליון המשימות (מתוך קובץ "ניהול משימות" של גיא)
+  function defaultTaskDomains() {
+    return ['תחזוקה', 'מטבח', 'משכורות', 'תשלום הורים', 'תקציב', 'פנימיה', 'חקלאות',
+            'כללי', 'עליית הנוער', 'ביטחון ורישוי', 'קולות קוראים', 'גפן', 'רכבים', 'רכש'];
+  }
+  function defaultTaskOwners() {
+    return ['גיא צוברי', 'יצחק קליין', 'אבישי מעודה', 'רז גרולמן', 'אליהו לבנה',
+            'שלמה הס', 'יגל פלורסהיים', 'גינת סבח', 'אביטל עמאר', 'אחר'];
+  }
+
   function defaultCore() {
     return {
       meta: newMeta(),
@@ -35,7 +45,9 @@
         managerName: 'גיא צוברי',
         hourlyRate: 80,    // תעריף שעת תגבור (מרכז למידה)
         kmRate: 0.9,       // תעריף נסיעות לק"מ
-        statuses: defaultStatuses()
+        statuses: defaultStatuses(),
+        taskDomains: defaultTaskDomains(),
+        taskOwners: defaultTaskOwners()
       },
       // { id, firstName, lastName, phone, email, tz, role:''|'admin'|'secretary',
       //   tags:['מתגבר','מורה',...], active, notes }
@@ -49,7 +61,13 @@
       lc: {},    // 'YYYY-MM' → { month, records:[], travel:{empId:{km,days,at}}, meta }
       sub: {},   // 'YYYY-MM' → { month, records:[], meta }
       abs: {},   // 'YYYY-MM' → { month, records:[], meta }  (רשומה: kind:'absence'|'work'|'travel'|'trip')
-      pstat: {}  // 'YYYY-MM' → { month, entries:{empId:{statusId,task,note,by,at}}, meta }
+      pstat: {}, // 'YYYY-MM' → { month, entries:{empId:{statusId,task,note,by,at}}, meta }
+      // רשימת משימות מתמשכת (לא לפי חודש).
+      // רשומה: { id, num, domain, desc, owner, priority:'גבוה'|'בינוני'|'נמוך',
+      //          status:'פתוח'|'בתהליך'|'הושלם', due (ISO|''), notes,
+      //          kind:'חד פעמי'|'קבוע', freq:'weekly'|'monthly'|'quarterly'|'yearly'|'',
+      //          lastDoneAt, createdAt, updatedAt, deleted }
+      tasks: { records: [], seq: 0, meta: newMeta() }
     };
   }
 
@@ -65,6 +83,8 @@
     var ds = def.settings;
     for (var s in ds) { if (!(s in core.settings)) core.settings[s] = ds[s]; }
     if (!core.settings.statuses || !core.settings.statuses.length) core.settings.statuses = defaultStatuses();
+    if (!core.settings.taskDomains || !core.settings.taskDomains.length) core.settings.taskDomains = defaultTaskDomains();
+    if (!core.settings.taskOwners || !core.settings.taskOwners.length) core.settings.taskOwners = defaultTaskOwners();
     return core;
   }
 
@@ -93,17 +113,19 @@
 
   function rowGet(rowId) {
     if (rowId === 'core') return data.core;
+    if (rowId === 'tasks') return data.tasks;
     var p = rowId.split(':');
     if (MONTH_KINDS[p[0]] && p[1]) return data[p[0]][p[1]] || null;
     return null;
   }
   function rowSet(rowId, obj) {
     if (rowId === 'core') { data.core = ensureCoreFields(obj); return; }
+    if (rowId === 'tasks') { data.tasks = obj; return; }
     var p = rowId.split(':');
     if (MONTH_KINDS[p[0]] && p[1]) data[p[0]][p[1]] = obj;
   }
   function allRowIds() {
-    var ids = ['core'];
+    var ids = ['core', 'tasks'];
     Object.keys(MONTH_KINDS).forEach(function (kind) {
       Object.keys(data[kind] || {}).forEach(function (m) { ids.push(kind + ':' + m); });
     });
@@ -255,6 +277,18 @@
     if (rowId === 'portal') return false; // שורה נגזרת — לא חלק מהמצב המקומי
     var local = rowGet(rowId);
     var p = rowId.split(':');
+
+    if (rowId === 'tasks') {
+      var mt = {
+        records: mergeRecords(local && local.records, incoming.records),
+        seq: Math.max((local && local.seq) || 0, incoming.seq || 0),
+        meta: metaTs(local) >= metaTs(incoming) ? (local && local.meta) || incoming.meta : incoming.meta
+      };
+      if (jsonEq(mt, local)) return false;
+      rowSet(rowId, mt);
+      if (!jsonEq(mt, incoming)) scheduleCloudSave(rowId);
+      return true;
+    }
 
     if (MONTH_KINDS[p[0]]) {
       var merged = { month: (local && local.month) || incoming.month };
@@ -414,6 +448,74 @@
     arr = arr.filter(function (r) { return !r.deleted; });
     if (filter) arr = arr.filter(filter);
     return arr;
+  }
+
+  // ---------- משימות (רשימה מתמשכת) ----------
+  function tasksAll(includeDone) {
+    var arr = (data.tasks.records || []).filter(function (r) { return !r.deleted; });
+    if (includeDone === false) arr = arr.filter(function (r) { return r.status !== 'הושלם'; });
+    return arr;
+  }
+  function taskById(id) {
+    return (data.tasks.records || []).filter(function (r) { return r.id === id; })[0] || null;
+  }
+  function nextTaskNum() {
+    data.tasks.seq = (data.tasks.seq || 0) + 1;
+    return 'T-' + String(data.tasks.seq).padStart(3, '0');
+  }
+  // מקדם תאריך לפי תדירות עד שהוא בעתיד (מונע פתיחה-מחדש של משימה שכבר באיחור)
+  function advanceDue(iso, freq) {
+    var base = iso ? new Date(iso + 'T00:00:00') : new Date();
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    if (isNaN(base)) base = new Date();
+    function step(d) {
+      if (freq === 'weekly') d.setDate(d.getDate() + 7);
+      else if (freq === 'monthly') d.setMonth(d.getMonth() + 1);
+      else if (freq === 'quarterly') d.setMonth(d.getMonth() + 3);
+      else if (freq === 'yearly') d.setFullYear(d.getFullYear() + 1);
+      else d.setMonth(d.getMonth() + 1);
+    }
+    do { step(base); } while (base <= today);
+    var y = base.getFullYear(), m = String(base.getMonth() + 1).padStart(2, '0'), day = String(base.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + day;
+  }
+  function upsertTask(rec) {
+    if (!rec.id) { rec.id = uid(); rec.num = rec.num || nextTaskNum(); rec.createdAt = nowISO(); }
+    rec.updatedAt = nowISO();
+    // משימה קבועה שהושלמה — מתחדשת: חוזרת ל"פתוח" עם תאריך יעד מקודם לפי התדירות
+    if (rec.kind === 'קבוע' && rec.status === 'הושלם') {
+      rec.lastDoneAt = nowISO();
+      rec.due = advanceDue(rec.due, rec.freq);
+      rec.status = 'פתוח';
+      rec._renewed = true;
+    } else { rec._renewed = false; }
+    var arr = data.tasks.records, found = false;
+    for (var i = 0; i < arr.length; i++) if (arr[i].id === rec.id) { arr[i] = rec; found = true; break; }
+    if (!found) arr.push(rec);
+    save('tasks');
+    return rec;
+  }
+  function setTaskStatus(id, status) {
+    var t = taskById(id);
+    if (!t) return null;
+    var copy = JSON.parse(JSON.stringify(t));
+    copy.status = status;
+    return upsertTask(copy);
+  }
+  function deleteTask(id) {
+    var arr = data.tasks.records;
+    for (var i = 0; i < arr.length; i++) {
+      if (arr[i].id === id) { arr[i] = { id: id, deleted: true, updatedAt: nowISO() }; break; }
+    }
+    save('tasks');
+  }
+  // ימים עד תאריך היעד (שלילי = באיחור); null אם אין תאריך
+  function daysToDue(iso) {
+    if (!iso) return null;
+    var d = new Date(iso + 'T00:00:00');
+    if (isNaN(d)) return null;
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    return Math.round((d - today) / 86400000);
   }
 
   // נסיעות מרכז למידה (פר מתגבר)
@@ -702,6 +804,13 @@
     pstatEntry: pstatEntry,
     setPstat: setPstat,
     knownMonths: knownMonths,
+    // משימות
+    tasksAll: tasksAll,
+    taskById: taskById,
+    upsertTask: upsertTask,
+    setTaskStatus: setTaskStatus,
+    deleteTask: deleteTask,
+    daysToDue: daysToDue,
     // דיווחי פורטל
     loadSubmissions: loadSubmissions,
     submissions: submissions,
