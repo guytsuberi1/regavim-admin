@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>תפעול — ישיבת רגבים בנימין</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💼</text></svg>" />
-  <link rel="stylesheet" href="styles.css?v=6" />
+  <link rel="stylesheet" href="styles.css?v=7" />
   <style>
     /* תג "ממתינים לאישור" על טאב בתפריט */
     .tab-badge {
@@ -13,6 +13,18 @@
       border-radius: 9px; background: #dc2626; color: #fff;
       font-size: 11px; font-weight: 700; line-height: 18px; text-align: center;
     }
+    /* קנבן */
+    .kb-board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; align-items: flex-start; }
+    .kb-col { flex: 1 1 0; min-width: 240px; background: var(--bg, #f4f6f8); border: 1px solid var(--border, #d6dce1); border-radius: 10px; }
+    .kb-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; font-weight: 600; border-radius: 10px 10px 0 0; }
+    .kb-count { background: rgba(0,0,0,.08); border-radius: 9px; padding: 0 8px; font-size: 12px; }
+    .kb-body { min-height: 60px; padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+    .kb-body.kb-over { background: rgba(37,99,235,.08); border-radius: 8px; }
+    .kb-card { background: var(--card, #fff); border: 1px solid var(--border, #d6dce1); border-radius: 8px; padding: 10px; cursor: grab; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+    .kb-card:active { cursor: grabbing; }
+    .kb-drag { opacity: .5; }
+    body.dark .kb-col { background: #1a2230; }
+    body.dark .kb-count { background: rgba(255,255,255,.12); }
   </style>
 </head>
 <body>
@@ -65,18 +77,18 @@
   <!-- ספריות ומודולים (סקריפטים קלאסיים — עובד גם מ-file://) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="vendor/xlsx.full.min.js"></script>
-  <script src="js/util.js?v=6"></script>
-  <script src="js/store.js?v=6"></script>
-  <script src="js/base.js?v=6"></script>
-  <script src="js/queue.js?v=6"></script>
-  <script src="js/status.js?v=6"></script>
-  <script src="js/lc.js?v=6"></script>
-  <script src="js/sub.js?v=6"></script>
-  <script src="js/abs.js?v=6"></script>
-  <script src="js/pdf.js?v=6"></script>
-  <script src="js/tasks.js?v=6"></script>
-  <script src="js/settings.js?v=6"></script>
-  <script src="js/app.js?v=6"></script>
+  <script src="js/util.js?v=7"></script>
+  <script src="js/store.js?v=7"></script>
+  <script src="js/base.js?v=7"></script>
+  <script src="js/queue.js?v=7"></script>
+  <script src="js/status.js?v=7"></script>
+  <script src="js/lc.js?v=7"></script>
+  <script src="js/sub.js?v=7"></script>
+  <script src="js/abs.js?v=7"></script>
+  <script src="js/pdf.js?v=7"></script>
+  <script src="js/tasks.js?v=7"></script>
+  <script src="js/settings.js?v=7"></script>
+  <script src="js/app.js?v=7"></script>
   <script>
     (function () {
       var sb = document.getElementById('sidebar'), tg = document.getElementById('sbToggle');
