@@ -3,7 +3,7 @@
   'use strict';
   var U = global.U;
 
-  var TAGS = ['מורה', 'מתגבר', 'מדריך', 'מנהלה'];
+  var TAGS = ['מורה', 'פנימיה', 'מנהלה', 'מתגבר'];
 
   // ---------- טופס עובד ----------
   function openEmpModal(emp) {
@@ -96,14 +96,17 @@
         });
         if (cols.last == null) cols.last = cols.first + 2; // גיבוי: מבנה הקובץ המוכר (שם | מס | שם משפחה)
 
-        // מיפוי תפקיד → תגית לגיליונות השכר (מתגבר/מורה/מדריך/מנהלה)
+        // מיפוי תפקיד → תגית לגיליונות (מתגבר/מורה/פנימיה/מנהלה)
         function tagsFor(title) {
           title = String(title || '');
           var t = [];
-          if (/מרכז\s*למידה/.test(title)) t.push('מתגבר');
-          if (/מורה|ר["׳']?מ|מ["׳']?מ|רכז|מלמד/.test(title)) t.push('מורה');
-          if (/מדריך/.test(title)) t.push('מדריך');
-          if (/מנהל|מזכיר|מנהלן|אם בית|רכזת/.test(title)) t.push('מנהלה');
+          var isLC = /מרכז\s*למידה/.test(title);
+          var isDorm = /מדריך|פנימי|אם\s*בית/.test(title);
+          if (isLC) t.push('מתגבר');
+          // מורה — אך לא מרכז למידה (שגם מכיל "רכז")
+          if (!isLC && /מורה|ר["׳']?מ|מ["׳']?מ|רכז|מלמד/.test(title)) t.push('מורה');
+          if (isDorm) t.push('פנימיה');
+          if (/מזכיר|מנהלן/.test(title) || (/מנהל/.test(title) && !isDorm)) t.push('מנהלה');
           return t.filter(function (x, i, a) { return a.indexOf(x) === i; });
         }
 
