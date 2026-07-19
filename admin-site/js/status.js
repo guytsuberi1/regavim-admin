@@ -42,7 +42,7 @@
 
     var pct = emps.length ? Math.round(closedCount / emps.length * 100) : 0;
     var pending = Store.pendingCount();
-    view.appendChild(U.el('div', { class: 'kpi-row' }, [
+    view.appendChild(U.el('div', { class: 'kpi-row', style: 'margin:16px 0 14px;' }, [
       U.el('div', { class: 'kpi ' + (pct === 100 ? 'kpi-good' : 'kpi-info') }, [
         U.el('span', { class: 'kpi-ic', text: pct === 100 ? '🎉' : '📊' }),
         U.el('div', { class: 'kpi-body' }, [
@@ -59,7 +59,7 @@
       ]) : null
     ].filter(Boolean)));
 
-    var seg = U.el('div', { class: 'subtabs', style: 'margin-bottom:10px;' }, [
+    var seg = U.el('div', { class: 'subtabs', style: 'margin:0 0 16px;' }, [
       U.el('button', { class: filterMode === 'open' ? 'active' : '', text: 'פעילים (' + (emps.length - closedCount) + ')', onclick: function () { filterMode = 'open'; App.render(); } }),
       U.el('button', { class: filterMode === 'all' ? 'active' : '', text: 'כולם (' + emps.length + ')', onclick: function () { filterMode = 'all'; App.render(); } })
     ]);
