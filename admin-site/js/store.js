@@ -35,6 +35,11 @@
     return ['גיא צוברי', 'יצחק קליין', 'אבישי מעודה', 'רז גרולמן', 'אליהו לבנה',
             'שלמה הס', 'יגל פלורסהיים', 'גינת סבח', 'אביטל עמאר', 'אחר'];
   }
+  // קבלנים/ספקים לפרויקטים (רשימה נפרדת מהצוות; נפתחת עם ערכים מהקובץ, ניתנת לעריכה)
+  function defaultContractors() {
+    return ['שלום גיאת', 'ראובן פז', 'אלי איטח', 'מגן אש', 'אוראל ברזל', 'י.צ שירותי',
+            'נחשון טכנולוגיה', 'עמיאל דהן', 'עדי תקשורת', 'ש.א.ג', 'מישה רואה'];
+  }
 
   function defaultCore() {
     return {
@@ -47,7 +52,8 @@
         kmRate: 0.9,       // תעריף נסיעות לק"מ
         statuses: defaultStatuses(),
         taskDomains: defaultTaskDomains(),
-        taskOwners: defaultTaskOwners()
+        taskOwners: defaultTaskOwners(),
+        contractors: defaultContractors()
       },
       // { id, firstName, lastName, phone, email, tz, role:''|'admin'|'secretary',
       //   tags:['מתגבר','מורה',...], active, notes }
@@ -67,7 +73,11 @@
       //          status:'פתוח'|'בתהליך'|'הושלם', due (ISO|''), notes,
       //          kind:'חד פעמי'|'קבוע', freq:'weekly'|'monthly'|'quarterly'|'yearly'|'',
       //          lastDoneAt, createdAt, updatedAt, deleted }
-      tasks: { records: [], seq: 0, meta: newMeta() }
+      tasks: { records: [], seq: 0, meta: newMeta() },
+      // פרויקטים. רשומה: { id, num, name, domain, owner, status:'תכנון'|'בביצוע'|'הושלם',
+      //   budget (number), notes, items:[{ id, desc, contractor, cost (number|''),
+      //   invoice, status:'תכנון'|'בביצוע'|'בוצע' }], createdAt, updatedAt, deleted }
+      projects: { records: [], seq: 0, meta: newMeta() }
     };
   }
 
@@ -85,6 +95,7 @@
     if (!core.settings.statuses || !core.settings.statuses.length) core.settings.statuses = defaultStatuses();
     if (!core.settings.taskDomains || !core.settings.taskDomains.length) core.settings.taskDomains = defaultTaskDomains();
     if (!core.settings.taskOwners || !core.settings.taskOwners.length) core.settings.taskOwners = defaultTaskOwners();
+    if (!core.settings.contractors || !core.settings.contractors.length) core.settings.contractors = defaultContractors();
     return core;
   }
 
@@ -114,6 +125,7 @@
   function rowGet(rowId) {
     if (rowId === 'core') return data.core;
     if (rowId === 'tasks') return data.tasks;
+    if (rowId === 'projects') return data.projects;
     var p = rowId.split(':');
     if (MONTH_KINDS[p[0]] && p[1]) return data[p[0]][p[1]] || null;
     return null;
@@ -121,11 +133,12 @@
   function rowSet(rowId, obj) {
     if (rowId === 'core') { data.core = ensureCoreFields(obj); return; }
     if (rowId === 'tasks') { data.tasks = obj; return; }
+    if (rowId === 'projects') { data.projects = obj; return; }
     var p = rowId.split(':');
     if (MONTH_KINDS[p[0]] && p[1]) data[p[0]][p[1]] = obj;
   }
   function allRowIds() {
-    var ids = ['core', 'tasks'];
+    var ids = ['core', 'tasks', 'projects'];
     Object.keys(MONTH_KINDS).forEach(function (kind) {
       Object.keys(data[kind] || {}).forEach(function (m) { ids.push(kind + ':' + m); });
     });
@@ -278,7 +291,7 @@
     var local = rowGet(rowId);
     var p = rowId.split(':');
 
-    if (rowId === 'tasks') {
+    if (rowId === 'tasks' || rowId === 'projects') {
       var mt = {
         records: mergeRecords(local && local.records, incoming.records),
         seq: Math.max((local && local.seq) || 0, incoming.seq || 0),
@@ -526,6 +539,40 @@
     }
     save('tasks');
   }
+  // ---------- פרויקטים ----------
+  function projectsAll() {
+    return (data.projects.records || []).filter(function (r) { return !r.deleted; });
+  }
+  function projectById(id) {
+    return (data.projects.records || []).filter(function (r) { return r.id === id; })[0] || null;
+  }
+  function nextProjectNum() {
+    data.projects.seq = (data.projects.seq || 0) + 1;
+    return 'P-' + String(data.projects.seq).padStart(3, '0');
+  }
+  function upsertProject(proj) {
+    if (!proj.id) { proj.id = uid(); proj.num = proj.num || nextProjectNum(); proj.createdAt = nowISO(); }
+    if (!proj.items) proj.items = [];
+    proj.updatedAt = nowISO();
+    var arr = data.projects.records, found = false;
+    for (var i = 0; i < arr.length; i++) if (arr[i].id === proj.id) { arr[i] = proj; found = true; break; }
+    if (!found) arr.push(proj);
+    save('projects');
+    return proj;
+  }
+  function deleteProject(id) {
+    var arr = data.projects.records;
+    for (var i = 0; i < arr.length; i++) if (arr[i].id === id) { arr[i] = { id: id, deleted: true, updatedAt: nowISO() }; break; }
+    save('projects');
+  }
+  // תקציב מול ניצול: נוצל = סכום עלויות תת-המשימות; מאזן = תקציב − נוצל
+  function projectBudget(proj) {
+    var budget = parseFloat(proj.budget) || 0;
+    var used = 0;
+    (proj.items || []).forEach(function (it) { used += parseFloat(it.cost) || 0; });
+    return { budget: budget, used: used, balance: budget - used, over: used > budget && budget > 0 };
+  }
+
   // ימים עד תאריך היעד (שלילי = באיחור); null אם אין תאריך
   function daysToDue(iso) {
     if (!iso) return null;
@@ -843,6 +890,12 @@
     setTaskStatus: setTaskStatus,
     deleteTask: deleteTask,
     daysToDue: daysToDue,
+    // פרויקטים
+    projectsAll: projectsAll,
+    projectById: projectById,
+    upsertProject: upsertProject,
+    deleteProject: deleteProject,
+    projectBudget: projectBudget,
     // דיווחי פורטל
     loadSubmissions: loadSubmissions,
     submissions: submissions,
