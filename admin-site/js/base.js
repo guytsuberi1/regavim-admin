@@ -10,6 +10,7 @@
     emp = emp || { active: true, tags: [] };
     var first = U.el('input', { value: emp.firstName || '', placeholder: 'שם פרטי' });
     var last = U.el('input', { value: emp.lastName || '', placeholder: 'שם משפחה' });
+    var jobTitle = U.el('input', { value: emp.jobTitle || '', placeholder: 'תפקיד בישיבה (למשל: ר"מ כיתה יא, מרכז למידה)' });
     var phone = U.el('input', { value: emp.phone || '', placeholder: '050-0000000', type: 'tel' });
     var email = U.el('input', { value: emp.email || '', placeholder: 'אימייל (לזיהוי משתמש מחובר)', type: 'email' });
     var tz = U.el('input', { value: emp.tz || '', placeholder: 'תעודת זהות' });
@@ -30,6 +31,7 @@
     function fld(label, node) { return U.el('div', { class: 'field' }, [U.el('label', { text: label }), node]); }
     var body = U.el('div', null, [
       U.el('div', { class: 'row' }, [fld('שם פרטי', first), fld('שם משפחה', last)]),
+      fld('תפקיד בישיבה', jobTitle),
       U.el('div', { class: 'row' }, [fld('טלפון', phone), fld('אימייל', email)]),
       U.el('div', { class: 'row' }, [fld('ת.ז', tz), fld('הרשאה באפליקציה', role)]),
       fld('תגיות', U.el('div', null, tagBoxes.map(function (t) { return t.node; }))),
@@ -43,6 +45,7 @@
         if (!first.value.trim()) { err.textContent = 'נדרש שם פרטי'; first.focus(); return; }
         emp.firstName = first.value.trim();
         emp.lastName = last.value.trim();
+        emp.jobTitle = jobTitle.value.trim();
         emp.phone = phone.value.trim();
         emp.email = email.value.trim();
         emp.tz = tz.value.trim();
@@ -75,42 +78,65 @@
         for (var i = 0; i < Math.min(rows.length, 10); i++) {
           for (var c = 0; c < rows[i].length; c++) {
             var v = String(rows[i][c]).trim();
-            if (v === 'שם' || v === 'שם פרטי') {
-              headIdx = i;
-              break;
-            }
+            if (v === 'שם' || v === 'שם פרטי') { headIdx = i; break; }
           }
           if (headIdx !== -1) break;
         }
         if (headIdx === -1) { U.toast('לא נמצאה שורת כותרת עם עמודת "שם"', 'error'); return; }
         rows[headIdx].forEach(function (h, c) {
           h = String(h).trim();
+          var low = h.toLowerCase();
           if (h === 'שם' || h === 'שם פרטי') cols.first = c;
-          else if (h === 'שם משפחה') cols.last = c;
-          else if (h.indexOf('טלפון') !== -1 || h === 'סלולרי') cols.phone = c;
-          else if (h.indexOf('מייל') !== -1 || h.toLowerCase() === 'email') cols.email = c;
-          else if (h.indexOf('ת.ז') !== -1 || h.indexOf('זהות') !== -1) cols.tz = c;
+          else if (h.indexOf('שם משפחה') !== -1) cols.last = c;
+          else if (h.indexOf('פלאפון') !== -1 || h.indexOf('פלפון') !== -1 || h.indexOf('טלפון') !== -1 || h.indexOf('נייד') !== -1 || h === 'סלולרי') cols.phone = c;
+          else if (h.indexOf('מייל') !== -1 || h.indexOf('דוא') !== -1 || low === 'email') cols.email = c;
+          else if (h.indexOf('ת.ז') !== -1 || h.indexOf('ת"ז') !== -1 || h.indexOf('זהות') !== -1) cols.tz = c;
+          else if (h.indexOf('תפקיד') !== -1) cols.jobTitle = c;
+          else if (h.indexOf('מס') !== -1 && h.indexOf('עובד') !== -1 && cols.empNum == null) cols.empNum = c;
         });
+        if (cols.last == null) cols.last = cols.first + 2; // גיבוי: מבנה הקובץ המוכר (שם | מס | שם משפחה)
+
+        // מיפוי תפקיד → תגית לגיליונות השכר (מתגבר/מורה/מדריך/מנהלה)
+        function tagsFor(title) {
+          title = String(title || '');
+          var t = [];
+          if (/מרכז\s*למידה/.test(title)) t.push('מתגבר');
+          if (/מורה|ר["׳']?מ|מ["׳']?מ|רכז|מלמד/.test(title)) t.push('מורה');
+          if (/מדריך/.test(title)) t.push('מדריך');
+          if (/מנהל|מזכיר|מנהלן|אם בית|רכזת/.test(title)) t.push('מנהלה');
+          return t.filter(function (x, i, a) { return a.indexOf(x) === i; });
+        }
+
         var existing = {};
         Store.employees(true).forEach(function (e) { existing[Store.empName(e)] = true; });
-        var added = 0, skipped = 0;
+        var cell = function (row, key) { return cols[key] != null ? String(row[cols[key]] || '').trim() : ''; };
+        var added = 0, skipped = 0, inactive = 0;
         for (var r = headIdx + 1; r < rows.length; r++) {
           var firstName = String(rows[r][cols.first] || '').trim();
-          if (!firstName) continue;
-          var lastName = cols.last != null ? String(rows[r][cols.last] || '').trim() : '';
+          if (!firstName || firstName === '?') continue;
+          var lastName = cell(rows[r], 'last');
+          if (lastName === '?') lastName = '';
           var full = (firstName + ' ' + lastName).trim();
           if (existing[full]) { skipped++; continue; }
           existing[full] = true;
+          // "עזב"/"עזבה" בעמודת מספר העובד → עובד שסיים, נשמר כלא-פעיל
+          var left = /עזב/.test(cell(rows[r], 'empNum'));
+          if (left) inactive++;
+          var jobTitle = cell(rows[r], 'jobTitle');
           Store.upsertEmployee({
             firstName: firstName, lastName: lastName,
-            phone: cols.phone != null ? String(rows[r][cols.phone] || '').trim() : '',
-            email: cols.email != null ? String(rows[r][cols.email] || '').trim() : '',
-            tz: cols.tz != null ? String(rows[r][cols.tz] || '').trim() : '',
-            role: '', tags: [], active: true, notes: ''
+            jobTitle: jobTitle,
+            phone: cell(rows[r], 'phone'),
+            email: cell(rows[r], 'email'),
+            tz: cell(rows[r], 'tz'),
+            role: '', tags: tagsFor(jobTitle), active: !left, notes: ''
           });
           added++;
         }
-        U.toast('יובאו ' + added + ' עובדים' + (skipped ? ' (' + skipped + ' דילוגים — קיימים כבר)' : ''));
+        var msg = 'יובאו ' + added + ' עובדים';
+        if (inactive) msg += ' (' + inactive + ' סומנו לא-פעילים — "עזב")';
+        if (skipped) msg += ' · ' + skipped + ' דילוגים (קיימים כבר)';
+        U.toast(msg);
         App.render();
       } catch (e) {
         console.error(e);
@@ -250,13 +276,14 @@
         return;
       }
       var tbl = U.el('table', { class: 'grid' }, [
-        U.el('thead', null, U.el('tr', null, ['שם', 'טלפון', 'אימייל', 'תגיות', 'הרשאה', 'סטטוס', ''].map(function (h) { return U.el('th', { text: h }); }))),
+        U.el('thead', null, U.el('tr', null, ['שם', 'תפקיד', 'טלפון', 'אימייל', 'תגיות', 'הרשאה', 'סטטוס', ''].map(function (h) { return U.el('th', { text: h }); }))),
         U.el('tbody', null, emps.map(function (e) {
           return U.el('tr', { style: e.active === false ? 'opacity:.5;' : '' }, [
             U.el('td', null, [
               U.el('strong', { text: Store.empName(e) }),
               e.notes ? U.el('div', { class: 'muted', style: 'font-size:12px;', text: e.notes }) : null
             ]),
+            U.el('td', { text: e.jobTitle || '' }),
             U.el('td', { text: e.phone || '' }),
             U.el('td', { text: e.email || '' }),
             U.el('td', null, (e.tags || []).map(function (t) { return U.el('span', { class: 'tag', text: t, style: 'margin-inline-end:4px;' }); })),
