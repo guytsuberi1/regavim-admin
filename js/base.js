@@ -150,67 +150,13 @@
     reader.readAsArrayBuffer(file);
   }
 
-  // ---------- הגדרות ----------
-  function openSettingsModal() {
-    var s = Store.settings();
-    var hourly = U.el('input', { type: 'number', step: '1', value: s.hourlyRate });
-    var km = U.el('input', { type: 'number', step: '0.1', value: s.kmRate });
-    var manager = U.el('input', { value: s.managerName || '' });
-    function fld(label, node) { return U.el('div', { class: 'field' }, [U.el('label', { text: label }), node]); }
-    var body = U.el('div', null, [
-      fld('תעריף שעת תגבור (₪)', hourly),
-      fld('תעריף נסיעות לק"מ (₪)', km),
-      fld('שם המנהל (חתימה על הדוחות)', manager)
-    ]);
-    Modal.open('⚙️ הגדרות תעריפים', body, [
-      { label: 'ביטול', class: 'secondary' },
-      { label: 'שמירה', onClick: function (close) {
-        s.hourlyRate = U.num(hourly.value, 80);
-        s.kmRate = U.num(km.value, 0.9);
-        s.managerName = manager.value.trim() || s.managerName;
-        Store.saveSettings();
-        close();
-        U.toast('ההגדרות נשמרו');
-        App.render();
-      } }
-    ]);
-  }
-
-  // ---------- עריכת סטטוסים ----------
-  function openStatusesModal() {
-    var s = Store.settings();
-    var list = (s.statuses || []).map(function (st) { return { id: st.id, label: st.label, color: st.color }; });
-    var wrap = U.el('div');
-    function renderList() {
-      U.clear(wrap);
-      list.forEach(function (st, i) {
-        var lbl = U.el('input', { value: st.label, style: 'flex:1;' });
-        lbl.addEventListener('input', function () { st.label = lbl.value; });
-        var color = U.el('input', { type: 'color', value: st.color || '#64748b', style: 'width:44px;padding:2px;' });
-        color.addEventListener('input', function () { st.color = color.value; });
-        var del = U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקה', onclick: function () { list.splice(i, 1); renderList(); } });
-        wrap.appendChild(U.el('div', { style: 'display:flex;gap:6px;margin-bottom:6px;align-items:center;' }, [lbl, color, del]));
-      });
-    }
-    renderList();
-    var addBtn = U.el('button', { class: 'btn secondary', text: '➕ סטטוס חדש', onclick: function () {
-      list.push({ id: Store.uid(), label: '', color: '#64748b' });
-      renderList();
-    } });
-    var body = U.el('div', null, [
-      U.el('p', { class: 'muted', style: 'margin-top:0;', text: 'הסטטוסים שמופיעים בלוח השכר החודשי.' }),
-      wrap, addBtn
-    ]);
-    Modal.open('🏷️ עריכת סטטוסים', body, [
-      { label: 'ביטול', class: 'secondary' },
-      { label: 'שמירה', onClick: function (close) {
-        s.statuses = list.filter(function (st) { return st.label.trim(); });
-        Store.saveSettings();
-        close();
-        U.toast('הסטטוסים נשמרו');
-        App.render();
-      } }
-    ]);
+  // ---------- ייבוא מצבת (כפתור) ----------
+  function pickExcelFile() {
+    var inp = U.el('input', { type: 'file', accept: '.xlsx,.xls', style: 'display:none;' });
+    inp.addEventListener('change', function () { if (inp.files[0]) importExcel(inp.files[0]); });
+    document.body.appendChild(inp);
+    inp.click();
+    setTimeout(function () { document.body.removeChild(inp); }, 500);
   }
 
   // ---------- רינדור ----------
@@ -219,42 +165,13 @@
     var head = U.el('div', { class: 'page-head' }, [
       U.el('h2', { text: '🗂️ נתוני בסיס' }),
       U.el('span', { class: 'spacer' }),
-      isAdmin && U.actionMenu([
-        { icon: '⚙️', label: 'תעריפים והגדרות', onClick: openSettingsModal },
-        { icon: '🏷️', label: 'עריכת סטטוסים', onClick: openStatusesModal },
-        null,
-        { html: U.XLS_SVG, label: 'ייבוא מצבת מאקסל', onClick: function () {
-          var inp = U.el('input', { type: 'file', accept: '.xlsx,.xls', style: 'display:none;' });
-          inp.addEventListener('change', function () { if (inp.files[0]) importExcel(inp.files[0]); });
-          document.body.appendChild(inp);
-          inp.click();
-          setTimeout(function () { document.body.removeChild(inp); }, 500);
-        } },
-        { icon: '💾', label: 'גיבוי לקובץ JSON', onClick: Store.exportJSON },
-        { icon: '📤', label: 'שחזור מגיבוי', onClick: function () {
-          var inp = U.el('input', { type: 'file', accept: '.json', style: 'display:none;' });
-          inp.addEventListener('change', function () {
-            if (!inp.files[0]) return;
-            Modal.confirm({ title: 'שחזור מגיבוי', text: 'השחזור יחליף את כל הנתונים הנוכחיים. להמשיך?', okLabel: 'שחזור', danger: true }, function () {
-              Store.importJSONFile(inp.files[0], function (e) {
-                if (e) U.toast('שגיאה בשחזור: ' + e.message, 'error');
-                else { U.toast('הגיבוי שוחזר'); App.render(); }
-              });
-            });
-          });
-          document.body.appendChild(inp);
-          inp.click();
-          setTimeout(function () { document.body.removeChild(inp); }, 500);
-        } }
-      ])
+      isAdmin && U.el('button', { class: 'btn secondary', html: U.XLS_SVG + ' ייבוא מאקסל', onclick: pickExcelFile })
     ].filter(Boolean));
     view.appendChild(head);
 
-    var s = Store.settings();
     view.appendChild(U.el('div', { class: 'kpi-row' }, [
       kpi('👥', Store.employees().length, 'עובדים פעילים'),
-      kpi('💰', s.hourlyRate + ' ₪', 'תעריף שעת תגבור'),
-      kpi('🚗', s.kmRate + ' ₪', 'תעריף לק"מ')
+      kpi('👤', Store.employees(true).length, 'סה"כ במצבת')
     ]));
 
     var addBtn = isAdmin && U.el('button', { class: 'btn', text: '➕ עובד חדש', onclick: function () { openEmpModal(null); } });

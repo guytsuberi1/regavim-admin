@@ -10,7 +10,8 @@
     sub: global.SubView,
     abs: global.AbsView,
     pdf: global.PdfView,
-    base: global.BaseView
+    base: global.BaseView,
+    settings: global.SettingsView
   };
 
   var current = 'status';
@@ -18,7 +19,7 @@
   // הרשאות → אילו טאבים גלויים
   // admin=גיא (הכל) · secretary=מזכירות (מרכז למידה בלבד)
   var ROLE_TABS = {
-    admin: ['queue', 'status', 'lc', 'sub', 'abs', 'pdf', 'base'],
+    admin: ['queue', 'status', 'lc', 'sub', 'abs', 'pdf', 'base', 'settings'],
     secretary: ['lc']
   };
   function roleKey() { return Store.currentRole(); }
