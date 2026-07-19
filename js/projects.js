@@ -72,24 +72,47 @@
     return wrap;
   }
 
-  // ---------- טבלת תת-משימות ----------
+  // ---------- טבלת תת-משימות (עם גרירה לסידור מחדש) ----------
+  var dragItemId = null;
+  function reorderItems(p, targetId) {
+    if (!dragItemId || dragItemId === targetId) return;
+    var items = p.items || [];
+    var fromIdx = items.map(function (x) { return x.id; }).indexOf(dragItemId);
+    if (fromIdx < 0) return;
+    var moved = items.splice(fromIdx, 1)[0];
+    var toIdx = targetId ? items.map(function (x) { return x.id; }).indexOf(targetId) : items.length;
+    if (toIdx < 0) toIdx = items.length;
+    items.splice(toIdx, 0, moved);
+    saveProj(p); App.render();
+  }
   function itemsTable(p) {
     var contractors = Store.settings().contractors || [];
+    var tbody = U.el('tbody', null, (p.items || []).map(function (it) {
+      var grip = U.el('td', { style: 'width:24px;text-align:center;color:#94a3b8;cursor:grab;user-select:none;', title: 'גרור לשינוי סדר', text: '⠿' });
+      var tr = U.el('tr', null, [
+        grip,
+        U.el('td', { style: 'min-width:150px;' }, pText(p, it, 'desc', 'תיאור', 'width:100%;')),
+        U.el('td', null, pList(p, it, 'contractor', contractors, 'מבצע')),
+        U.el('td', null, pNumber(p, it, 'cost', 'עלות', function () { App.render(); })),
+        U.el('td', null, pText(p, it, 'invoice', 'מס׳', 'max-width:100px;')),
+        U.el('td', null, pSelect(it, 'status', ISTATUS, function () { saveProj(p); App.render(); })),
+        U.el('td', null, U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקת שורה', onclick: function () {
+          p.items = p.items.filter(function (x) { return x.id !== it.id; });
+          saveProj(p); App.render();
+        } }))
+      ]);
+      // גרירה מופעלת רק מהידית — כדי לא לפגוע בעריכת התאים
+      grip.addEventListener('mousedown', function () { tr.draggable = true; });
+      tr.addEventListener('dragstart', function (e) { dragItemId = it.id; tr.style.opacity = '.4'; e.dataTransfer.effectAllowed = 'move'; });
+      tr.addEventListener('dragend', function () { tr.draggable = false; tr.style.opacity = ''; dragItemId = null; });
+      tr.addEventListener('dragover', function (e) { e.preventDefault(); tr.style.boxShadow = 'inset 0 2px 0 var(--brand,#2563eb)'; });
+      tr.addEventListener('dragleave', function () { tr.style.boxShadow = ''; });
+      tr.addEventListener('drop', function (e) { e.preventDefault(); tr.style.boxShadow = ''; reorderItems(p, it.id); });
+      return tr;
+    }));
     var tbl = U.el('table', { class: 'grid', style: 'margin-top:4px;' }, [
-      U.el('thead', null, U.el('tr', null, ['תיאור', 'מבצע', 'עלות', 'חשבונית', 'סטטוס', ''].map(function (h) { return U.el('th', { text: h }); }))),
-      U.el('tbody', null, (p.items || []).map(function (it) {
-        return U.el('tr', null, [
-          U.el('td', { style: 'min-width:160px;' }, pText(p, it, 'desc', 'תיאור', 'width:100%;')),
-          U.el('td', null, pList(p, it, 'contractor', contractors, 'מבצע')),
-          U.el('td', null, pNumber(p, it, 'cost', 'עלות', function () { App.render(); })),
-          U.el('td', null, pText(p, it, 'invoice', 'מס׳', 'max-width:100px;')),
-          U.el('td', null, pSelect(it, 'status', ISTATUS, function () { saveProj(p); App.render(); })),
-          U.el('td', null, U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקת שורה', onclick: function () {
-            p.items = p.items.filter(function (x) { return x.id !== it.id; });
-            saveProj(p); App.render();
-          } }))
-        ]);
-      }))
+      U.el('thead', null, U.el('tr', null, ['', 'תיאור', 'מבצע', 'עלות', 'חשבונית', 'סטטוס', ''].map(function (h) { return U.el('th', { text: h }); }))),
+      tbody
     ]);
     // שורת הוספה מהירה
     var addDesc = U.el('input', { placeholder: '➕ תת-משימה / הוצאה — תיאור ולחץ Enter', style: 'flex:2;min-width:160px;' });
