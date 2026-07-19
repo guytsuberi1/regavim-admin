@@ -52,22 +52,30 @@
   }
 
   // ---------- פס תקציב ----------
+  function statTile(label, valueNode, accent) {
+    return U.el('div', { style: 'flex:1;min-width:120px;padding:8px 12px;border:1px solid var(--border,#e2e8f0);border-radius:10px;background:var(--bg,#f8fafc);' }, [
+      U.el('div', { style: 'font-size:12px;color:var(--muted,#6b7884);margin-bottom:2px;', text: label }),
+      U.el('div', { style: 'font-size:18px;font-weight:700;' + (accent ? 'color:' + accent + ';' : ''), }, [valueNode])
+    ]);
+  }
   function budgetBar(p) {
     var b = Store.projectBudget(p);
-    var wrap = U.el('div', { style: 'margin:8px 0;' });
-    var line = U.el('div', { style: 'display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:14px;margin-bottom:4px;' }, [
-      U.el('span', null, ['תקציב: ', pNumber(p, p, 'budget', 'סכום', function () { App.render(); })]),
-      U.el('span', null, ['נוצל: ', U.el('strong', { text: money(b.used) })]),
-      U.el('span', { style: b.balance < 0 ? 'color:#dc2626;font-weight:700;' : 'color:#16a34a;font-weight:600;' },
-        ['מאזן: ', money(b.balance), b.over ? ' ⚠️ חריגה' : ''])
+    var budgetInp = pNumber(p, p, 'budget', '0', function () { App.render(); });
+    budgetInp.style.cssText = 'font-size:18px;font-weight:700;border:none;background:transparent;padding:0;width:100%;max-width:none;';
+    budgetInp.addEventListener('focus', function () { budgetInp.style.borderBottom = '1px solid var(--brand,#2563eb)'; });
+    budgetInp.addEventListener('blur', function () { budgetInp.style.borderBottom = 'none'; });
+
+    var stats = U.el('div', { style: 'display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 8px;' }, [
+      statTile('תקציב (₪)', budgetInp),
+      statTile('נוצל', U.el('span', { text: money(b.used) })),
+      statTile('מאזן', U.el('span', { text: money(b.balance) + (b.over ? '  ⚠️ חריגה' : '') }), b.balance < 0 ? '#dc2626' : '#16a34a')
     ]);
-    wrap.appendChild(line);
+    var wrap = U.el('div', null, [stats]);
     if (b.budget > 0) {
       var pct = Math.min(100, Math.round(b.used / b.budget * 100));
-      var track = U.el('div', { style: 'height:10px;border-radius:6px;background:var(--border,#e2e8f0);overflow:hidden;' }, [
-        U.el('div', { style: 'height:100%;width:' + pct + '%;background:' + (b.over ? '#dc2626' : '#16a34a') + ';' })
-      ]);
-      wrap.appendChild(track);
+      wrap.appendChild(U.el('div', { style: 'height:8px;border-radius:6px;background:var(--border,#e2e8f0);overflow:hidden;' }, [
+        U.el('div', { style: 'height:100%;width:' + pct + '%;background:' + (b.over ? '#dc2626' : '#16a34a') + ';transition:width .2s;' })
+      ]));
     }
     return wrap;
   }
@@ -138,22 +146,29 @@
   function projectCard(p) {
     var owners = Store.settings().taskOwners || [];
     var card = U.el('div', { class: 'card', style: 'margin-bottom:16px;border-top:4px solid ' + stColor(PSTATUS, p.status) + ';' });
-    var nameInp = transp(U.el('input', { value: p.name || '', placeholder: 'שם הפרויקט', style: 'font-size:18px;font-weight:700;min-width:200px;flex:1;' }));
+
+    // שורת כותרת: מזהה + שם (ימין) · סטטוס + מחיקה (שמאל)
+    var numPill = U.el('span', { style: 'font-size:11px;font-weight:700;color:var(--muted,#6b7884);background:var(--bg,#f1f5f9);border-radius:6px;padding:2px 8px;white-space:nowrap;', text: p.num || '' });
+    var nameInp = transp(U.el('input', { value: p.name || '', placeholder: 'שם הפרויקט', style: 'font-size:19px;font-weight:700;min-width:160px;flex:1;' }));
     nameInp.addEventListener('change', function () { p.name = nameInp.value.trim(); saveProj(p); });
-    var ownerPick = pList(p, p, 'owner', owners, 'אחראי'); ownerPick._input.style.minWidth = '120px';
-    card.appendChild(U.el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;' }, [
-      U.el('span', { style: 'color:#94a3b8;font-size:12px;', text: p.num || '' }),
-      nameInp,
-      U.el('span', { style: 'display:flex;align-items:center;gap:4px;', text: 'אחראי:' }),
-      ownerPick,
-      pSelect(p, 'status', PSTATUS, function () { saveProj(p); App.render(); }),
-      U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקת פרויקט', onclick: function () {
-        Modal.confirm({ title: 'מחיקת פרויקט', text: 'למחוק את "' + (p.name || '') + '" וכל תת-המשימות שלו?', okLabel: 'מחיקה', danger: true }, function () { Store.deleteProject(p.id); App.render(); });
-      } })
+    var statusSel = pSelect(p, 'status', PSTATUS, function () { saveProj(p); App.render(); });
+    statusSel.style.cssText += 'border-radius:16px;font-weight:600;';
+    var delBtn = U.el('button', { class: 'btn secondary ico', text: '🗑', title: 'מחיקת פרויקט', onclick: function () {
+      Modal.confirm({ title: 'מחיקת פרויקט', text: 'למחוק את "' + (p.name || '') + '" וכל תת-המשימות שלו?', okLabel: 'מחיקה', danger: true }, function () { Store.deleteProject(p.id); App.render(); });
+    } });
+    card.appendChild(U.el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;' }, [
+      numPill, nameInp, U.el('span', { class: 'spacer' }), statusSel, delBtn
     ]));
+
+    // שורת מטא: אחראי
+    var ownerPick = pList(p, p, 'owner', owners, 'בחירת אחראי'); ownerPick._input.style.minWidth = '150px'; ownerPick._input.style.fontSize = '13px';
+    card.appendChild(U.el('div', { style: 'display:flex;align-items:center;gap:6px;margin-top:4px;color:var(--muted,#6b7884);font-size:13px;' }, [
+      U.el('span', { text: '👤 אחראי:' }), ownerPick
+    ]));
+
     card.appendChild(budgetBar(p));
-    var notes = pText(p, p, 'notes', 'הערות לפרויקט…', 'width:100%;font-size:13px;color:var(--muted,#6b7884);');
-    card.appendChild(U.el('div', { style: 'margin:4px 0 8px;' }, [notes]));
+    var notes = pText(p, p, 'notes', '📝 הערות לפרויקט…', 'width:100%;font-size:13px;color:var(--muted,#6b7884);');
+    card.appendChild(U.el('div', { style: 'margin:2px 0 10px;' }, [notes]));
     card.appendChild(itemsTable(p));
     return card;
   }
