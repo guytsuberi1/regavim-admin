@@ -495,6 +495,23 @@
     save('tasks');
     return rec;
   }
+  // ייבוא בכמות (מאקסל) — מוסיף רשומות ישירות בלי טריגר התחדשות; שומר על מספור מהקובץ
+  function addTasksBulk(list) {
+    var arr = data.tasks.records;
+    var maxNum = data.tasks.seq || 0;
+    (list || []).forEach(function (rec) {
+      if (!rec.id) rec.id = uid();
+      if (rec.num) {
+        var n = parseInt(String(rec.num).replace(/\D/g, ''), 10);
+        if (!isNaN(n) && n > maxNum) maxNum = n;
+      } else { rec.num = 'T-' + String(++maxNum).padStart(3, '0'); }
+      rec.createdAt = nowISO();
+      rec.updatedAt = nowISO();
+      arr.push(rec);
+    });
+    data.tasks.seq = maxNum;
+    save('tasks');
+  }
   function setTaskStatus(id, status) {
     var t = taskById(id);
     if (!t) return null;
@@ -822,6 +839,7 @@
     tasksAll: tasksAll,
     taskById: taskById,
     upsertTask: upsertTask,
+    addTasksBulk: addTasksBulk,
     setTaskStatus: setTaskStatus,
     deleteTask: deleteTask,
     daysToDue: daysToDue,
