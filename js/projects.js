@@ -9,6 +9,9 @@
   function stColor(list, s) { var x = list.filter(function (q) { return q.key === s; })[0]; return x ? x.color : '#64748b'; }
 
   var focusNewProject = false;
+  // מצב כיווץ תת-משימות פר פרויקט (נשמר מקומית, לא בענן)
+  var collapsedMap = (function () { try { return JSON.parse(localStorage.getItem('admin_proj_collapsed') || '{}'); } catch (e) { return {}; } })();
+  function saveCollapsed() { try { localStorage.setItem('admin_proj_collapsed', JSON.stringify(collapsedMap)); } catch (e) {} }
 
   // ---------- עוזרי עריכה ישירה (שמירה שקטה, בלי רינדור) ----------
   function saveProj(p) { Store.upsertProject(p); }
@@ -169,7 +172,16 @@
     card.appendChild(budgetBar(p));
     var notes = pText(p, p, 'notes', '📝 הערות לפרויקט…', 'width:100%;font-size:13px;color:var(--muted,#6b7884);');
     card.appendChild(U.el('div', { style: 'margin:2px 0 10px;' }, [notes]));
-    card.appendChild(itemsTable(p));
+
+    // תת-משימות — ניתן לכווץ/לפתוח
+    var collapsed = !!collapsedMap[p.id];
+    var n = (p.items || []).length;
+    var secHead = U.el('button', {
+      class: 'btn secondary', style: 'margin:2px 0;',
+      onclick: function () { collapsedMap[p.id] = !collapsed; saveCollapsed(); App.render(); }
+    }, (collapsed ? '▸' : '▾') + ' תת-משימות (' + n + ')');
+    card.appendChild(secHead);
+    if (!collapsed) card.appendChild(itemsTable(p));
     return card;
   }
 
@@ -189,7 +201,16 @@
     }
     addName.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addProject(); } });
 
-    view.appendChild(U.el('div', { class: 'page-head' }, [U.el('h2', { text: '🏗️ ניהול פרויקטים' })]));
+    view.appendChild(U.el('div', { class: 'page-head' }, [
+      U.el('h2', { text: '🏗️ ניהול פרויקטים' }),
+      U.el('span', { class: 'spacer' }),
+      projects.length ? U.el('button', { class: 'btn secondary', text: '▸ כווץ הכל', onclick: function () {
+        projects.forEach(function (p) { collapsedMap[p.id] = true; }); saveCollapsed(); App.render();
+      } }) : null,
+      projects.length ? U.el('button', { class: 'btn secondary', text: '▾ פתח הכל', onclick: function () {
+        projects.forEach(function (p) { delete collapsedMap[p.id]; }); saveCollapsed(); App.render();
+      } }) : null
+    ].filter(Boolean)));
 
     // סיכום
     var totBudget = 0, totUsed = 0, over = 0;
