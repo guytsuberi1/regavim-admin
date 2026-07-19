@@ -159,36 +159,104 @@
     return U.el('span', { class: 'tag', style: 'font-size:11px;', text: d });
   }
 
-  // ---------- טבלה ----------
+  // ---------- טבלה עם עריכה ישירה ----------
+  var focusAddDesc = false; // בקשה למקד את שדה ההוספה אחרי רינדור
+
+  // עוזרי-עריכה: שמירה שקטה (בלי רינדור) לתאים שאינם משנים סינון/מיון
+  function saveField(t, field, val) { t[field] = val; Store.upsertTask(t); }
+  function inpText(t, field, ph, style) {
+    var i = U.el('input', { value: t[field] || '', placeholder: ph || '', style: (style || '') + 'border:1px solid transparent;background:transparent;padding:4px 6px;', autocomplete: 'off' });
+    i.addEventListener('focus', function () { i.style.background = 'var(--card,#fff)'; i.style.borderColor = 'var(--border,#d6dce1)'; });
+    i.addEventListener('blur', function () { i.style.background = 'transparent'; i.style.borderColor = 'transparent'; });
+    i.addEventListener('change', function () { saveField(t, field, i.value.trim()); });
+    return i;
+  }
+  function inpList(t, field, options, ph) {
+    var w = U.dataListInput(t[field] || '', options, ph || '');
+    w._input.style.cssText = 'border:1px solid transparent;background:transparent;padding:4px 6px;min-width:90px;';
+    w._input.addEventListener('focus', function () { w._input.style.background = 'var(--card,#fff)'; w._input.style.borderColor = 'var(--border,#d6dce1)'; });
+    w._input.addEventListener('blur', function () { w._input.style.background = 'transparent'; w._input.style.borderColor = 'transparent'; });
+    w._input.addEventListener('change', function () { saveField(t, field, w.get()); rememberValue(field === 'domain' ? 'taskDomains' : 'taskOwners', w.get()); });
+    return w;
+  }
+  function selField(t, field, opts, onChangeRerender) {
+    var sel = U.el('select', { style: 'padding:4px 6px;' }, opts.map(function (o) { return U.el('option', { value: o.key || o, text: o.label || o.key || o }); }));
+    sel.value = t[field] || (opts[0].key || opts[0]);
+    sel.addEventListener('change', function () {
+      if (field === 'status') {
+        var r = Store.setTaskStatus(t.id, sel.value);
+        if (r && r._renewed) U.toast('המשימה הקבועה חודשה ליעד ' + U.gregLabel(r.due));
+        App.render();
+        return;
+      }
+      saveField(t, field, sel.value);
+      if (onChangeRerender) App.render();
+    });
+    return sel;
+  }
+
+  function quickAddRow(host) {
+    var s = Store.settings();
+    var draft = { priority: 'בינוני', status: 'פתוח', kind: 'חד פעמי', freq: 'monthly' };
+    var desc = U.el('input', { placeholder: '➕ משימה חדשה — כתוב תיאור ולחץ Enter', style: 'flex:2;min-width:180px;font-size:15px;' });
+    var domain = U.dataListInput('', s.taskDomains || [], 'תחום'); domain._input.style.flex = '1'; domain._input.style.minWidth = '90px';
+    var owner = U.dataListInput('', s.taskOwners || [], 'אחראי'); owner._input.style.flex = '1'; owner._input.style.minWidth = '90px';
+    var priority = U.el('select', null, PRIORITIES.map(function (p) { return U.el('option', { value: p.key, text: p.key }); })); priority.value = 'בינוני';
+    var due = U.el('input', { type: 'date', style: 'max-width:150px;' });
+    function add() {
+      if (!desc.value.trim()) { desc.focus(); return; }
+      Store.upsertTask({ desc: desc.value.trim(), domain: domain.get(), owner: owner.get(),
+        priority: priority.value, status: 'פתוח', due: due.value, notes: '', kind: 'חד פעמי', freq: '' });
+      rememberValue('taskDomains', domain.get());
+      rememberValue('taskOwners', owner.get());
+      focusAddDesc = true;
+      App.render();
+    }
+    desc.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+    var addBtn = U.el('button', { class: 'btn', text: 'הוסף', onclick: add });
+    var card = U.el('div', { class: 'card', style: 'padding:10px;margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;' },
+      [desc, domain, owner, priority, due, addBtn]);
+    host.appendChild(card);
+    if (focusAddDesc) { focusAddDesc = false; setTimeout(function () { desc.focus(); }, 0); }
+  }
+
   function renderTable(host, list) {
+    quickAddRow(host);
     if (!list.length) { host.appendChild(U.el('div', { class: 'empty' }, 'אין משימות שתואמות לסינון')); return; }
     var tbl = U.el('table', { class: 'grid' }, [
-      U.el('thead', null, U.el('tr', null, ['#', 'תחום', 'תיאור', 'אחראי', 'עדיפות', 'סטטוס', 'יעד', 'ימים', 'סוג', ''].map(function (h) { return U.el('th', { text: h }); }))),
+      U.el('thead', null, U.el('tr', null, ['#', 'תחום', 'תיאור', 'אחראי', 'עדיפות', 'סטטוס', 'יעד', 'סוג', ''].map(function (h) { return U.el('th', { text: h }); }))),
       U.el('tbody', null, list.map(function (t) {
         var overdue = (Store.daysToDue(t.due) != null && Store.daysToDue(t.due) < 0 && t.status !== 'הושלם');
-        var stSel = U.el('select', { style: 'border-color:' + stColor(t.status) + ';min-width:96px;' },
-          STATUSES.map(function (x) { return U.el('option', { value: x.key, text: x.key }); }));
-        stSel.value = t.status;
-        stSel.addEventListener('change', function () {
-          var r = Store.setTaskStatus(t.id, stSel.value);
-          if (r && r._renewed) U.toast('המשימה הקבועה חודשה ליעד ' + U.gregLabel(r.due));
-          App.render();
-        });
+        var descCell = U.el('td', { style: 'min-width:200px;' }, [
+          inpText(t, 'desc', 'תיאור', 'width:100%;font-weight:500;'),
+          inpText(t, 'notes', 'הערות…', 'width:100%;font-size:12px;color:var(--muted,#6b7884);'),
+          t.kind === 'קבוע' && t.lastDoneAt ? U.el('div', { class: 'muted', style: 'font-size:11px;padding-inline:6px;', text: 'בוצע לאחרונה: ' + new Date(t.lastDoneAt).toLocaleDateString('he-IL') }) : null
+        ]);
+        var dueInput = U.el('input', { type: 'date', value: t.due || '', style: 'border:1px solid transparent;background:transparent;padding:4px 6px;' });
+        dueInput.addEventListener('focus', function () { dueInput.style.background = 'var(--card,#fff)'; dueInput.style.borderColor = 'var(--border,#d6dce1)'; });
+        dueInput.addEventListener('blur', function () { dueInput.style.background = 'transparent'; dueInput.style.borderColor = 'transparent'; });
+        dueInput.addEventListener('change', function () { saveField(t, 'due', dueInput.value); });
+
+        var kindSel = selField(t, 'kind', [{ key: 'חד פעמי' }, { key: 'קבוע' }], true);
+        var kindCell = U.el('td', { style: 'white-space:nowrap;' }, [kindSel]);
+        if (t.kind === 'קבוע') {
+          var freqSel = selField(t, 'freq', FREQS, false);
+          freqSel.style.marginTop = '4px';
+          kindCell.appendChild(U.el('div', null, [freqSel]));
+        }
+
         return U.el('tr', { style: overdue ? 'background:#fef2f2;' : '' }, [
           U.el('td', { style: 'white-space:nowrap;color:#94a3b8;font-size:12px;', text: t.num || '' }),
-          U.el('td', null, domainChip(t.domain)),
-          U.el('td', null, [
-            U.el('div', { style: 'display:flex;align-items:center;' }, [priorityDot(t.priority), U.el('span', { text: t.desc || '' })]),
-            t.notes ? U.el('div', { class: 'muted', style: 'font-size:12px;', text: t.notes }) : null,
-            t.kind === 'קבוע' && t.lastDoneAt ? U.el('div', { class: 'muted', style: 'font-size:11px;', text: 'בוצע לאחרונה: ' + new Date(t.lastDoneAt).toLocaleDateString('he-IL') }) : null
-          ]),
-          U.el('td', { text: t.owner || '' }),
-          U.el('td', { text: t.priority || '' }),
-          U.el('td', null, stSel),
-          U.el('td', { style: 'white-space:nowrap;', text: t.due ? U.gregLabel(t.due) : '' }),
-          U.el('td', null, daysBadge(t)),
-          U.el('td', { style: 'white-space:nowrap;font-size:12px;', text: t.kind === 'קבוע' ? '🔁 ' + freqLabel(t.freq) : 'חד פעמי' }),
-          U.el('td', null, U.el('button', { class: 'btn secondary', text: '✏️', title: 'עריכה', onclick: function () { openModal(JSON.parse(JSON.stringify(t))); } }))
+          U.el('td', null, inpList(t, 'domain', Store.settings().taskDomains || [], 'תחום')),
+          descCell,
+          U.el('td', null, inpList(t, 'owner', Store.settings().taskOwners || [], 'אחראי')),
+          U.el('td', null, selField(t, 'priority', PRIORITIES, false)),
+          U.el('td', null, selField(t, 'status', STATUSES, false)),
+          U.el('td', { style: 'white-space:nowrap;' }, [dueInput, daysBadge(t) ? U.el('div', { style: 'margin-top:2px;' }, [daysBadge(t)]) : null]),
+          kindCell,
+          U.el('td', null, U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקה', onclick: function () {
+            Modal.confirm({ title: 'מחיקת משימה', text: 'למחוק את "' + (t.desc || '') + '"?', okLabel: 'מחיקה', danger: true }, function () { Store.deleteTask(t.id); App.render(); });
+          } }))
         ]);
       }))
     ]);
@@ -243,7 +311,8 @@
     var all = Store.tasksAll();
     var s = Store.settings();
 
-    var addBtn = U.el('button', { class: 'btn', text: '➕ משימה חדשה', onclick: function () { openModal(null); } });
+    // בתצוגת טבלה מוסיפים דרך שורת ההוספה המהירה; בקנבן — דרך כפתור
+    var addBtn = viewMode === 'kanban' ? U.el('button', { class: 'btn', text: '➕ משימה חדשה', onclick: function () { openModal(null); } }) : null;
     var toggle = U.el('div', { class: 'subtabs', style: 'display:inline-flex;margin:0;' }, [
       U.el('button', { class: viewMode === 'table' ? 'active' : '', text: '☰ טבלה', onclick: function () { viewMode = 'table'; App.render(); } }),
       U.el('button', { class: viewMode === 'kanban' ? 'active' : '', text: '▤ קנבן', onclick: function () { viewMode = 'kanban'; App.render(); } })
@@ -252,7 +321,7 @@
       U.el('h2', { text: '✅ ניהול משימות' }),
       U.el('span', { class: 'spacer' }),
       toggle, addBtn
-    ]));
+    ].filter(Boolean)));
 
     // סיכום
     var open = all.filter(function (t) { return t.status === 'פתוח'; }).length;
@@ -297,15 +366,16 @@
     function refresh() {
       U.clear(host);
       var list = sortTasks(applyFilters(all));
-      if (!all.length) {
-        host.appendChild(U.el('div', { class: 'empty' }, [
-          'אין עדיין משימות.',
-          U.el('div', { class: 'muted', style: 'margin-top:6px;' }, 'לחצו "➕ משימה חדשה" כדי להתחיל.')
-        ]));
-        return;
+      if (viewMode === 'kanban') {
+        if (!all.length) {
+          host.appendChild(U.el('div', { class: 'empty' }, [
+            'אין עדיין משימות.',
+            U.el('div', { class: 'muted', style: 'margin-top:6px;' }, 'עברו לתצוגת טבלה כדי להוסיף משימה במהירות.')
+          ]));
+        } else renderKanban(host, list);
+      } else {
+        renderTable(host, list); // כולל שורת הוספה מהירה — מוצג גם כשאין משימות
       }
-      if (viewMode === 'kanban') renderKanban(host, list);
-      else renderTable(host, list);
     }
     refresh();
   }
