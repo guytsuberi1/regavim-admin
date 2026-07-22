@@ -35,7 +35,7 @@
     if (!emps.length) {
       view.appendChild(U.el('div', { class: 'empty' }, [
         'אין עובדים במצבת.',
-        U.el('div', { class: 'muted', style: 'margin-top:6px;' }, 'עברו ל"נתוני בסיס" וייבאו את מצבת העובדים מאקסל.')
+        U.el('div', { class: 'muted', style: 'margin-top:6px;' }, 'עברו לגיליון "ניהול עובדים" וייבאו את מצבת העובדים מאקסל.')
       ]));
       return;
     }

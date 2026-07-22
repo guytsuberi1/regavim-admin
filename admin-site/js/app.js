@@ -13,7 +13,8 @@
     pdf: global.PdfView,
     tasks: global.TasksView,
     projects: global.ProjectsView,
-    base: global.BaseView,
+    emp: global.EmpView,
+    week: global.WeekView,
     settings: global.SettingsView
   };
 
@@ -27,6 +28,10 @@
       { id: 'abs', label: '🪖 היעדרויות וגמולים' },
       { id: 'pdf', label: '🖨️ חבילת PDF' }
     ] },
+    { id: 'staff', label: '👥 ניהול עובדים', subs: [
+      { id: 'emp', label: '👤 עובדים' },
+      { id: 'week', label: '🗓️ לוח שבועי' }
+    ] },
     { id: 'tasks', label: '✅ ניהול משימות', subs: [
       { id: 'tasks', label: '✅ משימות' }
     ] },
@@ -36,7 +41,6 @@
   ];
   // פריטים עצמאיים (לא גיליונות)
   var STANDALONE = [
-    { id: 'base', label: '🗂️ נתוני בסיס' },
     { id: 'settings', label: '⚙️', foot: true, title: 'הגדרות' }
   ];
 
@@ -46,7 +50,7 @@
 
   // הרשאות: admin רואה הכל; secretary רק מרכז למידה
   var ROLE_VIEWS = {
-    admin: ['status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'tasks', 'projects', 'base', 'settings'],
+    admin: ['status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'tasks', 'projects', 'settings'],
     secretary: ['lc']
   };
   function roleKey() { return Store.currentRole(); }
