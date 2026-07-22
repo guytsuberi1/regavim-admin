@@ -67,7 +67,7 @@
     if (!list.length) {
       view.appendChild(U.el('div', { class: 'empty' }, [
         'אין מתגברים במצבת. ',
-        U.el('div', { class: 'muted', style: 'margin-top:6px;' }, 'בנתוני בסיס — סמנו לעובדים את התגית "מתגבר" והם יופיעו כאן.')
+        U.el('div', { class: 'muted', style: 'margin-top:6px;' }, 'בגיליון ניהול עובדים — סמנו לעובדים את התגית "מתגבר" והם יופיעו כאן.')
       ]));
       return;
     }
@@ -98,7 +98,7 @@
     ]));
     if (noKm && Store.isAdmin()) {
       card.appendChild(U.el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:6px;' },
-        '🚗 לא הוגדר ק"מ נסיעה למתגבר זה — הגדירו בכרטיס העובד (נתוני בסיס) כדי שהנסיעות יחושבו אוטומטית.'));
+        '🚗 לא הוגדר ק"מ נסיעה למתגבר זה — הגדירו בכרטיס העובד (ניהול עובדים) כדי שהנסיעות יחושבו אוטומטית.'));
     }
 
     if (!recs.length) {
