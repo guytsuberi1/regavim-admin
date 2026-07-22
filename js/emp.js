@@ -46,7 +46,19 @@
     if (!e.pension) e.pension = { status: 'none', note: '' };
     if (!e.roleDef) e.roleDef = { purpose: '', duties: '', reportsTo: '', metrics: '' };
     if (!Array.isArray(e.workDays)) e.workDays = [];
+    // מבנה שבועי עם שעות: workHours = { יום: {from,to} }. תאימות: ימים שסומנו לפני שהיו שעות
+    if (!e.workHours) e.workHours = {};
+    e.workDays.forEach(function (d) { if (!e.workHours[d]) e.workHours[d] = { from: '', to: '' }; });
+    e.workDays = Object.keys(e.workHours).map(Number).sort(function (a, b) { return a - b; });
     return e;
+  }
+
+  // "08:00" → "8:00" · טווח לתצוגה; ריק → ✓ (יום מסומן בלי שעות)
+  function fmtTime(t) { return String(t || '').replace(/^0/, ''); }
+  function hoursLabel(wh) {
+    if (!wh) return '';
+    if (!wh.from && !wh.to) return '✓';
+    return fmtTime(wh.from) + '–' + fmtTime(wh.to);
   }
 
   var selectedId = null; // עובד פתוח בכרטיס
@@ -325,8 +337,8 @@
       return e.roleDef && e.roleDef.reportsTo === emp.id && e.id !== emp.id;
     }).map(Store.empName);
     var daysRow = DAYS_FULL.map(function (d, i) {
-      var on = emp.workDays.indexOf(i) !== -1;
-      return '<td class="' + (on ? 'day-on' : 'day-off') + '">' + (on ? '✓' : '—') + '</td>';
+      var wh = emp.workHours[i];
+      return '<td class="' + (wh ? 'day-on' : 'day-off') + '">' + (wh ? esc(hoursLabel(wh)) : '—') + '</td>';
     }).join('');
     var h = '<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="utf-8">'
       + '<title>הגדרת תפקיד — ' + esc(Store.empName(emp)) + '</title>'
@@ -342,7 +354,7 @@
       + 'table{width:100%;border-collapse:collapse;margin:8px 0;font-size:14px;}'
       + 'th,td{border:1px solid #cbd5e1;padding:7px 8px;text-align:center;}'
       + 'th{background:#e3edf9;color:#143b69;}'
-      + '.day-on{background:#e8f5e9;color:#1b5e20;font-weight:700;font-size:16px;}'
+      + '.day-on{background:#e8f5e9;color:#1b5e20;font-weight:700;font-size:13px;white-space:nowrap;}'
       + '.day-off{color:#bbb;}'
       + '.muted{color:#777;font-size:13px;}'
       + '.meta{display:flex;justify-content:space-between;font-size:13px;color:#555;margin-top:4px;}'
@@ -471,17 +483,22 @@
       return e.roleDef && e.roleDef.reportsTo === emp.id && e.id !== emp.id;
     });
 
-    // מבנה שבועי — כפתורי ימים
-    var dayBtns = DAYS_SHORT.map(function (d, i) {
-      var on = emp.workDays.indexOf(i) !== -1;
-      var b = U.el('button', { class: 'wday' + (on ? ' on' : ''), text: d, title: 'יום ' + DAYS_FULL[i], disabled: !isAdmin });
+    // מבנה שבועי — לכל יום: הפעלה + טווח שעות גמיש
+    var dayRows = DAYS_FULL.map(function (d, i) {
+      var wh = emp.workHours[i];
+      var on = !!wh;
+      var from = U.el('input', { type: 'time', value: (wh && wh.from) || '', disabled: !isAdmin || !on });
+      var to = U.el('input', { type: 'time', value: (wh && wh.to) || '', disabled: !isAdmin || !on });
+      var b = U.el('button', { class: 'wday' + (on ? ' on' : ''), text: DAYS_SHORT[i], title: 'יום ' + d, disabled: !isAdmin });
       b.addEventListener('click', function () {
-        var idx = emp.workDays.indexOf(i);
-        if (idx === -1) emp.workDays.push(i); else emp.workDays.splice(idx, 1);
-        emp.workDays.sort();
+        if (emp.workHours[i]) { delete emp.workHours[i]; from.disabled = to.disabled = true; from.value = to.value = ''; }
+        else { emp.workHours[i] = { from: '', to: '' }; from.disabled = to.disabled = !isAdmin; }
         b.classList.toggle('on');
       });
-      return b;
+      return { i: i, from: from, to: to, node: U.el('div', { class: 'whour-row' }, [
+        b,
+        U.el('span', { class: 'whour-times' }, [from, U.el('span', { class: 'muted', text: '–' }), to])
+      ]) };
     });
 
     function fld(label, node, hint) {
@@ -503,13 +520,18 @@
         }))
       ]) : null,
       fld('📈 מדדי הצלחה', metrics, 'כל שורה — מדד אחד'),
-      fld('📅 מבנה שבועי — באילו ימים עובד', U.el('div', { class: 'wdays' }, dayBtns)),
+      fld('📅 מבנה שבועי — ימים ושעות עבודה', U.el('div', { class: 'whours' }, dayRows.map(function (r) { return r.node; })),
+        'מסמנים יום ובוחרים טווח שעות; אפשר להשאיר יום מסומן בלי שעות'),
       isAdmin && U.el('div', { style: 'display:flex;gap:8px;margin-top:6px;' }, [
         U.el('button', { class: 'btn', text: '💾 שמירה', onclick: function () {
           rd.purpose = purpose.value.trim();
           rd.duties = duties.value;
           rd.metrics = metrics.value;
           rd.reportsTo = reportsTo.value;
+          dayRows.forEach(function (r) {
+            if (emp.workHours[r.i]) emp.workHours[r.i] = { from: r.from.value || '', to: r.to.value || '' };
+          });
+          emp.workDays = Object.keys(emp.workHours).map(Number).sort(function (a, b) { return a - b; });
           Store.upsertEmployee(emp);
           U.toast('הגדרת התפקיד נשמרה');
           App.render();
