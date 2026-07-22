@@ -77,7 +77,14 @@
       // פרויקטים. רשומה: { id, num, name, domain, owner, status:'תכנון'|'בביצוע'|'הושלם',
       //   budget (number), notes, items:[{ id, desc, contractor, cost (number|''),
       //   invoice, status:'תכנון'|'בביצוע'|'בוצע' }], createdAt, updatedAt, deleted }
-      projects: { records: [], seq: 0, meta: newMeta() }
+      projects: { records: [], seq: 0, meta: newMeta() },
+      // גיוס: מועמדים ומשרות פנויות.
+      // מועמד: { id, name, city, phone, target (טקסט "מיועד ל-"), status:'התעניין'|'הגיע לראיון'|'התקבל'|'לא רלוונטי',
+      //          interviewer, hasCv, hasGrapho, impression, familyStatus, notes, year,
+      //          convertedEmpId, createdAt, updatedAt, deleted }
+      // משרה: { id, title, scope (אחוז משרה), filledBy, flyer:'בוצע'|'לא בוצע'|'לא צריך'|'', notes,
+      //         createdAt, updatedAt, deleted }
+      recruit: { candidates: [], positions: [], meta: newMeta() }
     };
   }
 
@@ -126,6 +133,7 @@
     if (rowId === 'core') return data.core;
     if (rowId === 'tasks') return data.tasks;
     if (rowId === 'projects') return data.projects;
+    if (rowId === 'recruit') return data.recruit;
     var p = rowId.split(':');
     if (MONTH_KINDS[p[0]] && p[1]) return data[p[0]][p[1]] || null;
     return null;
@@ -134,11 +142,12 @@
     if (rowId === 'core') { data.core = ensureCoreFields(obj); return; }
     if (rowId === 'tasks') { data.tasks = obj; return; }
     if (rowId === 'projects') { data.projects = obj; return; }
+    if (rowId === 'recruit') { data.recruit = obj; return; }
     var p = rowId.split(':');
     if (MONTH_KINDS[p[0]] && p[1]) data[p[0]][p[1]] = obj;
   }
   function allRowIds() {
-    var ids = ['core', 'tasks', 'projects'];
+    var ids = ['core', 'tasks', 'projects', 'recruit'];
     Object.keys(MONTH_KINDS).forEach(function (kind) {
       Object.keys(data[kind] || {}).forEach(function (m) { ids.push(kind + ':' + m); });
     });
@@ -300,6 +309,18 @@
       if (jsonEq(mt, local)) return false;
       rowSet(rowId, mt);
       if (!jsonEq(mt, incoming)) scheduleCloudSave(rowId);
+      return true;
+    }
+
+    if (rowId === 'recruit') {
+      var mr = {
+        candidates: mergeRecords(local && local.candidates, incoming.candidates),
+        positions: mergeRecords(local && local.positions, incoming.positions),
+        meta: metaTs(local) >= metaTs(incoming) ? (local && local.meta) || incoming.meta : incoming.meta
+      };
+      if (jsonEq(mr, local)) return false;
+      rowSet(rowId, mr);
+      if (!jsonEq(mr, incoming)) scheduleCloudSave(rowId);
       return true;
     }
 
@@ -540,6 +561,42 @@
     save('tasks');
   }
   // ---------- פרויקטים ----------
+  // ---------- גיוס: מועמדים ומשרות ----------
+  function recruitList(key) {
+    return (data.recruit[key] || []).filter(function (r) { return !r.deleted; });
+  }
+  function recruitUpsert(key, rec) {
+    if (!rec.id) { rec.id = uid(); rec.createdAt = nowISO(); }
+    rec.updatedAt = nowISO();
+    rec.by = myName();
+    var arr = data.recruit[key], found = false;
+    for (var i = 0; i < arr.length; i++) if (arr[i].id === rec.id) { arr[i] = rec; found = true; break; }
+    if (!found) arr.push(rec);
+    save('recruit');
+    return rec;
+  }
+  function recruitDelete(key, id) {
+    var arr = data.recruit[key];
+    for (var i = 0; i < arr.length; i++) if (arr[i].id === id) {
+      arr[i].deleted = true;
+      arr[i].updatedAt = nowISO();
+      break;
+    }
+    save('recruit');
+  }
+  function candidates() { return recruitList('candidates'); }
+  function candidateById(id) {
+    return (data.recruit.candidates || []).filter(function (r) { return r.id === id; })[0] || null;
+  }
+  function upsertCandidate(rec) { return recruitUpsert('candidates', rec); }
+  function deleteCandidate(id) { recruitDelete('candidates', id); }
+  function positions() { return recruitList('positions'); }
+  function positionById(id) {
+    return (data.recruit.positions || []).filter(function (r) { return r.id === id; })[0] || null;
+  }
+  function upsertPosition(rec) { return recruitUpsert('positions', rec); }
+  function deletePosition(id) { recruitDelete('positions', id); }
+
   function projectsAll() {
     return (data.projects.records || []).filter(function (r) { return !r.deleted; });
   }
@@ -896,6 +953,15 @@
     upsertProject: upsertProject,
     deleteProject: deleteProject,
     projectBudget: projectBudget,
+
+    candidates: candidates,
+    candidateById: candidateById,
+    upsertCandidate: upsertCandidate,
+    deleteCandidate: deleteCandidate,
+    positions: positions,
+    positionById: positionById,
+    upsertPosition: upsertPosition,
+    deletePosition: deletePosition,
     // דיווחי פורטל
     loadSubmissions: loadSubmissions,
     submissions: submissions,

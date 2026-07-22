@@ -15,6 +15,8 @@
     projects: global.ProjectsView,
     emp: global.EmpView,
     week: global.WeekView,
+    cand: global.CandView,
+    pos: global.PosView,
     settings: global.SettingsView
   };
 
@@ -30,7 +32,9 @@
     ] },
     { id: 'staff', label: '👥 ניהול עובדים', subs: [
       { id: 'emp', label: '👤 עובדים' },
-      { id: 'week', label: '🗓️ לוח שבועי' }
+      { id: 'week', label: '🗓️ לוח שבועי' },
+      { id: 'cand', label: '🎯 מועמדים' },
+      { id: 'pos', label: '📌 משרות' }
     ] },
     { id: 'tasks', label: '✅ ניהול משימות', subs: [
       { id: 'tasks', label: '✅ משימות' }
@@ -50,7 +54,7 @@
 
   // הרשאות: admin רואה הכל; secretary רק מרכז למידה
   var ROLE_VIEWS = {
-    admin: ['status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'tasks', 'projects', 'settings'],
+    admin: ['status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'settings'],
     secretary: ['lc']
   };
   function roleKey() { return Store.currentRole(); }
