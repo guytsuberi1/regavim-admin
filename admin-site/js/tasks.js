@@ -25,8 +25,44 @@
   function prWeight(p) { return p === 'גבוה' ? 0 : p === 'בינוני' ? 1 : 2; }
 
   var viewMode = 'table'; // 'table' | 'kanban'
-  var filters = { q: '', status: '', domain: '', owner: '', priority: '' };
+  var filters = { q: '', status: '', domain: '', owner: '', priority: '', due: '' };
   var sortBy = 'due';
+
+  // ---------- צבעי תגיות (תחום/אחראי) — צבע קבוע ועקבי לפי הטקסט ----------
+  var CHIP_COLORS = [
+    ['#fee2e2', '#991b1b'], ['#ffedd5', '#9a3412'], ['#fef3c7', '#92400e'],
+    ['#ecfccb', '#3f6212'], ['#dcfce7', '#166534'], ['#cffafe', '#155e75'],
+    ['#dbeafe', '#1e40af'], ['#ede9fe', '#5b21b6'], ['#fce7f3', '#9d174d'],
+    ['#e2e8f0', '#334155']
+  ];
+  function chipColor(str) {
+    var h = 0;
+    str = String(str || '');
+    for (var i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 997;
+    return CHIP_COLORS[h % CHIP_COLORS.length];
+  }
+  function colorChip(text, prefix, extra) {
+    if (!text) return null;
+    var c = chipColor(text);
+    return U.el('span', {
+      class: 'tag',
+      style: 'font-size:12px;font-weight:600;background:' + c[0] + ';color:' + c[1] + ';border-color:' + c[1] + '44;' + (extra || ''),
+      text: (prefix || '') + text
+    });
+  }
+
+  // ---------- סינון לפי יעד: דליים ----------
+  function endOfWeekISO() { // שבת של השבוע הנוכחי (א׳–ש׳)
+    var d = new Date();
+    return U.addDays(U.toISO(d), 6 - d.getDay());
+  }
+  function dueBucket(t) {
+    if (!t.due) return 'none';
+    var d = Store.daysToDue(t.due);
+    if (d < 0) return 'overdue';
+    if (t.due <= endOfWeekISO()) return 'week';
+    return 'ahead';
+  }
 
   // ---------- טופס משימה ----------
   function listInput(value, options, placeholder) {
@@ -124,6 +160,7 @@
       if (filters.domain && t.domain !== filters.domain) return false;
       if (filters.owner && t.owner !== filters.owner) return false;
       if (filters.priority && t.priority !== filters.priority) return false;
+      if (filters.due && dueBucket(t) !== filters.due) return false;
       if (q && (String(t.desc || '') + ' ' + String(t.notes || '') + ' ' + String(t.domain || '') + ' ' + String(t.owner || '')).indexOf(q) === -1) return false;
       return true;
     });
@@ -154,10 +191,6 @@
   function priorityDot(p) {
     return U.el('span', { title: 'עדיפות ' + p, style: 'display:inline-block;width:10px;height:10px;border-radius:50%;background:' + prColor(p) + ';margin-inline-end:6px;' });
   }
-  function domainChip(d) {
-    if (!d) return null;
-    return U.el('span', { class: 'tag', style: 'font-size:11px;', text: d });
-  }
 
   // ---------- טבלה עם עריכה ישירה ----------
   var focusAddDesc = false; // בקשה למקד את שדה ההוספה אחרי רינדור
@@ -178,6 +211,58 @@
     w._input.addEventListener('blur', function () { w._input.style.background = 'transparent'; w._input.style.borderColor = 'transparent'; });
     w._input.addEventListener('change', function () { saveField(t, field, w.get()); rememberValue(field === 'domain' ? 'taskDomains' : 'taskOwners', w.get()); });
     return w;
+  }
+  // תיאור/הערות — textarea שנשבר לשורות ומתרחב לפי התוכן (רואים הכל גם במסך צר)
+  function areaText(t, field, ph, style) {
+    var a = U.el('textarea', { rows: 1, placeholder: ph || '' });
+    a.value = t[field] || '';
+    a.style.cssText = (style || '') + 'width:100%;resize:none;overflow:hidden;border:1px solid transparent;background:transparent;padding:4px 6px;font-family:inherit;line-height:1.4;';
+    function fit() { a.style.height = 'auto'; a.style.height = a.scrollHeight + 'px'; }
+    a.addEventListener('focus', function () { a.style.background = 'var(--card,#fff)'; a.style.borderColor = 'var(--border,#d6dce1)'; });
+    a.addEventListener('blur', function () { a.style.background = 'transparent'; a.style.borderColor = 'transparent'; });
+    a.addEventListener('input', fit);
+    a.addEventListener('change', function () { saveField(t, field, a.value.trim()); });
+    setTimeout(fit, 0);
+    return a;
+  }
+  // תגית צבעונית שנפתחת לעריכה בלחיצה (תחום/אחראי)
+  function chipEdit(t, field, options, ph, prefix) {
+    var wrap = U.el('span', { style: 'display:inline-block;' });
+    function show() {
+      U.clear(wrap);
+      var val = t[field];
+      if (val) {
+        var chip = colorChip(val, prefix, 'cursor:pointer;');
+        chip.title = 'לחיצה לעריכה';
+        chip.addEventListener('click', edit);
+        wrap.appendChild(chip);
+      } else {
+        wrap.appendChild(U.el('button', {
+          class: 'tag', text: '+ ' + ph, onclick: edit,
+          style: 'cursor:pointer;font-size:12px;color:var(--muted,#6b7884);border-style:dashed;background:transparent;'
+        }));
+      }
+    }
+    function edit() {
+      U.clear(wrap);
+      var w = U.dataListInput(t[field] || '', options, ph);
+      w._input.style.minWidth = '110px';
+      wrap.appendChild(w);
+      w._input.focus();
+      var done = false;
+      function commit() {
+        if (done) return;
+        done = true;
+        saveField(t, field, w.get());
+        rememberValue(field === 'domain' ? 'taskDomains' : 'taskOwners', w.get());
+        show();
+      }
+      w._input.addEventListener('change', commit);
+      w._input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); commit(); } });
+      w._input.addEventListener('blur', function () { setTimeout(commit, 120); });
+    }
+    show();
+    return wrap;
   }
   function selField(t, field, opts, onChangeRerender) {
     var sel = U.el('select', { style: 'padding:4px 6px;' }, opts.map(function (o) { return U.el('option', { value: o.key || o, text: o.label || o.key || o }); }));
@@ -228,8 +313,8 @@
       U.el('tbody', null, list.map(function (t) {
         var overdue = (Store.daysToDue(t.due) != null && Store.daysToDue(t.due) < 0 && t.status !== 'הושלם');
         var descCell = U.el('td', { style: 'min-width:200px;' }, [
-          inpText(t, 'desc', 'תיאור', 'width:100%;font-weight:500;'),
-          inpText(t, 'notes', 'הערות…', 'width:100%;font-size:12px;color:var(--muted,#6b7884);'),
+          areaText(t, 'desc', 'תיאור', 'font-weight:500;'),
+          areaText(t, 'notes', 'הערות…', 'font-size:12px;color:var(--muted,#6b7884);'),
           t.kind === 'קבוע' && t.lastDoneAt ? U.el('div', { class: 'muted', style: 'font-size:11px;padding-inline:6px;', text: 'בוצע לאחרונה: ' + new Date(t.lastDoneAt).toLocaleDateString('he-IL') }) : null
         ]);
         var dueInput = U.el('input', { type: 'date', value: t.due || '', style: 'border:1px solid transparent;background:transparent;padding:4px 6px;' });
@@ -247,9 +332,9 @@
 
         return U.el('tr', { style: overdue ? 'background:#fef2f2;' : '' }, [
           U.el('td', { style: 'white-space:nowrap;color:#94a3b8;font-size:12px;', text: t.num || '' }),
-          U.el('td', null, inpList(t, 'domain', Store.settings().taskDomains || [], 'תחום')),
+          U.el('td', null, chipEdit(t, 'domain', Store.settings().taskDomains || [], 'תחום')),
           descCell,
-          U.el('td', null, inpList(t, 'owner', Store.settings().taskOwners || [], 'אחראי')),
+          U.el('td', null, chipEdit(t, 'owner', Store.settings().taskOwners || [], 'אחראי', '👤 ')),
           U.el('td', null, selField(t, 'priority', PRIORITIES, false)),
           U.el('td', null, selField(t, 'status', STATUSES, false)),
           U.el('td', { style: 'white-space:nowrap;' }, [dueInput, daysBadge(t) ? U.el('div', { style: 'margin-top:2px;' }, [daysBadge(t)]) : null]),
@@ -285,8 +370,8 @@
         card.addEventListener('dragend', function () { card.classList.remove('kb-drag'); });
         card.appendChild(U.el('div', { style: 'font-weight:600;font-size:14px;margin-bottom:4px;', text: t.desc || '' }));
         var meta = U.el('div', { style: 'display:flex;flex-wrap:wrap;gap:4px;align-items:center;' }, [
-          domainChip(t.domain),
-          t.owner ? U.el('span', { class: 'muted', style: 'font-size:12px;', text: '👤 ' + t.owner }) : null,
+          colorChip(t.domain),
+          colorChip(t.owner, '👤 '),
           daysBadge(t),
           t.kind === 'קבוע' ? U.el('span', { title: 'קבועה · ' + freqLabel(t.freq), text: '🔁', style: 'font-size:12px;' }) : null
         ].filter(Boolean));
@@ -359,6 +444,28 @@
       viewMode === 'table' ? sortSel : null
     ].filter(Boolean));
     view.appendChild(bar);
+
+    // סינון מהיר לפי יעד — באיחור / השבוע / בהמשך / ללא יעד
+    var notDone = all.filter(function (t) { return t.status !== 'הושלם'; });
+    var bucketDefs = [
+      { key: 'overdue', label: '⚠️ באיחור', activeStyle: 'background:#fee2e2;color:#991b1b;border-color:#991b1b;' },
+      { key: 'week', label: '📅 השבוע', activeStyle: 'background:#fef3c7;color:#92400e;border-color:#92400e;' },
+      { key: 'ahead', label: '⏭️ בהמשך', activeStyle: '' },
+      { key: 'none', label: '🚫 ללא יעד', activeStyle: '' }
+    ];
+    var dueBar = U.el('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px;align-items:center;' },
+      [U.el('span', { class: 'muted', style: 'font-size:13px;', text: 'יעד:' })].concat(bucketDefs.map(function (bd) {
+        var n = notDone.filter(function (t) { return dueBucket(t) === bd.key; }).length;
+        var active = filters.due === bd.key;
+        var b = U.el('button', {
+          class: 'tag',
+          style: 'cursor:pointer;font-size:12px;' + (active ? (bd.activeStyle || 'background:var(--brand-light);') + 'outline:2px solid var(--brand);' : ''),
+          text: bd.label + ' ' + n
+        });
+        b.addEventListener('click', function () { filters.due = active ? '' : bd.key; App.render(); });
+        return b;
+      })));
+    view.appendChild(dueBar);
 
     var host = U.el('div');
     view.appendChild(host);
