@@ -9,9 +9,21 @@
 
   var filterTag = '';
 
+  // "08:00" → "8:00" · טווח לתצוגה; יום מסומן בלי שעות → ✓
+  function fmtTime(t) { return String(t || '').replace(/^0/, ''); }
+  function hoursLabel(wh) {
+    if (!wh) return '';
+    if (!wh.from && !wh.to) return '✓';
+    return fmtTime(wh.from) + '–' + fmtTime(wh.to);
+  }
+
   function render(view) {
     var all = Store.employees().map(function (e) {
       if (!Array.isArray(e.workDays)) e.workDays = [];
+      if (!e.workHours) {
+        e.workHours = {};
+        e.workDays.forEach(function (d) { e.workHours[d] = { from: '', to: '' }; });
+      }
       return e;
     });
 
@@ -31,8 +43,8 @@
     var emps = all.filter(function (e) {
       return !filterTag || (e.tags || []).indexOf(filterTag) !== -1;
     });
-    var withDays = emps.filter(function (e) { return e.workDays.length; });
-    var withoutDays = emps.filter(function (e) { return !e.workDays.length; });
+    var withDays = emps.filter(function (e) { return Object.keys(e.workHours).length; });
+    var withoutDays = emps.filter(function (e) { return !Object.keys(e.workHours).length; });
     withDays.sort(function (a, b) { return Store.empName(a).localeCompare(Store.empName(b), 'he'); });
 
     if (!withDays.length) {
@@ -44,7 +56,7 @@
     } else {
       // ספירה לכל יום
       var counts = [0, 0, 0, 0, 0, 0];
-      withDays.forEach(function (e) { e.workDays.forEach(function (d) { counts[d]++; }); });
+      withDays.forEach(function (e) { Object.keys(e.workHours).forEach(function (d) { counts[Number(d)]++; }); });
 
       var tbl = U.el('table', { class: 'grid week-grid' }, [
         U.el('thead', null, U.el('tr', null,
@@ -64,8 +76,8 @@
               e.jobTitle ? U.el('div', { class: 'muted', style: 'font-size:12px;', text: e.jobTitle }) : null
             ])
           ].concat(DAYS_FULL.map(function (d, i) {
-            var on = e.workDays.indexOf(i) !== -1;
-            return U.el('td', { class: on ? 'wd-cell on' : 'wd-cell' }, on ? '✓' : '');
+            var wh = e.workHours[i];
+            return U.el('td', { class: wh ? 'wd-cell on' : 'wd-cell' }, wh ? hoursLabel(wh) : '');
           })));
         }))
       ]);

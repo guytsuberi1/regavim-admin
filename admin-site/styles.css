@@ -536,3 +536,10 @@ body.dark .ds-report.wait, body.dark .tl-orange { color: #1c2733; }
 .week-grid td.wd-cell.on { background: var(--brand-light); color: var(--brand-dark); font-weight: 700; }
 body.dark .week-grid td.wd-cell.on { background: rgba(77, 130, 196, .18); color: #9ec5f0; }
 body.dark .wd-mini { color: #9ec5f0; }
+.whours { display: flex; flex-direction: column; gap: 6px; max-width: 420px; }
+.whour-row { display: flex; align-items: center; gap: 10px; }
+.whour-row .wday { min-width: 44px; flex-shrink: 0; }
+.whour-times { display: inline-flex; align-items: center; gap: 6px; }
+.whour-times input[type=time] { width: 110px; padding: 6px 8px; }
+.whour-times input:disabled { opacity: .45; }
+.week-grid td.wd-cell.on { font-size: 13px; white-space: nowrap; }
