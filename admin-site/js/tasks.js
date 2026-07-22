@@ -50,6 +50,11 @@
       text: (prefix || '') + text
     });
   }
+  // תגית רגילה (בלי צבע מיוחד) — לתחום
+  function plainChip(text, extra) {
+    if (!text) return null;
+    return U.el('span', { class: 'tag', style: 'font-size:12px;' + (extra || ''), text: text });
+  }
 
   // ---------- סינון לפי יעד: דליים ----------
   function endOfWeekISO() { // שבת של השבוע הנוכחי (א׳–ש׳)
@@ -225,14 +230,14 @@
     setTimeout(fit, 0);
     return a;
   }
-  // תגית צבעונית שנפתחת לעריכה בלחיצה (תחום/אחראי)
-  function chipEdit(t, field, options, ph, prefix) {
+  // תגית שנפתחת לעריכה בלחיצה (תחום/אחראי). colored — צבע לפי השם (לאחראי בלבד)
+  function chipEdit(t, field, options, ph, prefix, colored) {
     var wrap = U.el('span', { style: 'display:inline-block;' });
     function show() {
       U.clear(wrap);
       var val = t[field];
       if (val) {
-        var chip = colorChip(val, prefix, 'cursor:pointer;');
+        var chip = colored ? colorChip(val, prefix, 'cursor:pointer;') : plainChip(val, 'cursor:pointer;');
         chip.title = 'לחיצה לעריכה';
         chip.addEventListener('click', edit);
         wrap.appendChild(chip);
@@ -334,7 +339,7 @@
           U.el('td', { style: 'white-space:nowrap;color:#94a3b8;font-size:12px;', text: t.num || '' }),
           U.el('td', null, chipEdit(t, 'domain', Store.settings().taskDomains || [], 'תחום')),
           descCell,
-          U.el('td', null, chipEdit(t, 'owner', Store.settings().taskOwners || [], 'אחראי', '👤 ')),
+          U.el('td', null, chipEdit(t, 'owner', Store.settings().taskOwners || [], 'אחראי', '👤 ', true)),
           U.el('td', null, selField(t, 'priority', PRIORITIES, false)),
           U.el('td', null, selField(t, 'status', STATUSES, false)),
           U.el('td', { style: 'white-space:nowrap;' }, [dueInput, daysBadge(t) ? U.el('div', { style: 'margin-top:2px;' }, [daysBadge(t)]) : null]),
@@ -370,7 +375,7 @@
         card.addEventListener('dragend', function () { card.classList.remove('kb-drag'); });
         card.appendChild(U.el('div', { style: 'font-weight:600;font-size:14px;margin-bottom:4px;', text: t.desc || '' }));
         var meta = U.el('div', { style: 'display:flex;flex-wrap:wrap;gap:4px;align-items:center;' }, [
-          colorChip(t.domain),
+          plainChip(t.domain),
           colorChip(t.owner, '👤 '),
           daysBadge(t),
           t.kind === 'קבוע' ? U.el('span', { title: 'קבועה · ' + freqLabel(t.freq), text: '🔁', style: 'font-size:12px;' }) : null
