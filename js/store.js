@@ -715,6 +715,14 @@
     var e = empByEmail(currentEmail());
     return e ? e.id : null;
   }
+  // מעלה הקלטת פגישה ל-Storage (bucket 'meeting-audio') ומחזיר את הנתיב
+  function uploadMeetingAudio(file) {
+    if (!sb) return Promise.reject(new Error('נדרשת התחברות לענן'));
+    var ext = (String(file.name || '').split('.').pop() || 'dat').toLowerCase();
+    var path = uid() + '.' + ext;
+    return sb.storage.from('meeting-audio').upload(path, file, { contentType: file.type || 'audio/mpeg', upsert: false })
+      .then(function (res) { if (res.error) throw new Error(res.error.message || 'העלאת ההקלטה נכשלה'); return path; });
+  }
   // מסלול AI: שולח טקסט/הקלטה של פגישה ל-Edge Function (Gemini) ומחזיר טיוטת אירועים
   function meetingToEvents(payload) {
     if (!sb) return Promise.reject(new Error('נדרשת התחברות לענן'));
@@ -1064,6 +1072,7 @@
     upsertEvent: upsertEvent,
     deleteEvent: deleteEvent,
     currentEmpId: currentEmpId,
+    uploadMeetingAudio: uploadMeetingAudio,
     meetingToEvents: meetingToEvents,
     // דיווחי פורטל
     loadSubmissions: loadSubmissions,
