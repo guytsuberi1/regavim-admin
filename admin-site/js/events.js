@@ -529,6 +529,17 @@
       } }
     ]);
   }
+  // חיווי "חשיבה" קבוע בזמן שה-AI מעבד (במקום הודעה חולפת) — מחזיר פונקציית סגירה
+  function openThinking(messages) {
+    var spinner = U.el('div', { style: 'width:46px;height:46px;border:4px solid var(--primary-light,#e8f5e9);border-top-color:var(--primary,#2e7d32);border-radius:50%;animation:spin .8s linear infinite;' });
+    var line = U.el('div', { style: 'font-size:15px;font-weight:600;color:var(--primary-dark,#1b5e20);text-align:center;min-height:20px;', text: messages[0] });
+    var sub = U.el('div', { class: 'muted', style: 'font-size:12px;text-align:center;', text: 'זה עשוי לקחת עד כדקה — אפשר להשאיר את החלון פתוח.' });
+    var body = U.el('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:14px;padding:22px 8px;' }, [spinner, line, sub]);
+    var close = Modal.open('🤖 ה-AI חושב…', body, []);
+    var i = 0;
+    var iv = setInterval(function () { if (i < messages.length - 1) { i++; line.textContent = messages[i]; } }, 5500);
+    return function () { clearInterval(iv); close(); };
+  }
   function openMeetingAI() {
     var mode = 'text';
     var textArea = U.el('textarea', { rows: 8, placeholder: 'הדביקו כאן את סיכום/תמלול הפגישה…', style: 'width:100%;' });
@@ -553,22 +564,23 @@
       { label: 'ביטול', class: 'secondary' },
       { label: 'נתח ובנה טיוטה', onClick: function (close) {
         err.textContent = '';
-        function run(payload) { close(); U.toast('שולח ל-AI… זה עשוי לקחת רגע', 'info');
-          Store.meetingToEvents(payload).then(function (events) {
-            if (!events.length) { U.toast('ה-AI לא זיהה אירועים', 'error'); return; }
-            openDraftReview(events);
-          }).catch(function (e) { U.toast('שגיאה: ' + e.message, 'error'); });
-        }
+        function finish(stop, events) { stop(); if (!events.length) { U.toast('ה-AI לא זיהה אירועים', 'error'); return; } openDraftReview(events); }
         if (mode === 'text') {
           if (!textArea.value.trim()) { err.textContent = 'הדביקו טקסט'; return; }
-          run({ mode: 'text', text: textArea.value.trim(), context: meetingContext() });
+          close();
+          var stopT = openThinking(['קורא את תוכן הפגישה…', 'מזהה אירועים ובונה לו"ז ומשימות…', 'כמעט מוכן…']);
+          Store.meetingToEvents({ mode: 'text', text: textArea.value.trim(), context: meetingContext() })
+            .then(function (events) { finish(stopT, events); })
+            .catch(function (e) { stopT(); U.toast('שגיאה: ' + e.message, 'error'); });
         } else {
           if (!fileInp.files[0]) { err.textContent = 'בחרו קובץ הקלטה'; return; }
           var f = fileInp.files[0];
-          err.textContent = ''; U.toast('מעלה הקלטה…', 'info');
+          close();
+          var stopA = openThinking(['מעלה את ההקלטה…', 'מתמלל את ההקלטה…', 'מזהה אירועים ובונה לו"ז ומשימות…', 'כמעט מוכן…']);
           Store.uploadMeetingAudio(f).then(function (path) {
-            run({ mode: 'audio', bucket: 'meeting-audio', path: path, mimeType: f.type || 'audio/mpeg', context: meetingContext() });
-          }).catch(function (e) { U.toast('העלאה נכשלה: ' + e.message, 'error'); });
+            return Store.meetingToEvents({ mode: 'audio', bucket: 'meeting-audio', path: path, mimeType: f.type || 'audio/mpeg', context: meetingContext() });
+          }).then(function (events) { finish(stopA, events); })
+            .catch(function (e) { stopA(); U.toast('שגיאה: ' + e.message, 'error'); });
         }
       } }
     ]);
