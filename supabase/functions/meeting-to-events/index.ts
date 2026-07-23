@@ -119,6 +119,18 @@ async function callGemini(parts: any[]): Promise<any> {
   return JSON.parse(text);
 }
 
+// סוג MIME תקין ל-Gemini לפי סיומת הקובץ (הדפדפן לעיתים מזהה .mpeg כווידאו)
+function mimeForAudio(path: string, fallback: string): string {
+  const ext = (String(path || "").split(".").pop() || "").toLowerCase();
+  const map: Record<string, string> = {
+    mp3: "audio/mp3", mpeg: "audio/mp3", mpga: "audio/mp3", mp2: "audio/mp3",
+    m4a: "audio/mp4", mp4: "audio/mp4", aac: "audio/aac",
+    ogg: "audio/ogg", oga: "audio/ogg", opus: "audio/ogg",
+    wav: "audio/wav", flac: "audio/flac", aiff: "audio/aiff", aif: "audio/aiff",
+  };
+  return map[ext] || (fallback && fallback.indexOf("audio/") === 0 ? fallback : "audio/mp3");
+}
+
 // שליפת ההקלטה מ-Supabase Storage (בצד השרת, עם לקוח service role — עוקף RLS)
 async function downloadFromStorage(bucket: string, path: string): Promise<Uint8Array> {
   const { data, error } = await supa.storage.from(bucket).download(path);
@@ -157,12 +169,14 @@ async function uploadToGemini(bytes: Uint8Array, mimeType: string): Promise<{ ur
 
   // אודיו עובר עיבוד — ממתינים עד ACTIVE (עד ~60 שניות)
   let state = file.state;
-  for (let i = 0; i < 30 && state !== "ACTIVE"; i++) {
-    if (state === "FAILED") throw new Error("עיבוד האודיו ב-Gemini נכשל");
+  let last: any = file;
+  for (let i = 0; i < 30 && state !== "ACTIVE" && state !== "FAILED"; i++) {
     await new Promise((r) => setTimeout(r, 2000));
     const st = await fetch("https://generativelanguage.googleapis.com/v1beta/" + file.name + "?key=" + GEMINI_KEY);
-    state = (await st.json())?.state;
+    last = await st.json();
+    state = last?.state;
   }
+  if (state === "FAILED") throw new Error("עיבוד האודיו ב-Gemini נכשל: " + JSON.stringify(last?.error || last?.state || ""));
   if (state !== "ACTIVE") throw new Error("האודיו עדיין בעיבוד — נסו שוב בעוד רגע");
   return { uri: file.uri, mimeType: file.mimeType || mimeType };
 }
@@ -186,7 +200,8 @@ Deno.serve(async (req: Request) => {
       if (payload.bucket && payload.path) {
         // מסלול מומלץ להקלטות ארוכות: הורדה מ-Storage → Files API
         const bytes = await downloadFromStorage(payload.bucket, payload.path);
-        const up = await uploadToGemini(bytes, payload.mimeType || "audio/mpeg");
+        const mime = mimeForAudio(payload.path, payload.mimeType || "");
+        const up = await uploadToGemini(bytes, mime);
         parts.push({ file_data: { mime_type: up.mimeType, file_uri: up.uri } });
       } else if (payload.audioBase64) {
         // מסלול inline לקבצים קטנים (≤20MB)
