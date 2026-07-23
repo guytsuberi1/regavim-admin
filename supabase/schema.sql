@@ -33,10 +33,11 @@ drop policy if exists "admin_state auth delete" on public.admin_state;
 create policy "admin_state auth delete" on public.admin_state
   for delete to authenticated using (true);
 
--- הפורטל הפתוח (ללא התחברות) קורא אך ורק את שורת 'portal' — רשימת שמות לבחירה
+-- הפורטל הפתוח (ללא התחברות) קורא: שורת 'portal' (שמות לבחירה) ו-'consent_forms'
+-- (פרטי אירועים פתוחים לחתימת הורים — כותרת/תאריך/יעד/נוסח אישור/רשימות כיתה)
 drop policy if exists "admin_state anon portal" on public.admin_state;
 create policy "admin_state anon portal" on public.admin_state
-  for select to anon using (id = 'portal');
+  for select to anon using (id in ('portal', 'consent_forms'));
 
 -- ============================================================
 -- 2. admin_submissions — דיווחי עובדים מהפורטל (ממתין לאישור של גיא)
@@ -74,6 +75,49 @@ create policy "submissions auth update" on public.admin_submissions
 
 drop policy if exists "submissions auth delete" on public.admin_submissions;
 create policy "submissions auth delete" on public.admin_submissions
+  for delete to authenticated using (true);
+
+-- ============================================================
+-- 2ב. event_consents — אישורי הורים לאירועים (חתימה דיגיטלית מהפורטל הציבורי)
+--     הורה אנונימי: הוספה בלבד (approved=true). קריאה/עריכה/מחיקה — מחוברים בלבד.
+--     כל רשומה כוללת חותמת זמן, צילום נוסח האישור וחתימת אצבע — לצורך הוכחה.
+-- ============================================================
+create table if not exists public.event_consents (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  event_id text not null,
+  event_title text,
+  event_snapshot jsonb,        -- פרטי האירוע + נוסח האישור המדויק בעת החתימה
+  student_name text not null,
+  student_class text,
+  parent_name text not null,
+  parent_phone text,
+  parent_id text,              -- ת"ז (רשות)
+  approved boolean not null default true,
+  signature text,              -- חתימת אצבע כ-data URL (PNG)
+  user_agent text
+);
+
+alter table public.event_consents enable row level security;
+
+drop policy if exists "consents anon insert" on public.event_consents;
+create policy "consents anon insert" on public.event_consents
+  for insert to anon with check (approved = true);
+
+drop policy if exists "consents auth select" on public.event_consents;
+create policy "consents auth select" on public.event_consents
+  for select to authenticated using (true);
+
+drop policy if exists "consents auth insert" on public.event_consents;
+create policy "consents auth insert" on public.event_consents
+  for insert to authenticated with check (true);
+
+drop policy if exists "consents auth update" on public.event_consents;
+create policy "consents auth update" on public.event_consents
+  for update to authenticated using (true);
+
+drop policy if exists "consents auth delete" on public.event_consents;
+create policy "consents auth delete" on public.event_consents
   for delete to authenticated using (true);
 
 -- ============================================================
@@ -122,3 +166,4 @@ create policy "meeting-audio auth delete" on storage.objects
 -- ============================================================
 alter publication supabase_realtime add table public.admin_state;
 alter publication supabase_realtime add table public.admin_submissions;
+alter publication supabase_realtime add table public.event_consents;

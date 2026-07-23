@@ -82,6 +82,13 @@
     ];
   }
 
+  // נוסח ברירת מחדל לאישור הורים (ניתן לעריכה בהגדרות)
+  function defaultConsentText() {
+    return 'אני, ההורה/אפוטרופוס החתום/ה מטה, מאשר/ת את השתתפות בני/בתי בפעילות שבנדון מטעם ישיבת רגבים בנימין. '
+      + 'ידועים לי פרטי הפעילות (מועד, יעד ומסגרת שעות) כמפורט לעיל, ואני נותן/ת את הסכמתי המלאה להשתתפותו/ה, '
+      + 'לרבות הנסיעה אליה וממנה. אני מתחייב/ת ליידע את צוות הישיבה בכל מידע רפואי או רגישות רלוונטיים.';
+  }
+
   function defaultCore() {
     return {
       meta: newMeta(),
@@ -97,7 +104,9 @@
         contractors: defaultContractors(),
         eventRoles: defaultEventRoles(),
         taskCatalog: defaultTaskCatalog(),
-        eventTypes: defaultEventTypes()
+        eventTypes: defaultEventTypes(),
+        classes: [],               // רשימות כיתה: [{ id, name, students:[{id,name}] }] — למעקב אישורי הורים
+        consentText: defaultConsentText()
       },
       // { id, firstName, lastName, phone, email, tz, role:''|'admin'|'secretary',
       //   tags:['מתגבר','מורה',...], active, notes }
@@ -154,6 +163,8 @@
     if (!core.settings.eventRoles || !core.settings.eventRoles.length) core.settings.eventRoles = defaultEventRoles();
     if (!core.settings.taskCatalog || !core.settings.taskCatalog.length) core.settings.taskCatalog = defaultTaskCatalog();
     if (!core.settings.eventTypes || !core.settings.eventTypes.length) core.settings.eventTypes = defaultEventTypes();
+    if (!Array.isArray(core.settings.classes)) core.settings.classes = [];
+    if (!core.settings.consentText) core.settings.consentText = defaultConsentText();
     return core;
   }
 
@@ -212,6 +223,7 @@
   var SB_KEY = 'sb_publishable_LoALeRJVUqiyBwWhCF_0qQ_RpLwS4ew';
   var TABLE = 'admin_state';
   var SUB_TABLE = 'admin_submissions';
+  var CONSENT_TABLE = 'event_consents';
   var BUCKET = 'admin-approvals';
   // ?local=1 — מצב פיתוח מקומי בלבד (בלי ענן, הרשאת מנהל מלאה)
   var LOCAL_DEV = /[?&]local=1/.test(String(location.search));
@@ -839,6 +851,48 @@
     });
   }
 
+  // ---------- רשימות כיתה (למעקב אישורי הורים) ----------
+  function classesAll() { return (data.core.settings.classes || []).slice(); }
+  function classByName(name) {
+    return (data.core.settings.classes || []).filter(function (c) { return c.name === name; })[0] || null;
+  }
+  function saveClasses() { save('core'); }
+
+  // ---------- אישורי הורים (פורטל ציבורי) ----------
+  // publishConsentForm — כותב לשורת 'consent_forms' (אנונימית-לקריאה) את פרטי הטופס הפתוח
+  function publishConsentForm(form) {
+    if (!sb) return Promise.reject(new Error('נדרשת התחברות לענן'));
+    return sb.from(TABLE).select('data').eq('id', 'consent_forms').maybeSingle().then(function (res) {
+      var cur = (res.data && res.data.data && res.data.data.forms) || {};
+      cur[form.eventId] = form;
+      return sb.from(TABLE).upsert({ id: 'consent_forms', data: { forms: cur, updatedAt: nowISO() }, updated_at: nowISO() });
+    }).then(function (res) { if (res && res.error) throw res.error; return true; });
+  }
+  function closeConsentForm(eventId) {
+    if (!sb) return Promise.reject(new Error('נדרשת התחברות לענן'));
+    return sb.from(TABLE).select('data').eq('id', 'consent_forms').maybeSingle().then(function (res) {
+      var cur = (res.data && res.data.data && res.data.data.forms) || {};
+      if (cur[eventId]) cur[eventId].open = false;
+      return sb.from(TABLE).upsert({ id: 'consent_forms', data: { forms: cur, updatedAt: nowISO() }, updated_at: nowISO() });
+    }).then(function (res) { if (res && res.error) throw res.error; return true; });
+  }
+  // fetchConsents — כל אישורי ההורים (מחוברים בלבד); ניתן לסנן לפי אירוע
+  function fetchConsents(eventId) {
+    if (!sb) return Promise.resolve([]);
+    var q = sb.from(CONSENT_TABLE).select('*').order('created_at', { ascending: true });
+    if (eventId) q = q.eq('event_id', eventId);
+    return q.then(function (res) {
+      if (res.error) { console.error('fetchConsents', res.error); return []; }
+      return res.data || [];
+    });
+  }
+  function deleteConsent(id) {
+    if (!sb) return Promise.reject(new Error('אין חיבור לענן'));
+    return sb.from(CONSENT_TABLE).delete().eq('id', id).then(function (res) {
+      if (res.error) throw res.error; return true;
+    });
+  }
+
   // ---------- גיבוי/שחזור ----------
   function exportJSON() {
     var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -1082,6 +1136,14 @@
     currentEmpId: currentEmpId,
     uploadMeetingAudio: uploadMeetingAudio,
     meetingToEvents: meetingToEvents,
+    // רשימות כיתה ואישורי הורים
+    classesAll: classesAll,
+    classByName: classByName,
+    saveClasses: saveClasses,
+    publishConsentForm: publishConsentForm,
+    closeConsentForm: closeConsentForm,
+    fetchConsents: fetchConsents,
+    deleteConsent: deleteConsent,
     // דיווחי פורטל
     loadSubmissions: loadSubmissions,
     submissions: submissions,
