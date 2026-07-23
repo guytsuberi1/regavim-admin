@@ -16,7 +16,7 @@
 
 ### 3. להגדיר את המפתח כסוד בשרת (לא נכנס לקוד!)
 ```bash
-supabase secrets set GEMINI_API_KEY=AIza...המפתח-שלך
+supabase secrets set GEMINI_KEY_ADMIN=AIza...המפתח-שלך
 # אופציונלי — לשנות דגם בלי לגעת בקוד:
 # supabase secrets set GEMINI_MODEL=gemini-2.0-flash
 ```

@@ -9,7 +9,8 @@
 //
 // אבטחה: Supabase מאמת JWT אוטומטית (verify_jwt), כך שרק משתמש מחובר יכול לקרוא.
 
-const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY") || "";
+// מפתח ייעודי לאפליקציה הזו (נפרד מסודות של אפליקציות אחרות באותו פרויקט)
+const GEMINI_KEY = Deno.env.get("GEMINI_KEY_ADMIN") || "";
 // ניתן לשנות דגם בלי לגעת בקוד: supabase secrets set GEMINI_MODEL=gemini-2.0-flash
 const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-2.0-flash";
 // מוזרקים אוטומטית ע"י Supabase — לשליפת ההקלטה מ-Storage בצד השרת
@@ -170,7 +171,7 @@ Deno.serve(async (req: Request) => {
     new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
 
   if (req.method !== "POST") return reply({ error: "POST only" }, 405);
-  if (!GEMINI_KEY) return reply({ error: "GEMINI_API_KEY לא מוגדר בשרת" }, 500);
+  if (!GEMINI_KEY) return reply({ error: "GEMINI_KEY_ADMIN לא מוגדר בשרת" }, 500);
 
   let payload: any;
   try { payload = await req.json(); } catch { return reply({ error: "גוף הבקשה אינו JSON" }, 400); }
