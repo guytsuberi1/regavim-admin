@@ -567,16 +567,17 @@
       return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0);
     });
 
+    var menuItems = [{ icon: '🎙️', label: 'יצירה מפגישה (AI)', onClick: openMeetingAI }];
+    if (events.length) {
+      menuItems.push({ icon: '📋', label: 'סיכום שבועי לפי אחראי', onClick: function () { copyText(summaryByOwnerText(upcomingEvents(), 'השבוע', true), 'הסיכום השבועי הועתק — הדביקו בקבוצה'); } });
+      menuItems.push({ icon: '📤', label: 'שליחה שבועית אישית', onClick: function () { openDispatch(upcomingEvents(), 'השבוע', true); } });
+    }
     var head = U.el('div', { class: 'page-head' }, [
       U.el('h2', { text: '🗓️ תכנון אירועים וטיולים' }),
       U.el('span', { class: 'spacer' }),
-      events.length ? U.el('button', { class: 'btn secondary', text: '📋 סיכום שבועי', title: 'סיכום כל המשימות הפתוחות מהאירועים הקרובים — להעתקה לקבוצה',
-        onclick: function () { copyText(summaryByOwnerText(upcomingEvents(), 'השבוע', true), 'הסיכום השבועי הועתק — הדביקו בקבוצה'); } }) : null,
-      events.length ? U.el('button', { class: 'btn secondary', text: '📤 שליחה שבועית', title: 'שליחה אישית לכל אחראי של משימותיו השבועיות',
-        onclick: function () { openDispatch(upcomingEvents(), 'השבוע', true); } }) : null,
-      U.el('button', { class: 'btn secondary', text: '🎙️ מפגישה (AI)', title: 'יצירת אירועים אוטומטית מטקסט/הקלטה של הפגישה', onclick: openMeetingAI }),
-      U.el('button', { class: 'btn', text: '➕ אירוע חדש', onclick: openNewEvent })
-    ].filter(Boolean));
+      U.el('button', { class: 'btn', text: '➕ אירוע חדש', onclick: openNewEvent }),
+      U.actionMenu(menuItems)
+    ]);
     view.appendChild(head);
 
     if (events.length) {
