@@ -464,6 +464,105 @@
     ]);
   }
 
+  // ---------- מסלול AI: יצירת אירועים מפגישה ----------
+  function draftToEvent(d) {
+    var t = eventTypes().filter(function (x) { return x.label === d.typeLabel; })[0];
+    var typeId = t ? t.id : ((eventTypes()[0] && eventTypes()[0].id) || '');
+    var tasks = (d.tasks || []).map(function (tk) {
+      return { id: Store.uid(), title: tk.title || '', role: tk.role || '', empId: roleEmpId(tk.role || ''), status: 'פתוח', note: '' };
+    });
+    var schedule = (d.schedule || []).map(function (s) {
+      return { id: Store.uid(), time: s.time || '', activity: s.activity || '', note: s.note || '' };
+    });
+    return { type: typeId, title: d.title || 'אירוע', group: d.group || '', date: d.date || '', startTime: d.startTime || '', endTime: d.endTime || '', location: d.location || '', status: 'בתכנון', schedule: schedule, tasks: tasks, notes: '' };
+  }
+  function base64FromFile(file) {
+    return new Promise(function (resolve, reject) {
+      var r = new FileReader();
+      r.onload = function () { var s = String(r.result || ''); var i = s.indexOf(','); resolve(i >= 0 ? s.slice(i + 1) : s); };
+      r.onerror = function () { reject(new Error('קריאת הקובץ נכשלה')); };
+      r.readAsDataURL(file);
+    });
+  }
+  function meetingContext() {
+    return {
+      eventTypes: eventTypes().map(function (t) { return t.label; }),
+      roles: eventRoles().map(function (r) { return r.name; }),
+      taskCatalog: taskCatalog().map(function (c) { return c.title; }),
+      today: U.todayISO()
+    };
+  }
+  function openDraftReview(drafts) {
+    var rows = drafts.map(function (d) {
+      var cb = U.el('input', { type: 'checkbox', checked: true });
+      var meta = [d.typeLabel, d.date || 'ללא תאריך', d.group].filter(Boolean).join(' · ');
+      var node = U.el('label', { style: 'display:flex;gap:8px;align-items:flex-start;padding:8px;border:1px solid var(--border,#d6dce1);border-radius:8px;margin-bottom:8px;cursor:pointer;' }, [
+        cb,
+        U.el('div', null, [
+          U.el('div', { style: 'font-weight:600;', text: d.title || 'אירוע' }),
+          U.el('div', { class: 'muted', style: 'font-size:12px;', text: meta }),
+          U.el('div', { class: 'muted', style: 'font-size:12px;', text: '🗒️ ' + (d.schedule || []).length + ' שורות לו"ז · ✅ ' + (d.tasks || []).length + ' משימות' })
+        ])
+      ]);
+      return { cb: cb, d: d, node: node };
+    });
+    var body = U.el('div', null, [
+      U.el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:10px;', text: 'סמנו אילו אירועים ליצור. אפשר לערוך כל אחד אחרי היצירה בכרטיס.' })
+    ].concat(rows.map(function (r) { return r.node; })));
+    Modal.open('📋 טיוטת אירועים (' + drafts.length + ')', body, [
+      { label: 'ביטול', class: 'secondary' },
+      { label: 'צור נבחרים', onClick: function (close) {
+        var chosen = rows.filter(function (r) { return r.cb.checked; });
+        if (!chosen.length) { U.toast('לא נבחרו אירועים', 'error'); return; }
+        chosen.forEach(function (r) { Store.upsertEvent(draftToEvent(r.d)); });
+        close(); focusNew = true; App.render();
+        U.toast(chosen.length + ' אירועים נוצרו כטיוטה — עברו ואשרו', 'success');
+      } }
+    ]);
+  }
+  function openMeetingAI() {
+    var mode = 'text';
+    var textArea = U.el('textarea', { rows: 8, placeholder: 'הדביקו כאן את סיכום/תמלול הפגישה…', style: 'width:100%;' });
+    var fileInp = U.el('input', { type: 'file', accept: 'audio/*' });
+    var textWrap = U.el('div', null, [textArea]);
+    var audioWrap = U.el('div', { style: 'display:none;' }, [
+      U.el('div', { class: 'muted', style: 'font-size:12px;margin-bottom:6px;', text: 'העלו קובץ הקלטה (עד ~20MB). עברית נתמכת.' }),
+      fileInp
+    ]);
+    var btnText = U.el('button', { class: 'active', text: '📝 הדבקת טקסט' });
+    var btnAudio = U.el('button', { text: '🎙️ הקלטה' });
+    btnText.addEventListener('click', function () { mode = 'text'; textWrap.style.display = ''; audioWrap.style.display = 'none'; btnText.classList.add('active'); btnAudio.classList.remove('active'); });
+    btnAudio.addEventListener('click', function () { mode = 'audio'; textWrap.style.display = 'none'; audioWrap.style.display = ''; btnAudio.classList.add('active'); btnText.classList.remove('active'); });
+    var err = U.el('div', { class: 'field-err' });
+    var body = U.el('div', null, [
+      U.el('div', { class: 'muted', style: 'font-size:12px;margin-bottom:8px;', text: 'ה-AI יבנה טיוטת אירועים (לו"ז + משימות) שתעברו ותאשרו לפני יצירה. פיילוט על Gemini.' }),
+      U.el('div', { class: 'subtabs', style: 'margin-bottom:10px;' }, [btnText, btnAudio]),
+      textWrap, audioWrap, err
+    ]);
+    Modal.open('🎙️ יצירת אירועים מפגישה (AI)', body, [
+      { label: 'ביטול', class: 'secondary' },
+      { label: 'נתח ובנה טיוטה', onClick: function (close) {
+        err.textContent = '';
+        function run(payload) { close(); U.toast('שולח ל-AI… זה עשוי לקחת רגע', 'info');
+          Store.meetingToEvents(payload).then(function (events) {
+            if (!events.length) { U.toast('ה-AI לא זיהה אירועים', 'error'); return; }
+            openDraftReview(events);
+          }).catch(function (e) { U.toast('שגיאה: ' + e.message, 'error'); });
+        }
+        if (mode === 'text') {
+          if (!textArea.value.trim()) { err.textContent = 'הדביקו טקסט'; return; }
+          run({ mode: 'text', text: textArea.value.trim(), context: meetingContext() });
+        } else {
+          if (!fileInp.files[0]) { err.textContent = 'בחרו קובץ הקלטה'; return; }
+          var f = fileInp.files[0];
+          base64FromFile(f).then(function (b64) {
+            run({ mode: 'audio', audioBase64: b64, mimeType: f.type || 'audio/mpeg', context: meetingContext() });
+          }).catch(function (e) { err.textContent = e.message; });
+        }
+      } }
+    ]);
+  }
+
   // ---------- רינדור ----------
   function upcomingEvents() {
     var today = U.todayISO();
@@ -482,6 +581,7 @@
         onclick: function () { copyText(summaryByOwnerText(upcomingEvents(), 'השבוע', true), 'הסיכום השבועי הועתק — הדביקו בקבוצה'); } }) : null,
       events.length ? U.el('button', { class: 'btn secondary', text: '📤 שליחה שבועית', title: 'שליחה אישית לכל אחראי של משימותיו השבועיות',
         onclick: function () { openDispatch(upcomingEvents(), 'השבוע', true); } }) : null,
+      U.el('button', { class: 'btn secondary', text: '🎙️ מפגישה (AI)', title: 'יצירת אירועים אוטומטית מטקסט/הקלטה של הפגישה', onclick: openMeetingAI }),
       U.el('button', { class: 'btn', text: '➕ אירוע חדש', onclick: openNewEvent })
     ].filter(Boolean));
     view.appendChild(head);

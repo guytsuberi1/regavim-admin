@@ -715,6 +715,15 @@
     var e = empByEmail(currentEmail());
     return e ? e.id : null;
   }
+  // מסלול AI: שולח טקסט/הקלטה של פגישה ל-Edge Function (Gemini) ומחזיר טיוטת אירועים
+  function meetingToEvents(payload) {
+    if (!sb) return Promise.reject(new Error('נדרשת התחברות לענן'));
+    return sb.functions.invoke('meeting-to-events', { body: payload }).then(function (res) {
+      if (res.error) throw new Error(res.error.message || 'שגיאה מהשרת');
+      if (res.data && res.data.error) throw new Error(res.data.error);
+      return (res.data && res.data.events) || [];
+    });
+  }
 
   // ימים עד תאריך היעד (שלילי = באיחור); null אם אין תאריך
   function daysToDue(iso) {
@@ -1055,6 +1064,7 @@
     upsertEvent: upsertEvent,
     deleteEvent: deleteEvent,
     currentEmpId: currentEmpId,
+    meetingToEvents: meetingToEvents,
     // דיווחי פורטל
     loadSubmissions: loadSubmissions,
     submissions: submissions,
