@@ -429,7 +429,7 @@
 
     // פלטים
     var outputs = U.el('div', { class: 'no-print', style: 'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;padding-top:10px;border-top:1px dashed var(--border,#d6dce1);' }, [
-      U.el('button', { class: 'btn secondary', html: U.WA_SVG + ' העתק לו"ז', onclick: function () { copyText(buildLozText(ev), 'הלו"ז הועתק — הדביקו בוואטסאפ'); } }),
+      U.el('a', { class: 'btn secondary', href: 'https://wa.me/?text=' + encodeURIComponent(buildLozText(ev)), target: '_blank', rel: 'noopener', html: U.WA_SVG + ' שלח לו"ז בוואטסאפ' }),
       U.el('button', { class: 'btn secondary', text: '🖨️ הדפס לו"ז', onclick: function () { printLoz(ev); } }),
       U.el('button', { class: 'btn secondary', text: '📄 אישור הורים', onclick: function () { printParents(ev); } }),
       U.el('a', { class: 'btn secondary', href: gcalUrl(ev), target: '_blank', rel: 'noopener', text: '📅 הוסף ליומן Google' }),
