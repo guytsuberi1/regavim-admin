@@ -515,7 +515,8 @@
   function openMeetingAI() {
     var mode = 'text';
     var textArea = U.el('textarea', { rows: 8, placeholder: 'הדביקו כאן את סיכום/תמלול הפגישה…', style: 'width:100%;' });
-    var fileInp = U.el('input', { type: 'file', accept: 'audio/*' });
+    // ללא accept — קובצי אודיו של וואטסאפ (.mpeg) מסוננים בטעות ע"י מסנן האודיו של הדפדפן
+    var fileInp = U.el('input', { type: 'file' });
     var textWrap = U.el('div', null, [textArea]);
     var audioWrap = U.el('div', { style: 'display:none;' }, [
       U.el('div', { class: 'muted', style: 'font-size:12px;margin-bottom:6px;', text: 'העלו קובץ הקלטה — גם ארוך (חצי שעה ומעלה). עברית נתמכת.' }),
