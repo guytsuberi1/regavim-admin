@@ -291,6 +291,163 @@
     openDoc('אישור הורים — ' + (ev.title || 'אירוע'), body);
   }
 
+  // ---------- אישורי הורים (חתימה דיגיטלית) ----------
+  function norm(s) { return String(s == null ? '' : s).trim(); }
+  function matchClassName(group, classes) {
+    group = norm(group); if (!group) return '';
+    var exact = classes.filter(function (c) { return c.name === group; })[0];
+    if (exact) return exact.name;
+    var part = classes.filter(function (c) { return c.name && group.indexOf(c.name) !== -1; })[0];
+    return part ? part.name : '';
+  }
+  function buildConsentForm(ev) {
+    var classes = Store.classesAll().map(function (c) {
+      return { name: c.name, students: (c.students || []).map(function (s) { return s.name; }) };
+    });
+    return {
+      eventId: ev.id, title: ev.title || 'אירוע',
+      date: ev.date || '', dateLabel: ev.date ? fmtDateLine(ev.date) : '',
+      startTime: ev.startTime || '', endTime: ev.endTime || '',
+      location: ev.location || '', group: ev.group || '',
+      permission: Store.settings().consentText || '',
+      classes: classes,
+      defaultClass: matchClassName(ev.group, Store.classesAll()),
+      open: true, updatedAt: (new Date()).toISOString()
+    };
+  }
+  function consentUrl(ev) {
+    var dir = location.pathname.replace(/[^/]*$/, '');
+    return location.origin + dir + 'consent.html?ev=' + encodeURIComponent(ev.id);
+  }
+  function publishAndSend(ev) {
+    var w = global.open('', '_blank'); // נפתח בתוך מחוות הלחיצה כדי לעקוף חוסם חלונות
+    if (w) { try { w.document.write('טוען…'); } catch (e) {} }
+    U.toast('מפרסם טופס…', 'info');
+    Store.publishConsentForm(buildConsentForm(ev)).then(function () {
+      var link = consentUrl(ev);
+      var msg = 'הורים יקרים, לאישור השתתפות ' + (ev.title || 'האירוע')
+        + (ev.date ? ' (' + fmtDateLine(ev.date) + ')' : '') + ' נא למלא ולחתום כאן:\n' + link;
+      var wa = 'https://wa.me/?text=' + encodeURIComponent(msg);
+      if (w) w.location = wa; else global.open(wa, '_blank', 'noopener');
+    }).catch(function (e) { if (w) w.close(); U.toast('פרסום נכשל: ' + e.message, 'error'); });
+  }
+  function printConsents(ev, rows, missing, clsName) {
+    var signedRows = rows.map(function (r) {
+      var t = r.created_at ? new Date(r.created_at).toLocaleString('he-IL') : '';
+      return '<tr><td>' + esc(r.student_name || '') + '</td><td>' + esc(r.student_class || '') + '</td><td>'
+        + esc(r.parent_name || '') + '</td><td>' + esc(r.parent_phone || '') + '</td><td>' + esc(r.parent_id || '')
+        + '</td><td>' + esc(t) + '</td></tr>';
+    }).join('');
+    var missHtml = (missing && missing.length)
+      ? '<h2>טרם חתמו' + (clsName ? ' — כיתה ' + esc(clsName) : '') + ' (' + missing.length + ')</h2><table><tbody>'
+        + missing.map(function (n) { return '<tr><td>' + esc(n) + '</td></tr>'; }).join('') + '</tbody></table>'
+      : '';
+    var body = '<section class="page"><h1>אישורי הורים — ' + esc(ev.title || 'אירוע') + '</h1>'
+      + '<div class="meta">' + esc(Store.settings().orgName || '') + '</div>'
+      + metaLine('תאריך', ev.date ? fmtDateLine(ev.date) : '') + metaLine('יעד', ev.location)
+      + '<h2>חתמו (' + rows.length + ')</h2>'
+      + '<table><thead><tr><th>תלמיד/ה</th><th>כיתה</th><th>הורה</th><th>טלפון</th><th>ת"ז</th><th>מועד חתימה</th></tr></thead><tbody>'
+      + (signedRows || '<tr><td colspan="6">אין</td></tr>') + '</tbody></table>'
+      + missHtml + '</section>';
+    openDoc('אישורי הורים — ' + (ev.title || 'אירוע'), body);
+  }
+  function printOneConsent(r) {
+    var snap = r.event_snapshot || {};
+    var t = r.created_at ? new Date(r.created_at).toLocaleString('he-IL') : '';
+    var body = '<section class="page"><h1>אישור הורים</h1>'
+      + '<div class="meta">' + esc(Store.settings().orgName || 'ישיבת רגבים בנימין') + '</div>'
+      + '<h2>' + esc(snap.title || r.event_title || '') + '</h2>'
+      + metaLine('תאריך', snap.dateLabel) + metaLine('שעות', (snap.startTime || '') + (snap.endTime ? '–' + snap.endTime : ''))
+      + metaLine('יעד', snap.location) + metaLine('קבוצה', snap.group)
+      + '<h2>הצהרה</h2><p style="font-size:14px;line-height:1.8;">' + esc(snap.permission || '') + '</p>'
+      + '<table><tbody>'
+      + '<tr><td style="width:140px;">שם התלמיד/ה</td><td>' + esc(r.student_name || '') + '</td><td style="width:70px;">כיתה</td><td>' + esc(r.student_class || '') + '</td></tr>'
+      + '<tr><td>שם ההורה</td><td>' + esc(r.parent_name || '') + '</td><td>ת"ז</td><td>' + esc(r.parent_id || '') + '</td></tr>'
+      + '<tr><td>טלפון</td><td>' + esc(r.parent_phone || '') + '</td><td>מועד חתימה</td><td>' + esc(t) + '</td></tr>'
+      + '</tbody></table>'
+      + '<h2>חתימת ההורה</h2>'
+      + (r.signature ? '<img src="' + r.signature + '" alt="חתימה" style="max-width:320px;border:1px solid #ccc;border-radius:8px;"/>' : '<div class="muted">אין חתימה</div>')
+      + '<p class="muted" style="margin-top:10px;">אישור זה נחתם דיגיטלית דרך פורטל ההורים של הישיבה, כולל חותמת זמן.</p>'
+      + '</section>';
+    openDoc('אישור — ' + (r.student_name || ''), body);
+  }
+  function consentControls(ev) {
+    return U.el('div', { class: 'no-print', style: 'display:flex;gap:6px;flex-wrap:wrap;' }, [
+      U.el('button', { class: 'btn', html: U.WA_SVG + ' שלח אישור הורים בוואטסאפ', onclick: function () { publishAndSend(ev); } }),
+      U.el('button', { class: 'btn secondary', text: '🔗 העתק קישור', onclick: function () {
+        Store.publishConsentForm(buildConsentForm(ev)).then(function () { copyText(consentUrl(ev), 'הקישור לחתימה הועתק'); })
+          .catch(function (e) { U.toast('פרסום נכשל: ' + e.message, 'error'); });
+      } }),
+      U.el('button', { class: 'btn secondary', text: '📄 טופס נייר', onclick: function () { printParents(ev); } })
+    ]);
+  }
+  function renderTracking(ev, box, rows) {
+    U.clear(box);
+    var classes = Store.classesAll();
+    var clsSel = U.el('select', { style: 'font-size:13px;min-width:130px;' },
+      [U.el('option', { value: '', text: '— כיתה למעקב חוסרים —' })].concat(classes.map(function (c) { return U.el('option', { value: c.name, text: c.name }); })));
+    var chosen = ev.consentClass || matchClassName(ev.group, classes) || '';
+    clsSel.value = chosen;
+    clsSel.addEventListener('change', function () { ev.consentClass = clsSel.value; saveEv(ev); App.render(); });
+
+    var signedSet = {};
+    rows.forEach(function (r) { signedSet[norm(r.student_name)] = true; });
+    var missing = [];
+    if (chosen) {
+      var c = classes.filter(function (x) { return x.name === chosen; })[0];
+      ((c && c.students) || []).forEach(function (s) { if (!signedSet[norm(s.name)]) missing.push(s.name); });
+    }
+
+    box.appendChild(U.el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;' }, [
+      U.el('span', { class: 'tag', text: '✔ חתמו: ' + rows.length }),
+      chosen ? U.el('span', { class: 'tag', style: 'background:#fff3e0;border-color:#f9a825;color:#8a5a00;', text: '⏳ חסרים: ' + missing.length }) : null,
+      U.el('span', { class: 'spacer' }),
+      clsSel,
+      U.el('button', { class: 'btn secondary small', text: '🖨️ הדפס/ייצא', onclick: function () { printConsents(ev, rows, missing, chosen); } })
+    ].filter(Boolean)));
+
+    if (rows.length) {
+      var tb = U.el('tbody', null, rows.map(function (r) {
+        var t = r.created_at ? new Date(r.created_at).toLocaleDateString('he-IL') : '';
+        return U.el('tr', null, [
+          U.el('td', { text: r.student_name || '' }),
+          U.el('td', { text: r.student_class || '' }),
+          U.el('td', { text: r.parent_name || '' }),
+          U.el('td', { text: t }),
+          U.el('td', null, [U.el('button', { class: 'btn secondary small', text: '📄', title: 'הצג/הדפס אישור', onclick: function () { printOneConsent(r); } })])
+        ]);
+      }));
+      box.appendChild(U.el('div', { class: 'tbl-scroll' }, [U.el('table', { class: 'grid' }, [
+        U.el('thead', null, U.el('tr', null, ['תלמיד/ה', 'כיתה', 'הורה', 'תאריך', ''].map(function (h) { return U.el('th', { text: h }); }))),
+        tb
+      ])]));
+    } else {
+      box.appendChild(U.el('div', { class: 'muted', style: 'font-size:12px;', text: 'עדיין אין אישורים. שלחו את הקישור בוואטסאפ.' }));
+    }
+
+    if (chosen && missing.length) {
+      box.appendChild(U.el('div', { style: 'margin-top:8px;font-size:13px;' }, [
+        U.el('span', { class: 'muted', text: 'טרם חתמו (' + chosen + '): ' }),
+        U.el('span', { text: missing.join(', ') })
+      ]));
+    }
+  }
+  function consentSection(ev) {
+    var open = !!collapsedMap['consentOpen:' + ev.id];
+    var wrap = U.el('div', { class: 'no-print', style: 'margin-top:12px;' });
+    wrap.appendChild(U.el('button', { class: 'btn secondary', style: 'margin:2px 0;',
+      onclick: function () { collapsedMap['consentOpen:' + ev.id] = !open; saveCollapsed(); App.render(); } },
+      (open ? '▾' : '▸') + ' 🖊️ אישורי הורים'));
+    if (open) {
+      wrap.appendChild(consentControls(ev));
+      var trackBox = U.el('div', { style: 'margin-top:8px;' }, [U.el('div', { class: 'muted', style: 'font-size:12px;', text: 'טוען אישורים…' })]);
+      wrap.appendChild(trackBox);
+      Store.fetchConsents(ev.id).then(function (rows) { renderTracking(ev, trackBox, rows); })
+        .catch(function () { U.clear(trackBox); trackBox.appendChild(U.el('div', { class: 'muted', style: 'font-size:12px;', text: 'לא ניתן לטעון אישורים (נדרש חיבור לענן).' })); });
+    }
+    return wrap;
+  }
+
   // ---------- תפוצת משימות ----------
   function collectTasks(events, openOnly) {
     var out = [];
@@ -423,6 +580,9 @@
       (cTasks ? '▸' : '▾') + ' ✅ משימות (' + doneN + '/' + (ev.tasks || []).length + ')'));
     if (!cTasks) card.appendChild(tasksTable(ev));
 
+    // אישורי הורים — חתימה דיגיטלית + מעקב
+    card.appendChild(consentSection(ev));
+
     // הערות
     var notes = eText(ev, ev, 'notes', '📝 הערות לאירוע…', 'width:100%;font-size:13px;color:var(--muted,#6b7884);margin-top:10px;');
     card.appendChild(U.el('div', { style: 'margin:8px 0;' }, [notes]));
@@ -431,7 +591,6 @@
     var outputs = U.el('div', { class: 'no-print', style: 'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;padding-top:10px;border-top:1px dashed var(--border,#d6dce1);' }, [
       U.el('a', { class: 'btn secondary', href: 'https://wa.me/?text=' + encodeURIComponent(buildLozText(ev)), target: '_blank', rel: 'noopener', html: U.WA_SVG + ' שלח לו"ז בוואטסאפ' }),
       U.el('button', { class: 'btn secondary', text: '🖨️ הדפס לו"ז', onclick: function () { printLoz(ev); } }),
-      U.el('button', { class: 'btn secondary', text: '📄 אישור הורים', onclick: function () { printParents(ev); } }),
       U.el('a', { class: 'btn secondary', href: gcalUrl(ev), target: '_blank', rel: 'noopener', text: '📅 הוסף ליומן Google' }),
       U.el('button', { class: 'btn secondary', text: '📋 סיכום לפי אחראי', onclick: function () { copyText(summaryByOwnerText([ev], ev.title, false), 'הסיכום הועתק — הדביקו בקבוצה'); } }),
       U.el('button', { class: 'btn secondary', text: '📤 שליחה אישית', onclick: function () { openDispatch([ev], ev.title, false); } })

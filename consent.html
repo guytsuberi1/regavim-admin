@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>אישור הורים — ישיבת רגבים בנימין</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📄</text></svg>" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Rubik", "Segoe UI", Arial, sans-serif;
+      margin: 0; background: #f1f5f9; color: #0f172a;
+      min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    }
+    .wrap { width: 100%; max-width: 480px; padding: 18px 14px 40px; }
+    .head { text-align: center; margin: 10px 0 16px; }
+    .head .logo { font-size: 42px; }
+    .head h1 { margin: 4px 0 2px; font-size: 22px; }
+    .head .sub { color: #64748b; font-size: 14px; }
+    .card { background: #fff; border-radius: 14px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 12px; }
+    .card h2 { margin: 0 0 8px; font-size: 17px; color: #166534; }
+    .detail { display: flex; gap: 8px; font-size: 15px; margin: 3px 0; }
+    .detail .k { color: #64748b; min-width: 66px; }
+    .permit { font-size: 14px; line-height: 1.6; color: #334155; white-space: pre-line; }
+    label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 4px; }
+    label .opt { color: #94a3b8; font-weight: 400; }
+    input, select, textarea {
+      width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 10px;
+      font-size: 16px; font-family: inherit; background: #fff;
+    }
+    input:focus, select:focus { outline: 2px solid #16a34a33; border-color: #16a34a; }
+    .row2 { display: flex; gap: 8px; } .row2 > div { flex: 1; }
+    .sig-wrap { border: 2px dashed #cbd5e1; border-radius: 12px; background: #fafafa; touch-action: none; }
+    canvas { display: block; width: 100%; height: 170px; border-radius: 12px; }
+    .sig-tools { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+    .sig-tools .hint { color: #94a3b8; font-size: 12px; }
+    .link-btn { background: none; border: none; color: #2563eb; font-size: 13px; cursor: pointer; font-family: inherit; padding: 4px; }
+    .approve { display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; font-size: 15px; line-height: 1.5; }
+    .approve input { width: 22px; height: 22px; flex: 0 0 auto; margin-top: 1px; }
+    .btn {
+      width: 100%; margin-top: 16px; padding: 13px; border: none; border-radius: 12px;
+      background: #16a34a; color: #fff; font-size: 17px; font-weight: 600; font-family: inherit; cursor: pointer;
+    }
+    .btn:disabled { opacity: .6; }
+    .err { color: #dc2626; font-size: 14px; min-height: 18px; margin-top: 8px; text-align: center; }
+    .success { text-align: center; padding: 34px 10px; }
+    .success .big { font-size: 60px; }
+    .success h2 { margin: 8px 0 4px; color: #166534; }
+    .success p { color: #64748b; }
+    .loading, .unavailable { text-align: center; color: #64748b; padding: 46px 12px; font-size: 15px; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <div class="logo">📄</div>
+      <h1>אישור הורים</h1>
+      <div class="sub">ישיבת רגבים בנימין</div>
+    </div>
+
+    <div id="loading" class="loading">טוען…</div>
+    <div id="unavailable" class="unavailable hidden">הטופס אינו זמין או שנסגר. פנו למזכירות הישיבה.</div>
+
+    <form id="form" class="hidden" autocomplete="off">
+      <div class="card">
+        <h2 id="evTitle">אירוע</h2>
+        <div id="evDetails"></div>
+      </div>
+
+      <div class="card">
+        <div class="permit" id="permitText"></div>
+      </div>
+
+      <div class="card">
+        <div id="studentPick">
+          <label>כיתה</label>
+          <select id="classSel"></select>
+          <label>שם התלמיד/ה</label>
+          <select id="studentSel"></select>
+          <input id="studentFree" class="hidden" placeholder="שם התלמיד/ה המלא" style="margin-top:6px" />
+        </div>
+
+        <label>שם ההורה/אפוטרופוס</label>
+        <input id="parentName" placeholder="שם מלא" />
+
+        <div class="row2">
+          <div><label>טלפון</label><input id="parentPhone" inputmode="tel" placeholder="נייד" /></div>
+          <div><label>ת"ז <span class="opt">(רשות)</span></label><input id="parentId" inputmode="numeric" placeholder="מספר ת״ז" /></div>
+        </div>
+
+        <label>חתימה</label>
+        <div class="sig-wrap"><canvas id="sig"></canvas></div>
+        <div class="sig-tools">
+          <span class="hint">חתמו באצבע בתוך המסגרת</span>
+          <button type="button" class="link-btn" id="clearSig">נקה חתימה</button>
+        </div>
+
+        <label class="approve">
+          <input type="checkbox" id="approve" />
+          <span>אני מאשר/ת את השתתפות בני/בתי כמפורט למעלה, וחתימתי מטה מהווה הסכמה.</span>
+        </label>
+      </div>
+
+      <div class="err" id="err"></div>
+      <button type="submit" class="btn" id="sendBtn">שליחת האישור</button>
+    </form>
+
+    <div id="success" class="success hidden">
+      <div class="big">✅</div>
+      <h2>האישור נשלח!</h2>
+      <p>תודה. האישור נקלט במערכת הישיבה.</p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    (function () {
+      'use strict';
+      var SB_URL = 'https://dcnndzrdimkogfjsvcku.supabase.co';
+      var SB_KEY = 'sb_publishable_LoALeRJVUqiyBwWhCF_0qQ_RpLwS4ew';
+      var sb = supabase.createClient(SB_URL, SB_KEY);
+      function $(id) { return document.getElementById(id); }
+
+      var params = new URLSearchParams(location.search);
+      var eventId = params.get('ev') || '';
+      var form = null;
+
+      function unavailable() { $('loading').classList.add('hidden'); $('unavailable').classList.remove('hidden'); }
+
+      if (!eventId) { unavailable(); return; }
+
+      sb.from('admin_state').select('data').eq('id', 'consent_forms').maybeSingle().then(function (res) {
+        var forms = (res.data && res.data.data && res.data.data.forms) || {};
+        form = forms[eventId];
+        if (!form || form.open === false) { unavailable(); return; }
+        render();
+      }, unavailable);
+
+      function detailRow(k, v) {
+        if (!v) return '';
+        return '<div class="detail"><span class="k">' + k + '</span><span>' + escapeHtml(v) + '</span></div>';
+      }
+      function escapeHtml(s) {
+        return String(s).replace(/[&<>"]/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+      }
+
+      function render() {
+        $('loading').classList.add('hidden');
+        $('form').classList.remove('hidden');
+        $('evTitle').textContent = form.title || 'אירוע';
+        var times = (form.startTime || '') + (form.endTime ? '–' + form.endTime : '');
+        $('evDetails').innerHTML =
+          detailRow('תאריך', form.dateLabel) +
+          detailRow('שעות', times) +
+          detailRow('יעד', form.location) +
+          detailRow('קבוצה', form.group);
+        $('permitText').textContent = form.permission || '';
+
+        // כיתות ותלמידים
+        var classes = form.classes || [];
+        var classSel = $('classSel'), studentSel = $('studentSel'), studentFree = $('studentFree');
+        if (!classes.length) {
+          // אין רשימות — הזנה חופשית
+          $('studentPick').innerHTML = '<label>כיתה</label><input id="classFree" placeholder="כיתה" />'
+            + '<label>שם התלמיד/ה</label><input id="studentFree2" placeholder="שם התלמיד/ה המלא" />';
+          return;
+        }
+        classes.forEach(function (c, i) {
+          var o = document.createElement('option'); o.value = String(i); o.textContent = c.name; classSel.appendChild(o);
+        });
+        function fillStudents() {
+          studentSel.innerHTML = '';
+          var c = classes[parseInt(classSel.value, 10)] || { students: [] };
+          (c.students || []).forEach(function (name) {
+            var o = document.createElement('option'); o.value = name; o.textContent = name; studentSel.appendChild(o);
+          });
+          var other = document.createElement('option'); other.value = '__other__'; other.textContent = 'אחר / לא ברשימה'; studentSel.appendChild(other);
+          toggleFree();
+        }
+        function toggleFree() {
+          if (studentSel.value === '__other__') { studentFree.classList.remove('hidden'); }
+          else { studentFree.classList.add('hidden'); }
+        }
+        classSel.addEventListener('change', fillStudents);
+        studentSel.addEventListener('change', toggleFree);
+        // ברירת מחדל: כיתת האירוע אם תואמת
+        var def = 0;
+        if (form.defaultClass) {
+          classes.forEach(function (c, i) { if (c.name === form.defaultClass) def = i; });
+        }
+        classSel.value = String(def);
+        fillStudents();
+      }
+
+      // ---------- חתימה ----------
+      var canvas = $('sig'), ctx = canvas.getContext('2d');
+      var drawing = false, hasSig = false;
+      function sizeCanvas() {
+        var w = canvas.clientWidth || 400;
+        canvas.width = w; canvas.height = 170;
+        ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#0f172a';
+      }
+      setTimeout(sizeCanvas, 60);
+      window.addEventListener('resize', function () { var d = canvas.toDataURL(); sizeCanvas(); var img = new Image(); img.onload = function () { ctx.drawImage(img, 0, 0, canvas.width, canvas.height); }; img.src = d; });
+      function pos(e) { var r = canvas.getBoundingClientRect(); var t = (e.touches && e.touches[0]) || e; return { x: t.clientX - r.left, y: t.clientY - r.top }; }
+      function start(e) { drawing = true; var p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); }
+      function move(e) { if (!drawing) return; var p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); hasSig = true; e.preventDefault(); }
+      function end() { drawing = false; }
+      canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move); window.addEventListener('mouseup', end);
+      canvas.addEventListener('touchstart', start, { passive: false }); canvas.addEventListener('touchmove', move, { passive: false }); canvas.addEventListener('touchend', end);
+      $('clearSig').addEventListener('click', function () { ctx.clearRect(0, 0, canvas.width, canvas.height); hasSig = false; });
+
+      function getStudent() {
+        var free = $('studentFree2');
+        if (free) return { name: free.value.trim(), cls: ($('classFree') && $('classFree').value.trim()) || '' };
+        var sel = $('studentSel');
+        var cls = ($('classSel').options[$('classSel').selectedIndex] || {}).text || '';
+        if (sel.value === '__other__') return { name: $('studentFree').value.trim(), cls: cls };
+        return { name: sel.value, cls: cls };
+      }
+
+      $('form').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var err = $('err'); err.textContent = '';
+        var stu = getStudent();
+        if (!stu.name) { err.textContent = 'נא לבחור/למלא את שם התלמיד/ה'; return; }
+        var parentName = $('parentName').value.trim();
+        if (!parentName) { err.textContent = 'נא למלא את שם ההורה'; return; }
+        if (!$('approve').checked) { err.textContent = 'יש לסמן את תיבת האישור'; return; }
+        if (!hasSig) { err.textContent = 'נא לחתום באצבע במסגרת'; return; }
+
+        var btn = $('sendBtn'); btn.disabled = true; btn.textContent = 'שולח…';
+        var snapshot = {
+          title: form.title, dateLabel: form.dateLabel, startTime: form.startTime, endTime: form.endTime,
+          location: form.location, group: form.group, permission: form.permission, signedAt: new Date().toISOString()
+        };
+        sb.from('event_consents').insert({
+          event_id: eventId,
+          event_title: form.title || '',
+          event_snapshot: snapshot,
+          student_name: stu.name,
+          student_class: stu.cls,
+          parent_name: parentName,
+          parent_phone: $('parentPhone').value.trim(),
+          parent_id: $('parentId').value.trim() || null,
+          approved: true,
+          signature: canvas.toDataURL('image/png'),
+          user_agent: navigator.userAgent
+        }).then(function (res) {
+          if (res.error) throw new Error(res.error.message);
+          $('form').classList.add('hidden');
+          $('success').classList.remove('hidden');
+          window.scrollTo(0, 0);
+        }).catch(function (e) {
+          err.textContent = 'השליחה נכשלה — ' + e.message;
+          btn.disabled = false; btn.textContent = 'שליחת האישור';
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

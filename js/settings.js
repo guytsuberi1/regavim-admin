@@ -107,6 +107,59 @@
     ]);
   }
 
+  function classesCard() {
+    var s = Store.settings();
+    var list = U.el('div');
+    function draw() {
+      U.clear(list);
+      (s.classes || []).forEach(function (c, idx) {
+        var name = U.el('input', { value: c.name || '', style: 'font-weight:600;flex:1;min-width:120px;' });
+        name.addEventListener('change', function () { c.name = name.value.trim(); Store.saveClasses(); });
+        var del = U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקת כיתה', onclick: function () { s.classes.splice(idx, 1); Store.saveClasses(); draw(); } });
+        if (!c.students) c.students = [];
+        var count = U.el('span', { class: 'muted', style: 'font-size:12px;', text: c.students.length + ' תלמידים' });
+        var studWrap = U.el('div', { style: 'display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;' });
+        c.students.forEach(function (st, si) {
+          studWrap.appendChild(U.el('span', { class: 'tag', style: 'display:inline-flex;align-items:center;gap:6px;' }, [
+            U.el('span', { text: st.name || '' }),
+            U.el('button', { style: 'background:none;border:none;color:var(--danger,#c62828);cursor:pointer;font-size:14px;padding:0;', text: '×', title: 'הסרה', onclick: function () { c.students.splice(si, 1); Store.saveClasses(); draw(); } })
+          ]));
+        });
+        if (!c.students.length) studWrap.appendChild(U.el('span', { class: 'muted', style: 'font-size:12px;', text: 'אין תלמידים — הוסיפו למטה.' }));
+        var addStud = U.el('input', { placeholder: '➕ שם תלמיד/ה ולחצו Enter', style: 'flex:1;min-width:160px;' });
+        function addS() { var v = addStud.value.trim(); if (!v) return; c.students.push({ id: Store.uid(), name: v }); Store.saveClasses(); addStud.value = ''; draw(); var re = document.getElementById('addStud-' + idx); if (re) re.focus(); }
+        addStud.id = 'addStud-' + idx;
+        addStud.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addS(); } });
+        list.appendChild(U.el('div', { style: 'border:1px solid var(--border,#d6dce1);border-radius:8px;padding:10px;margin-bottom:8px;' }, [
+          U.el('div', { style: 'display:flex;gap:6px;align-items:center;' }, [U.el('span', { text: '🏫' }), name, count, del]),
+          studWrap,
+          U.el('div', { style: 'display:flex;gap:6px;' }, [addStud, U.el('button', { class: 'btn secondary', text: 'הוסף', onclick: addS })])
+        ]));
+      });
+    }
+    draw();
+    var addName = U.el('input', { placeholder: 'שם כיתה חדשה (למשל: י1)', style: 'flex:1;min-width:140px;' });
+    function add() { if (!addName.value.trim()) return; if (!s.classes) s.classes = []; s.classes.push({ id: Store.uid(), name: addName.value.trim(), students: [] }); Store.saveClasses(); addName.value = ''; draw(); }
+    addName.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+    return U.el('div', { class: 'card', style: 'max-width:560px;margin-bottom:16px;' }, [
+      U.el('h3', { text: '🏫 רשימות כיתה' }),
+      U.el('p', { class: 'muted', style: 'margin-top:0;font-size:12px;', text: 'רשימות התלמידים לכל כיתה — משמשות למעקב "מי חתם / מי חסר" באישורי הורים.' }),
+      list,
+      U.el('div', { style: 'display:flex;gap:6px;margin-top:8px;' }, [addName, U.el('button', { class: 'btn secondary', text: 'הוסף כיתה', onclick: add })])
+    ]);
+  }
+  function consentTextCard() {
+    var s = Store.settings();
+    var ta = U.el('textarea', { rows: 5, style: 'width:100%;font-size:13px;' });
+    ta.value = s.consentText || '';
+    ta.addEventListener('change', function () { s.consentText = ta.value.trim(); Store.saveSettings(); if (U.toast) U.toast('נוסח האישור נשמר'); });
+    return U.el('div', { class: 'card', style: 'max-width:560px;margin-bottom:16px;' }, [
+      U.el('h3', { text: '📄 נוסח אישור הורים' }),
+      U.el('p', { class: 'muted', style: 'margin-top:0;font-size:12px;', text: 'הטקסט שההורה רואה ומאשר בפורטל החתימה. פרטי האירוע (מועד/יעד) מתווספים אוטומטית מעליו.' }),
+      ta
+    ]);
+  }
+
   function render(view) {
     if (!Store.isAdmin()) {
       view.appendChild(U.el('div', { class: 'empty' }, 'למסך ההגדרות יש גישה למנהל בלבד.'));
@@ -143,6 +196,8 @@
     view.appendChild(eventRolesCard());
     view.appendChild(taskCatalogCard());
     view.appendChild(eventTypesCard());
+    view.appendChild(classesCard());
+    view.appendChild(consentTextCard());
 
     // ---------- גיבוי ושחזור ----------
     var backupCard = U.el('div', { class: 'card danger-zone', style: 'max-width:560px;' }, [
