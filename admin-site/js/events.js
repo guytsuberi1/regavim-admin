@@ -365,7 +365,12 @@
 
   // ---------- כרטיס אירוע ----------
   function eventCard(ev) {
+    var cardCollapsed = !!collapsedMap['card:' + ev.id];
     var card = U.el('div', { class: 'card', style: 'margin-bottom:16px;border-top:4px solid ' + stColor(ESTATUS, ev.status) + ';' });
+
+    // כפתור כיווץ/פתיחה של כל האירוע (לכל אירוע בנפרד)
+    var chevron = U.el('button', { class: 'btn secondary ico', title: cardCollapsed ? 'פתיחת האירוע' : 'כיווץ האירוע',
+      onclick: function () { collapsedMap['card:' + ev.id] = !cardCollapsed; saveCollapsed(); App.render(); } }, cardCollapsed ? '▸' : '▾');
 
     var numPill = U.el('span', { style: 'font-size:11px;font-weight:700;color:var(--muted,#6b7884);background:var(--bg,#f1f5f9);border-radius:6px;padding:2px 8px;white-space:nowrap;', text: ev.num || '' });
     var nameInp = transp(U.el('input', { value: ev.title || '', placeholder: 'שם האירוע', style: 'font-size:19px;font-weight:700;min-width:160px;flex:1;' }));
@@ -376,8 +381,20 @@
       Modal.confirm({ title: 'מחיקת אירוע', text: 'למחוק את "' + (ev.title || '') + '"?', okLabel: 'מחיקה', danger: true }, function () { Store.deleteEvent(ev.id); App.render(); });
     } });
     card.appendChild(U.el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;' }, [
-      numPill, U.el('span', { class: 'tag', text: typeLabel(ev.type) }), nameInp, U.el('span', { class: 'spacer' }), statusSel, delBtn
+      chevron, numPill, U.el('span', { class: 'tag', text: typeLabel(ev.type) }), nameInp, U.el('span', { class: 'spacer' }), statusSel, delBtn
     ]));
+
+    // כשמכווץ — תקציר בשורה אחת בלבד
+    if (cardCollapsed) {
+      var doneC = (ev.tasks || []).filter(function (t) { return t.status === 'בוצע'; }).length;
+      card.appendChild(U.el('div', { style: 'display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;color:var(--muted,#6b7884);font-size:13px;' }, [
+        U.el('span', { text: '📅 ' + (ev.date ? fmtDateLine(ev.date) : '—') }),
+        ev.group ? U.el('span', { text: '👥 ' + ev.group }) : null,
+        ev.location ? U.el('span', { text: '📍 ' + ev.location }) : null,
+        U.el('span', { text: '✅ ' + doneC + '/' + ((ev.tasks || []).length) })
+      ].filter(Boolean)));
+      return card;
+    }
 
     // מטא: תאריך, שעות, קבוצה, יעד
     var dateInp = U.el('input', { type: 'date', value: ev.date || '', class: 'chip-date-input' });
