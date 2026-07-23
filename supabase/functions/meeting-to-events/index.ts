@@ -9,6 +9,8 @@
 //
 // אבטחה: Supabase מאמת JWT אוטומטית (verify_jwt), כך שרק משתמש מחובר יכול לקרוא.
 
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
 // מפתח ייעודי לאפליקציה הזו (נפרד מסודות של אפליקציות אחרות באותו פרויקט)
 const GEMINI_KEY = Deno.env.get("GEMINI_KEY_ADMIN") || "";
 // ניתן לשנות דגם בלי לגעת בקוד: supabase secrets set GEMINI_MODEL=gemini-2.0-flash
@@ -16,6 +18,7 @@ const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-2.0-flash";
 // מוזרקים אוטומטית ע"י Supabase — לשליפת ההקלטה מ-Storage בצד השרת
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const supa = createClient(SUPABASE_URL, SERVICE_KEY);
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -116,12 +119,11 @@ async function callGemini(parts: any[]): Promise<any> {
   return JSON.parse(text);
 }
 
-// שליפת ההקלטה מ-Supabase Storage (בצד השרת, עם service role)
+// שליפת ההקלטה מ-Supabase Storage (בצד השרת, עם לקוח service role — עוקף RLS)
 async function downloadFromStorage(bucket: string, path: string): Promise<Uint8Array> {
-  const url = SUPABASE_URL + "/storage/v1/object/" + bucket + "/" + path;
-  const res = await fetch(url, { headers: { Authorization: "Bearer " + SERVICE_KEY } });
-  if (!res.ok) throw new Error("הורדת ההקלטה מ-Storage נכשלה (" + res.status + ")");
-  return new Uint8Array(await res.arrayBuffer());
+  const { data, error } = await supa.storage.from(bucket).download(path);
+  if (error || !data) throw new Error("הורדת ההקלטה מ-Storage נכשלה: " + (error?.message || "לא נמצא"));
+  return new Uint8Array(await data.arrayBuffer());
 }
 
 // העלאת האודיו ל-Gemini Files API (תומך בקבצים גדולים/ארוכים) והמתנה לעיבוד
