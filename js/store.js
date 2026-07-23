@@ -727,7 +727,15 @@
   function meetingToEvents(payload) {
     if (!sb) return Promise.reject(new Error('נדרשת התחברות לענן'));
     return sb.functions.invoke('meeting-to-events', { body: payload }).then(function (res) {
-      if (res.error) throw new Error(res.error.message || 'שגיאה מהשרת');
+      if (res.error) {
+        // Supabase מחזיר הודעה כללית ב-non-2xx; שולפים את הסיבה האמיתית מגוף התגובה
+        var ctx = res.error.context;
+        if (ctx && typeof ctx.json === 'function') {
+          return ctx.json().then(function (b) { throw new Error((b && b.error) || res.error.message); },
+            function () { throw new Error(res.error.message || 'שגיאה מהשרת'); });
+        }
+        throw new Error(res.error.message || 'שגיאה מהשרת');
+      }
       if (res.data && res.data.error) throw new Error(res.data.error);
       return (res.data && res.data.events) || [];
     });
