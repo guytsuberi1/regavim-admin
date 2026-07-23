@@ -476,14 +476,6 @@
     });
     return { type: typeId, title: d.title || 'אירוע', group: d.group || '', date: d.date || '', startTime: d.startTime || '', endTime: d.endTime || '', location: d.location || '', status: 'בתכנון', schedule: schedule, tasks: tasks, notes: '' };
   }
-  function base64FromFile(file) {
-    return new Promise(function (resolve, reject) {
-      var r = new FileReader();
-      r.onload = function () { var s = String(r.result || ''); var i = s.indexOf(','); resolve(i >= 0 ? s.slice(i + 1) : s); };
-      r.onerror = function () { reject(new Error('קריאת הקובץ נכשלה')); };
-      r.readAsDataURL(file);
-    });
-  }
   function meetingContext() {
     return {
       eventTypes: eventTypes().map(function (t) { return t.label; }),
@@ -526,7 +518,7 @@
     var fileInp = U.el('input', { type: 'file', accept: 'audio/*' });
     var textWrap = U.el('div', null, [textArea]);
     var audioWrap = U.el('div', { style: 'display:none;' }, [
-      U.el('div', { class: 'muted', style: 'font-size:12px;margin-bottom:6px;', text: 'העלו קובץ הקלטה (עד ~20MB). עברית נתמכת.' }),
+      U.el('div', { class: 'muted', style: 'font-size:12px;margin-bottom:6px;', text: 'העלו קובץ הקלטה — גם ארוך (חצי שעה ומעלה). עברית נתמכת.' }),
       fileInp
     ]);
     var btnText = U.el('button', { class: 'active', text: '📝 הדבקת טקסט' });
@@ -555,9 +547,10 @@
         } else {
           if (!fileInp.files[0]) { err.textContent = 'בחרו קובץ הקלטה'; return; }
           var f = fileInp.files[0];
-          base64FromFile(f).then(function (b64) {
-            run({ mode: 'audio', audioBase64: b64, mimeType: f.type || 'audio/mpeg', context: meetingContext() });
-          }).catch(function (e) { err.textContent = e.message; });
+          err.textContent = ''; U.toast('מעלה הקלטה…', 'info');
+          Store.uploadMeetingAudio(f).then(function (path) {
+            run({ mode: 'audio', bucket: 'meeting-audio', path: path, mimeType: f.type || 'audio/mpeg', context: meetingContext() });
+          }).catch(function (e) { U.toast('העלאה נכשלה: ' + e.message, 'error'); });
         }
       } }
     ]);

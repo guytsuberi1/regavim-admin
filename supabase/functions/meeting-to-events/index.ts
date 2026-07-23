@@ -12,6 +12,9 @@
 const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY") || "";
 // ניתן לשנות דגם בלי לגעת בקוד: supabase secrets set GEMINI_MODEL=gemini-2.0-flash
 const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-2.0-flash";
+// מוזרקים אוטומטית ע"י Supabase — לשליפת ההקלטה מ-Storage בצד השרת
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -112,6 +115,55 @@ async function callGemini(parts: any[]): Promise<any> {
   return JSON.parse(text);
 }
 
+// שליפת ההקלטה מ-Supabase Storage (בצד השרת, עם service role)
+async function downloadFromStorage(bucket: string, path: string): Promise<Uint8Array> {
+  const url = SUPABASE_URL + "/storage/v1/object/" + bucket + "/" + path;
+  const res = await fetch(url, { headers: { Authorization: "Bearer " + SERVICE_KEY } });
+  if (!res.ok) throw new Error("הורדת ההקלטה מ-Storage נכשלה (" + res.status + ")");
+  return new Uint8Array(await res.arrayBuffer());
+}
+
+// העלאת האודיו ל-Gemini Files API (תומך בקבצים גדולים/ארוכים) והמתנה לעיבוד
+async function uploadToGemini(bytes: Uint8Array, mimeType: string): Promise<{ uri: string; mimeType: string }> {
+  const numBytes = bytes.byteLength;
+  const startRes = await fetch(
+    "https://generativelanguage.googleapis.com/upload/v1beta/files?key=" + GEMINI_KEY,
+    {
+      method: "POST",
+      headers: {
+        "X-Goog-Upload-Protocol": "resumable",
+        "X-Goog-Upload-Command": "start",
+        "X-Goog-Upload-Header-Content-Length": String(numBytes),
+        "X-Goog-Upload-Header-Content-Type": mimeType,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ file: { display_name: "meeting" } }),
+    },
+  );
+  const uploadUrl = startRes.headers.get("X-Goog-Upload-URL");
+  if (!uploadUrl) throw new Error("לא התקבל URL להעלאה מ-Gemini");
+
+  const upRes = await fetch(uploadUrl, {
+    method: "POST",
+    headers: { "X-Goog-Upload-Offset": "0", "X-Goog-Upload-Command": "upload, finalize" },
+    body: bytes,
+  });
+  const upJson = await upRes.json();
+  const file = upJson?.file;
+  if (!file?.uri || !file?.name) throw new Error("העלאת האודיו ל-Gemini נכשלה");
+
+  // אודיו עובר עיבוד — ממתינים עד ACTIVE (עד ~60 שניות)
+  let state = file.state;
+  for (let i = 0; i < 30 && state !== "ACTIVE"; i++) {
+    if (state === "FAILED") throw new Error("עיבוד האודיו ב-Gemini נכשל");
+    await new Promise((r) => setTimeout(r, 2000));
+    const st = await fetch("https://generativelanguage.googleapis.com/v1beta/" + file.name + "?key=" + GEMINI_KEY);
+    state = (await st.json())?.state;
+  }
+  if (state !== "ACTIVE") throw new Error("האודיו עדיין בעיבוד — נסו שוב בעוד רגע");
+  return { uri: file.uri, mimeType: file.mimeType || mimeType };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   const reply = (body: unknown, status = 200) =>
@@ -126,13 +178,27 @@ Deno.serve(async (req: Request) => {
   const prompt = buildPrompt(payload.context || {});
   const parts: any[] = [{ text: prompt }];
 
-  if (payload.mode === "audio" && payload.audioBase64) {
-    parts.push({ inline_data: { mime_type: payload.mimeType || "audio/mpeg", data: payload.audioBase64 } });
+  if (payload.mode === "audio") {
+    try {
+      if (payload.bucket && payload.path) {
+        // מסלול מומלץ להקלטות ארוכות: הורדה מ-Storage → Files API
+        const bytes = await downloadFromStorage(payload.bucket, payload.path);
+        const up = await uploadToGemini(bytes, payload.mimeType || "audio/mpeg");
+        parts.push({ file_data: { mime_type: up.mimeType, file_uri: up.uri } });
+      } else if (payload.audioBase64) {
+        // מסלול inline לקבצים קטנים (≤20MB)
+        parts.push({ inline_data: { mime_type: payload.mimeType || "audio/mpeg", data: payload.audioBase64 } });
+      } else {
+        return reply({ error: "חסר bucket/path או audioBase64" }, 400);
+      }
+    } catch (e) {
+      return reply({ error: String((e as Error).message || e) }, 502);
+    }
     parts.push({ text: "תמלל את ההקלטה ובנה את האירועים לפי ההנחיות." });
   } else if (payload.mode === "text" && payload.text) {
     parts.push({ text: "תוכן הפגישה:\n" + String(payload.text) });
   } else {
-    return reply({ error: "חסר text או audioBase64" }, 400);
+    return reply({ error: "חסר text או הקלטה" }, 400);
   }
 
   try {

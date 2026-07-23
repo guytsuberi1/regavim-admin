@@ -97,6 +97,26 @@ create policy "approvals auth delete" on storage.objects
   for delete to authenticated using (bucket_id = 'admin-approvals');
 
 -- ============================================================
+-- 3ב. Storage — הקלטות פגישה למסלול ה-AI (meeting-to-events)
+--     העלאה/צפייה/מחיקה למשתמשים מחוברים בלבד. ה-Edge Function קורא עם service role.
+-- ============================================================
+insert into storage.buckets (id, name, public)
+  values ('meeting-audio', 'meeting-audio', false)
+  on conflict (id) do nothing;
+
+drop policy if exists "meeting-audio auth insert" on storage.objects;
+create policy "meeting-audio auth insert" on storage.objects
+  for insert to authenticated with check (bucket_id = 'meeting-audio');
+
+drop policy if exists "meeting-audio auth read" on storage.objects;
+create policy "meeting-audio auth read" on storage.objects
+  for select to authenticated using (bucket_id = 'meeting-audio');
+
+drop policy if exists "meeting-audio auth delete" on storage.objects;
+create policy "meeting-audio auth delete" on storage.objects
+  for delete to authenticated using (bucket_id = 'meeting-audio');
+
+-- ============================================================
 -- 4. Realtime — עדכונים חיים בין משתמשים (מריצים בנפרד; אם כבר קיים תתקבל
 --    שגיאת "already member of publication" — זה תקין, אפשר להתעלם)
 -- ============================================================
