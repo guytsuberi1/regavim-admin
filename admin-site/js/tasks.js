@@ -490,6 +490,30 @@
       }
     }
     refresh();
+
+    // משימות מאירועים ששויכו אליי (קריאה-בלבד) — שילוב עם גיליון תכנון אירועים וטיולים
+    var myId = Store.currentEmpId && Store.currentEmpId();
+    if (myId && Store.eventsAll) {
+      var mine = [];
+      Store.eventsAll().forEach(function (ev) {
+        (ev.tasks || []).forEach(function (t) { if (t.empId === myId && t.status !== 'בוצע') mine.push({ ev: ev, task: t }); });
+      });
+      if (mine.length) {
+        var rows = mine.map(function (p) {
+          return U.el('div', { style: 'display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border,#d6dce1);border-radius:8px;margin-bottom:6px;flex-wrap:wrap;' }, [
+            U.el('span', { text: p.task.status === 'בתהליך' ? '⏳' : '📂' }),
+            U.el('span', { style: 'font-weight:600;', text: p.task.title }),
+            U.el('span', { class: 'tag', text: (p.ev.title || 'אירוע') + (p.ev.date ? ' · ' + U.gregLabel(p.ev.date) : '') }),
+            U.el('span', { class: 'spacer' }),
+            U.el('button', { class: 'btn secondary', text: 'לאירוע ›', onclick: function () { App.setView('events'); } })
+          ]);
+        });
+        view.appendChild(U.el('div', { class: 'card', style: 'margin-top:16px;border-top:4px solid var(--primary,#2e7d32);' }, [
+          U.el('h3', { style: 'margin-top:0;', text: '🗓️ המשימות שלי מאירועים (' + mine.length + ')' }),
+          U.el('div', { class: 'muted', style: 'font-size:12px;margin-bottom:8px;', text: 'משימות שהוקצו לך בגיליון תכנון אירועים וטיולים. הניהול נעשה בכרטיס האירוע.' })
+        ].concat(rows)));
+      }
+    }
   }
 
   function kpi(icon, val, label, cls) {
