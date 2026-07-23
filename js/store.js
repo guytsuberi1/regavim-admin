@@ -41,6 +41,47 @@
             'נחשון טכנולוגיה', 'עמיאל דהן', 'עדי תקשורת', 'ש.א.ג', 'מישה רואה'];
   }
 
+  // ---------- ברירות מחדל: תכנון אירועים וטיולים ----------
+  // תפקידים קבועים בתפעול אירוע — ממופים לעובד מהמצבת (בהגדרות). empId ריק עד שממפים.
+  function defaultEventRoles() {
+    return ['מנהל תיכון', 'ראש ישיבה', 'סגן ראש הישיבה', 'מנהל פנימייה', 'מנהלן',
+            'אם בית', 'רכז חברתי', 'רכז הסעות', 'רכז חקלאות', 'מנהל מדבך', 'מחנך', 'מזכירות']
+      .map(function (n) { return { name: n, empId: '' }; });
+  }
+  // מחסן המשימות: כל סוגי המשימות האפשריים, לכל אחד תפקיד-אחראי ברירת מחדל
+  function defaultTaskCatalog() {
+    return [
+      { id: 'loz',        title: 'בניית לוז',                  defaultRole: 'רכז הסעות' },
+      { id: 'transport',  title: 'תיאום הסעות הלוך וחזור',      defaultRole: 'רכז הסעות' },
+      { id: 'breakfast',  title: 'ארוחת בוקר לפי הלוז',         defaultRole: 'מנהל מדבך' },
+      { id: 'lunch',      title: 'ארוחת צהריים לפי הלוז',       defaultRole: 'מנהל מדבך' },
+      { id: 'parents',    title: 'אישור הורים',                defaultRole: 'מזכירות' },
+      { id: 'permit',     title: 'הוצאת אישור טיולים',          defaultRole: 'מזכירות' },
+      { id: 'distribute', title: 'תפוצת לוז לתלמידים ומחנכים',  defaultRole: 'מחנך' },
+      { id: 'firstaid',   title: 'חובש / ערכת עזרה ראשונה',     defaultRole: 'רכז הסעות' },
+      { id: 'gear',       title: 'ציוד ולוגיסטיקה',            defaultRole: 'מנהלן' },
+      { id: 'program',    title: 'תוכן ותכנית',                defaultRole: 'רכז חברתי' },
+      { id: 'budget',     title: 'תקציב ותשלום',               defaultRole: 'מנהלן' }
+    ];
+  }
+  // סוגי אירועים — כל אחד עם משימות מסומנות-מראש מהמחסן (defaultTaskIds) ותבנית לוז אופציונלית
+  function defaultEventTypes() {
+    var FULL = ['loz', 'transport', 'breakfast', 'lunch', 'parents', 'permit', 'distribute', 'firstaid', 'gear', 'program', 'budget'];
+    function trip(id, label) { return { id: id, label: label, defaultTaskIds: FULL.slice(), scheduleTemplate: [] }; }
+    return [
+      trip('trip_class', 'טיול כיתתי'),
+      trip('trip_yeshiva', 'טיול ישיבתי'),
+      trip('survival', 'מסע הישרדות'),
+      trip('identity', 'מסע זהות'),
+      { id: 'study_day',     label: 'יום עיון',       defaultTaskIds: ['loz', 'program', 'distribute', 'breakfast'], scheduleTemplate: [] },
+      { id: 'shabbat',       label: 'שבת ישיבה',      defaultTaskIds: ['loz', 'program', 'distribute'],             scheduleTemplate: [] },
+      { id: 'event',         label: 'אירוע ישיבתי',   defaultTaskIds: ['loz', 'program', 'distribute', 'gear', 'budget'], scheduleTemplate: [] },
+      { id: 'lecture',       label: 'שיחה / הרצאה',    defaultTaskIds: ['program', 'distribute'],                    scheduleTemplate: [] },
+      { id: 'mechanech_eve', label: 'ערב אצל המחנך',  defaultTaskIds: ['program', 'distribute'],                    scheduleTemplate: [] },
+      { id: 'madrich_eve',   label: 'ערב מדריך',      defaultTaskIds: ['program', 'distribute'],                    scheduleTemplate: [] }
+    ];
+  }
+
   function defaultCore() {
     return {
       meta: newMeta(),
@@ -53,7 +94,10 @@
         statuses: defaultStatuses(),
         taskDomains: defaultTaskDomains(),
         taskOwners: defaultTaskOwners(),
-        contractors: defaultContractors()
+        contractors: defaultContractors(),
+        eventRoles: defaultEventRoles(),
+        taskCatalog: defaultTaskCatalog(),
+        eventTypes: defaultEventTypes()
       },
       // { id, firstName, lastName, phone, email, tz, role:''|'admin'|'secretary',
       //   tags:['מתגבר','מורה',...], active, notes }
@@ -84,7 +128,11 @@
       //          convertedEmpId, createdAt, updatedAt, deleted }
       // משרה: { id, title, scope (אחוז משרה), filledBy, flyer:'בוצע'|'לא בוצע'|'לא צריך'|'', notes,
       //         createdAt, updatedAt, deleted }
-      recruit: { candidates: [], positions: [], meta: newMeta() }
+      recruit: { candidates: [], positions: [], meta: newMeta() },
+      // תכנון אירועים וטיולים. רשומה: { id, num, type, title, group, date (ISO), startTime, endTime,
+      //   location, status:'בתכנון'|'מוכן'|'בוצע', schedule:[{id,time,activity,note}],
+      //   tasks:[{id,title,role,empId,status:'פתוח'|'בתהליך'|'בוצע',note}], notes, createdAt, updatedAt, deleted }
+      events: { records: [], seq: 0, meta: newMeta() }
     };
   }
 
@@ -103,6 +151,9 @@
     if (!core.settings.taskDomains || !core.settings.taskDomains.length) core.settings.taskDomains = defaultTaskDomains();
     if (!core.settings.taskOwners || !core.settings.taskOwners.length) core.settings.taskOwners = defaultTaskOwners();
     if (!core.settings.contractors || !core.settings.contractors.length) core.settings.contractors = defaultContractors();
+    if (!core.settings.eventRoles || !core.settings.eventRoles.length) core.settings.eventRoles = defaultEventRoles();
+    if (!core.settings.taskCatalog || !core.settings.taskCatalog.length) core.settings.taskCatalog = defaultTaskCatalog();
+    if (!core.settings.eventTypes || !core.settings.eventTypes.length) core.settings.eventTypes = defaultEventTypes();
     return core;
   }
 
@@ -134,6 +185,7 @@
     if (rowId === 'tasks') return data.tasks;
     if (rowId === 'projects') return data.projects;
     if (rowId === 'recruit') return data.recruit;
+    if (rowId === 'events') return data.events;
     var p = rowId.split(':');
     if (MONTH_KINDS[p[0]] && p[1]) return data[p[0]][p[1]] || null;
     return null;
@@ -143,11 +195,12 @@
     if (rowId === 'tasks') { data.tasks = obj; return; }
     if (rowId === 'projects') { data.projects = obj; return; }
     if (rowId === 'recruit') { data.recruit = obj; return; }
+    if (rowId === 'events') { data.events = obj; return; }
     var p = rowId.split(':');
     if (MONTH_KINDS[p[0]] && p[1]) data[p[0]][p[1]] = obj;
   }
   function allRowIds() {
-    var ids = ['core', 'tasks', 'projects', 'recruit'];
+    var ids = ['core', 'tasks', 'projects', 'recruit', 'events'];
     Object.keys(MONTH_KINDS).forEach(function (kind) {
       Object.keys(data[kind] || {}).forEach(function (m) { ids.push(kind + ':' + m); });
     });
@@ -300,7 +353,7 @@
     var local = rowGet(rowId);
     var p = rowId.split(':');
 
-    if (rowId === 'tasks' || rowId === 'projects') {
+    if (rowId === 'tasks' || rowId === 'projects' || rowId === 'events') {
       var mt = {
         records: mergeRecords(local && local.records, incoming.records),
         seq: Math.max((local && local.seq) || 0, incoming.seq || 0),
@@ -628,6 +681,39 @@
     var used = 0;
     (proj.items || []).forEach(function (it) { used += parseFloat(it.cost) || 0; });
     return { budget: budget, used: used, balance: budget - used, over: used > budget && budget > 0 };
+  }
+
+  // ---------- אירועים וטיולים ----------
+  function eventsAll() {
+    return (data.events.records || []).filter(function (r) { return !r.deleted; });
+  }
+  function eventById(id) {
+    return (data.events.records || []).filter(function (r) { return r.id === id; })[0] || null;
+  }
+  function nextEventNum() {
+    data.events.seq = (data.events.seq || 0) + 1;
+    return 'E-' + String(data.events.seq).padStart(3, '0');
+  }
+  function upsertEvent(ev) {
+    if (!ev.id) { ev.id = uid(); ev.num = ev.num || nextEventNum(); ev.createdAt = nowISO(); }
+    if (!ev.schedule) ev.schedule = [];
+    if (!ev.tasks) ev.tasks = [];
+    ev.updatedAt = nowISO();
+    var arr = data.events.records, found = false;
+    for (var i = 0; i < arr.length; i++) if (arr[i].id === ev.id) { arr[i] = ev; found = true; break; }
+    if (!found) arr.push(ev);
+    save('events');
+    return ev;
+  }
+  function deleteEvent(id) {
+    var arr = data.events.records;
+    for (var i = 0; i < arr.length; i++) if (arr[i].id === id) { arr[i] = { id: id, deleted: true, updatedAt: nowISO() }; break; }
+    save('events');
+  }
+  // מזהה העובד של המשתמש המחובר (לפי אימייל) — לשילוב "המשימות שלי" בגיליון המשימות
+  function currentEmpId() {
+    var e = empByEmail(currentEmail());
+    return e ? e.id : null;
   }
 
   // ימים עד תאריך היעד (שלילי = באיחור); null אם אין תאריך
@@ -962,6 +1048,13 @@
     positionById: positionById,
     upsertPosition: upsertPosition,
     deletePosition: deletePosition,
+    // אירועים וטיולים
+    eventsAll: eventsAll,
+    eventById: eventById,
+    nextEventNum: nextEventNum,
+    upsertEvent: upsertEvent,
+    deleteEvent: deleteEvent,
+    currentEmpId: currentEmpId,
     // דיווחי פורטל
     loadSubmissions: loadSubmissions,
     submissions: submissions,

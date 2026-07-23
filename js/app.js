@@ -17,6 +17,7 @@
     week: global.WeekView,
     cand: global.CandView,
     pos: global.PosView,
+    events: global.EventsView,
     settings: global.SettingsView
   };
 
@@ -41,6 +42,9 @@
     ] },
     { id: 'projects', label: '🏗️ ניהול פרויקטים', subs: [
       { id: 'projects', label: '🏗️ פרויקטים' }
+    ] },
+    { id: 'events', label: '🗓️ תכנון אירועים וטיולים', subs: [
+      { id: 'events', label: '🗓️ אירועים' }
     ] }
   ];
   // פריטים עצמאיים (לא גיליונות)
@@ -54,7 +58,7 @@
 
   // הרשאות: admin רואה הכל; secretary רק מרכז למידה
   var ROLE_VIEWS = {
-    admin: ['status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'settings'],
+    admin: ['status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'settings'],
     secretary: ['lc']
   };
   function roleKey() { return Store.currentRole(); }
