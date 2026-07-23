@@ -148,7 +148,12 @@
   // ---------- כרטיס פרויקט ----------
   function projectCard(p) {
     var owners = Store.settings().taskOwners || [];
+    var cardCollapsed = !!collapsedMap[p.id];
     var card = U.el('div', { class: 'card', style: 'margin-bottom:16px;border-top:4px solid ' + stColor(PSTATUS, p.status) + ';' });
+
+    // כפתור כיווץ/פתיחה של כל הכרטיס (לכל פרויקט בנפרד)
+    var chevron = U.el('button', { class: 'btn secondary ico', title: cardCollapsed ? 'פתיחת הפרויקט' : 'כיווץ הפרויקט',
+      onclick: function () { collapsedMap[p.id] = !cardCollapsed; saveCollapsed(); App.render(); } }, cardCollapsed ? '▸' : '▾');
 
     // שורת כותרת: מזהה + שם (ימין) · סטטוס + מחיקה (שמאל)
     var numPill = U.el('span', { style: 'font-size:11px;font-weight:700;color:var(--muted,#6b7884);background:var(--bg,#f1f5f9);border-radius:6px;padding:2px 8px;white-space:nowrap;', text: p.num || '' });
@@ -160,8 +165,19 @@
       Modal.confirm({ title: 'מחיקת פרויקט', text: 'למחוק את "' + (p.name || '') + '" וכל תת-המשימות שלו?', okLabel: 'מחיקה', danger: true }, function () { Store.deleteProject(p.id); App.render(); });
     } });
     card.appendChild(U.el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;' }, [
-      numPill, nameInp, U.el('span', { class: 'spacer' }), statusSel, delBtn
+      chevron, numPill, nameInp, U.el('span', { class: 'spacer' }), statusSel, delBtn
     ]));
+
+    // כשמכווץ — תקציר בשורה אחת בלבד
+    if (cardCollapsed) {
+      var cb = Store.projectBudget(p);
+      card.appendChild(U.el('div', { style: 'display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;color:var(--muted,#6b7884);font-size:13px;' }, [
+        U.el('span', { text: '👤 ' + (p.owner || '—') }),
+        U.el('span', { text: '📋 ' + ((p.items || []).length) + ' תת-משימות' }),
+        U.el('span', { style: (cb.over ? 'color:var(--danger,#c62828);font-weight:600;' : ''), text: '💰 מאזן: ' + money(cb.budget - cb.used) })
+      ]));
+      return card;
+    }
 
     // שורת מטא: אחראי
     var ownerPick = pList(p, p, 'owner', owners, 'בחירת אחראי'); ownerPick._input.style.minWidth = '150px'; ownerPick._input.style.fontSize = '13px';
@@ -174,11 +190,11 @@
     card.appendChild(U.el('div', { style: 'margin:2px 0 10px;' }, [notes]));
 
     // תת-משימות — ניתן לכווץ/לפתוח
-    var collapsed = !!collapsedMap[p.id];
+    var collapsed = !!collapsedMap['items:' + p.id];
     var n = (p.items || []).length;
     var secHead = U.el('button', {
       class: 'btn secondary', style: 'margin:2px 0;',
-      onclick: function () { collapsedMap[p.id] = !collapsed; saveCollapsed(); App.render(); }
+      onclick: function () { collapsedMap['items:' + p.id] = !collapsed; saveCollapsed(); App.render(); }
     }, (collapsed ? '▸' : '▾') + ' תת-משימות (' + n + ')');
     card.appendChild(secHead);
     if (!collapsed) card.appendChild(itemsTable(p));
@@ -203,14 +219,8 @@
 
     view.appendChild(U.el('div', { class: 'page-head' }, [
       U.el('h2', { text: '🏗️ ניהול פרויקטים' }),
-      U.el('span', { class: 'spacer' }),
-      projects.length ? U.el('button', { class: 'btn secondary', text: '▸ כווץ הכל', onclick: function () {
-        projects.forEach(function (p) { collapsedMap[p.id] = true; }); saveCollapsed(); App.render();
-      } }) : null,
-      projects.length ? U.el('button', { class: 'btn secondary', text: '▾ פתח הכל', onclick: function () {
-        projects.forEach(function (p) { delete collapsedMap[p.id]; }); saveCollapsed(); App.render();
-      } }) : null
-    ].filter(Boolean)));
+      U.el('span', { class: 'spacer' })
+    ]));
 
     // סיכום
     var totBudget = 0, totUsed = 0, over = 0;
