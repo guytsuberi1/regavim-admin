@@ -46,18 +46,6 @@
     sel.addEventListener('change', function () { obj[field] = sel.value; sel.style.borderColor = stColor(opts, sel.value); onSave(); });
     return sel;
   }
-  // בורר אחראי מתוך מצבת העובדים (value=empId)
-  function ownerSelect(ev, task) {
-    var emps = Store.employees();
-    var sel = U.el('select', { style: 'padding:4px 6px;min-width:130px;' },
-      [U.el('option', { value: '', text: '— אחראי —' })].concat(emps.map(function (e) {
-        return U.el('option', { value: e.id, text: Store.empName(e) });
-      })));
-    sel.value = task.empId || '';
-    sel.addEventListener('change', function () { task.empId = sel.value; saveEv(ev); });
-    return sel;
-  }
-
   // ---------- לו"ז (ציר זמן, גרירה לסידור) ----------
   var dragSchedId = null;
   function reorderSched(ev, targetId) {
@@ -113,17 +101,17 @@
   function tasksTable(ev) {
     var roleNames = eventRoles().map(function (r) { return r.name; });
     var tbody = U.el('tbody', null, (ev.tasks || []).map(function (t) {
-      var roleW = U.dataListInput(t.role || '', roleNames, 'תפקיד');
-      transp(roleW._input); roleW._input.style.minWidth = '110px';
+      var roleW = U.dataListInput(t.role || '', roleNames, 'אחראי');
+      transp(roleW._input); roleW._input.style.minWidth = '130px';
       roleW._input.addEventListener('change', function () {
         t.role = roleW.get();
-        if (!t.empId) { var eid = roleEmpId(t.role); if (eid) t.empId = eid; }
+        // האחראי (עובד לצורך שליחה בוואטסאפ) נגזר אוטומטית מהמיפוי תפקיד→עובד שבהגדרות
+        t.empId = roleEmpId(t.role);
         saveEv(ev); App.render();
       });
       return U.el('tr', null, [
         U.el('td', { style: 'min-width:170px;' }, eText(ev, t, 'title', 'משימה', 'width:100%;')),
         U.el('td', null, roleW),
-        U.el('td', null, ownerSelect(ev, t)),
         U.el('td', { style: 'min-width:130px;' }, eText(ev, t, 'note', 'הערה', 'width:100%;')),
         U.el('td', null, eSelect(t, 'status', TSTATUS, function () { saveEv(ev); App.render(); })),
         U.el('td', null, U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקה', onclick: function () {
@@ -132,7 +120,7 @@
       ]);
     }));
     var tbl = U.el('table', { class: 'grid', style: 'margin-top:4px;' }, [
-      U.el('thead', null, U.el('tr', null, ['משימה', 'תפקיד', 'אחראי', 'הערה', 'סטטוס', ''].map(function (h) { return U.el('th', { text: h }); }))),
+      U.el('thead', null, U.el('tr', null, ['משימה', 'אחראי', 'הערה', 'סטטוס', ''].map(function (h) { return U.el('th', { text: h }); }))),
       tbody
     ]);
     // הוספה: מהקטלוג או משימה חופשית
