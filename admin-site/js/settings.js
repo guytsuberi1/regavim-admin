@@ -160,6 +160,45 @@
     ]);
   }
 
+  function flyerLogoCard() {
+    var s = Store.settings();
+    var wrap = U.el('div');
+    function draw() {
+      U.clear(wrap);
+      if (s.flyerLogo) {
+        wrap.appendChild(U.el('img', { src: s.flyerLogo, style: 'max-width:180px;max-height:130px;border:1px solid var(--border,#d6dce1);border-radius:8px;background:#fff;padding:6px;display:block;margin-bottom:8px;' }));
+        wrap.appendChild(U.el('button', { class: 'btn secondary', text: '🗑 הסר לוגו', onclick: function () { delete s.flyerLogo; Store.saveSettings(); draw(); } }));
+      } else {
+        wrap.appendChild(U.el('div', { class: 'muted', style: 'font-size:12px;margin-bottom:8px;', text: 'לא הוגדר לוגו — הפלייר ישתמש בלוגו משוער של ה-AI.' }));
+      }
+    }
+    draw();
+    var fileInp = U.el('input', { type: 'file', accept: 'image/*', style: 'display:none;' });
+    fileInp.addEventListener('change', function () {
+      var f = fileInp.files[0]; if (!f) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        var im = new Image();
+        im.onload = function () {
+          var max = 640, sc = Math.min(1, max / Math.max(im.width, im.height));
+          var cv = document.createElement('canvas');
+          cv.width = Math.round(im.width * sc); cv.height = Math.round(im.height * sc);
+          cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+          s.flyerLogo = cv.toDataURL('image/png');
+          Store.saveSettings(); if (U.toast) U.toast('הלוגו נשמר'); draw();
+        };
+        im.src = reader.result;
+      };
+      reader.readAsDataURL(f);
+    });
+    return U.el('div', { class: 'card', style: 'max-width:560px;margin-bottom:16px;' }, [
+      U.el('h3', { text: '🖼️ לוגו לפלייר' }),
+      U.el('p', { class: 'muted', style: 'margin-top:0;font-size:12px;', text: 'הלוגו שישמש בפלייר ה-AI (דיוק מרבי במקום לוגו משוער). מומלץ תמונה ברורה על רקע לבן.' }),
+      wrap, fileInp,
+      U.el('button', { class: 'btn secondary', text: '📤 העלאת לוגו', style: 'margin-top:8px;', onclick: function () { fileInp.click(); } })
+    ]);
+  }
+
   function render(view) {
     if (!Store.isAdmin()) {
       view.appendChild(U.el('div', { class: 'empty' }, 'למסך ההגדרות יש גישה למנהל בלבד.'));
@@ -198,6 +237,7 @@
     view.appendChild(eventTypesCard());
     view.appendChild(classesCard());
     view.appendChild(consentTextCard());
+    view.appendChild(flyerLogoCard());
 
     // ---------- גיבוי ושחזור ----------
     var backupCard = U.el('div', { class: 'card danger-zone', style: 'max-width:560px;' }, [
