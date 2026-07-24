@@ -12,6 +12,7 @@
   function stColor(list, s) { var x = list.filter(function (q) { return q.key === s; })[0]; return x ? x.color : '#64748b'; }
 
   var focusNew = false;
+  var showArchive = false;
   var collapsedMap = (function () { try { return JSON.parse(localStorage.getItem('admin_event_collapsed') || '{}'); } catch (e) { return {}; } })();
   function saveCollapsed() { try { localStorage.setItem('admin_event_collapsed', JSON.stringify(collapsedMap)); } catch (e) {} }
 
@@ -543,12 +544,17 @@
     nameInp.addEventListener('change', function () { ev.title = nameInp.value.trim(); saveEv(ev); });
     var statusSel = eSelect(ev, 'status', ESTATUS, function () { saveEv(ev); App.render(); });
     statusSel.style.cssText += 'border-radius:16px;font-weight:600;';
-    var delBtn = U.el('button', { class: 'btn secondary ico', text: '🗑', title: 'מחיקת אירוע', onclick: function () {
-      Modal.confirm({ title: 'מחיקת אירוע', text: 'למחוק את "' + (ev.title || '') + '"?', okLabel: 'מחיקה', danger: true }, function () { Store.deleteEvent(ev.id); App.render(); });
-    } });
-    card.appendChild(U.el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;' }, [
-      chevron, numPill, U.el('span', { class: 'tag', text: typeLabel(ev.type) }), nameInp, U.el('span', { class: 'spacer' }), statusSel, delBtn
-    ]));
+    var actionBtns = [];
+    if (ev.archived) {
+      actionBtns.push(U.el('button', { class: 'btn secondary ico', text: '↩️', title: 'שחזור מהארכיון', onclick: function () { ev.archived = false; saveEv(ev); App.render(); } }));
+      actionBtns.push(U.el('button', { class: 'btn secondary ico', text: '🗑', title: 'מחיקה לצמיתות', onclick: function () {
+        Modal.confirm({ title: 'מחיקה לצמיתות', text: 'למחוק לצמיתות את "' + (ev.title || '') + '"? לא ניתן לשחזר.', okLabel: 'מחיקה', danger: true }, function () { Store.deleteEvent(ev.id); App.render(); });
+      } }));
+    } else {
+      actionBtns.push(U.el('button', { class: 'btn secondary ico', text: '📦', title: 'העברה לארכיון', onclick: function () { ev.archived = true; saveEv(ev); App.render(); } }));
+    }
+    card.appendChild(U.el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;' },
+      [chevron, numPill, U.el('span', { class: 'tag', text: typeLabel(ev.type) }), nameInp, U.el('span', { class: 'spacer' }), statusSel].concat(actionBtns)));
 
     // כשמכווץ — תקציר בשורה אחת בלבד
     if (cardCollapsed) {
@@ -643,6 +649,8 @@
         close();
         openTaskPicker(type ? (type.defaultTaskIds || []) : [], [], function (ids) {
           ids.forEach(function (id) { var c = catById(id); if (c) ev.tasks.push(taskFromCatalog(c)); });
+          // למידה: הפריסט של סוג האירוע מתעדכן למה שנבחר בפועל
+          if (type) { type.defaultTaskIds = ids.slice(); Store.saveSettings(); }
           Store.upsertEvent(ev);
           focusNew = true; App.render();
         });
@@ -758,45 +766,59 @@
   // ---------- רינדור ----------
   function upcomingEvents() {
     var today = U.todayISO();
-    return Store.eventsAll().filter(function (e) { return !e.date || e.date >= today; });
+    return Store.eventsAll().filter(function (e) { return !e.archived && (!e.date || e.date >= today); });
+  }
+  // ארכוב אוטומטי: אירוע שהתאריך שלו עבר ולא נגעו בו ידנית — עובר לארכיון
+  function autoArchivePast() {
+    var today = U.todayISO();
+    Store.eventsAll().forEach(function (e) {
+      if (e.archived === undefined && e.date && e.date < today) { e.archived = true; Store.upsertEvent(e); }
+    });
   }
   function render(view) {
-    var events = Store.eventsAll().slice().sort(function (a, b) {
+    autoArchivePast();
+    var all = Store.eventsAll().slice().sort(function (a, b) {
       if (!a.date) return 1; if (!b.date) return -1;
       return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0);
     });
+    var active = all.filter(function (e) { return !e.archived; });
+    var archived = all.filter(function (e) { return !!e.archived; });
+    var list = showArchive ? archived : active;
 
     var menuItems = [{ icon: '🎙️', label: 'יצירה מפגישה (AI)', onClick: openMeetingAI }];
-    if (events.length) {
+    if (active.length) {
       menuItems.push({ icon: '📋', label: 'סיכום שבועי לפי אחראי', onClick: function () { copyText(summaryByOwnerText(upcomingEvents(), 'השבוע', true), 'הסיכום השבועי הועתק — הדביקו בקבוצה'); } });
       menuItems.push({ icon: '📤', label: 'שליחה שבועית אישית', onClick: function () { openDispatch(upcomingEvents(), 'השבוע', true); } });
     }
-    var head = U.el('div', { class: 'page-head' }, [
-      U.el('h2', { text: '🗓️ תכנון אירועים וטיולים' }),
-      U.el('span', { class: 'spacer' }),
-      U.el('button', { class: 'btn', text: '➕ אירוע חדש', onclick: openNewEvent }),
-      U.actionMenu(menuItems)
-    ]);
-    view.appendChild(head);
+    var headKids = [U.el('h2', { text: '🗓️ תכנון אירועים וטיולים' }), U.el('span', { class: 'spacer' })];
+    if (!showArchive) headKids.push(U.el('button', { class: 'btn', text: '➕ אירוע חדש', onclick: openNewEvent }));
+    headKids.push(U.actionMenu(menuItems));
+    view.appendChild(U.el('div', { class: 'page-head' }, headKids));
 
-    if (events.length) {
+    // תת-טאבים: אירועים פעילים / ארכיון
+    view.appendChild(U.el('div', { class: 'subtabs', style: 'margin-bottom:12px;' }, [
+      U.el('button', { class: showArchive ? '' : 'active', onclick: function () { showArchive = false; App.render(); } }, '🗓️ אירועים (' + active.length + ')'),
+      U.el('button', { class: showArchive ? 'active' : '', onclick: function () { showArchive = true; App.render(); } }, '🗄️ ארכיון (' + archived.length + ')')
+    ]));
+
+    if (!showArchive && active.length) {
       var openTasks = 0, upcoming = 0, today = U.todayISO();
-      events.forEach(function (e) {
+      active.forEach(function (e) {
         (e.tasks || []).forEach(function (t) { if (t.status !== 'בוצע') openTasks++; });
         if (e.date && e.date >= today && e.status !== 'בוצע') upcoming++;
       });
       view.appendChild(U.el('div', { class: 'kpi-row', style: 'margin-bottom:16px;' }, [
-        kpi('🗓️', events.length, 'אירועים', 'kpi-neutral'),
+        kpi('🗓️', active.length, 'אירועים', 'kpi-neutral'),
         kpi('📅', upcoming, 'קרובים', 'kpi-info'),
         kpi('✅', openTasks, 'משימות פתוחות', openTasks ? 'kpi-warn' : 'kpi-neutral')
       ]));
     }
 
-    if (!events.length) {
-      view.appendChild(U.el('div', { class: 'empty' }, 'אין עדיין אירועים — הוסיפו אירוע חדש למעלה.'));
+    if (!list.length) {
+      view.appendChild(U.el('div', { class: 'empty' }, showArchive ? 'אין אירועים בארכיון.' : 'אין עדיין אירועים — הוסיפו אירוע חדש למעלה.'));
       return;
     }
-    events.forEach(function (ev) { view.appendChild(eventCard(ev)); });
+    list.forEach(function (ev) { view.appendChild(eventCard(ev)); });
     if (focusNew) { focusNew = false; setTimeout(function () { global.scrollTo(0, 0); }, 0); }
   }
 
