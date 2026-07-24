@@ -432,19 +432,13 @@
       ]));
     }
   }
-  function consentSection(ev) {
-    var open = !!collapsedMap['consentOpen:' + ev.id];
-    var wrap = U.el('div', { class: 'no-print', style: 'margin-top:12px;' });
-    wrap.appendChild(U.el('button', { class: 'btn secondary', style: 'margin:2px 0;',
-      onclick: function () { collapsedMap['consentOpen:' + ev.id] = !open; saveCollapsed(); App.render(); } },
-      (open ? '▾' : '▸') + ' 🖊️ אישורי הורים'));
-    if (open) {
-      wrap.appendChild(consentControls(ev));
-      var trackBox = U.el('div', { style: 'margin-top:8px;' }, [U.el('div', { class: 'muted', style: 'font-size:12px;', text: 'טוען אישורים…' })]);
-      wrap.appendChild(trackBox);
-      Store.fetchConsents(ev.id).then(function (rows) { renderTracking(ev, trackBox, rows); })
-        .catch(function () { U.clear(trackBox); trackBox.appendChild(U.el('div', { class: 'muted', style: 'font-size:12px;', text: 'לא ניתן לטעון אישורים (נדרש חיבור לענן).' })); });
-    }
+  function consentBody(ev) {
+    var wrap = U.el('div', { class: 'no-print', style: 'margin-top:4px;' });
+    wrap.appendChild(consentControls(ev));
+    var trackBox = U.el('div', { style: 'margin-top:8px;' }, [U.el('div', { class: 'muted', style: 'font-size:12px;', text: 'טוען אישורים…' })]);
+    wrap.appendChild(trackBox);
+    Store.fetchConsents(ev.id).then(function (rows) { renderTracking(ev, trackBox, rows); })
+      .catch(function () { U.clear(trackBox); trackBox.appendChild(U.el('div', { class: 'muted', style: 'font-size:12px;', text: 'לא ניתן לטעון אישורים (נדרש חיבור לענן).' })); });
     return wrap;
   }
 
@@ -565,23 +559,22 @@
     ]);
     card.appendChild(meta);
 
-    // לו"ז — ניתן לכווץ
+    // סעיפים מתקפלים — לו"ז / משימות / אישורי הורים — כולם באותה שורה כשסגורים
     var cLoz = collapsedMap['loz:' + ev.id];
-    card.appendChild(U.el('button', { class: 'btn secondary', style: 'margin:10px 0 2px;',
-      onclick: function () { collapsedMap['loz:' + ev.id] = !cLoz; saveCollapsed(); App.render(); } },
-      (cLoz ? '▸' : '▾') + ' 🗒️ לו"ז (' + (ev.schedule || []).length + ')'));
-    if (!cLoz) card.appendChild(scheduleTable(ev));
-
-    // משימות — ניתן לכווץ
-    var doneN = (ev.tasks || []).filter(function (t) { return t.status === 'בוצע'; }).length;
     var cTasks = collapsedMap['tasks:' + ev.id];
-    card.appendChild(U.el('button', { class: 'btn secondary', style: 'margin:12px 0 2px;',
-      onclick: function () { collapsedMap['tasks:' + ev.id] = !cTasks; saveCollapsed(); App.render(); } },
-      (cTasks ? '▸' : '▾') + ' ✅ משימות (' + doneN + '/' + (ev.tasks || []).length + ')'));
+    var cConsent = !!collapsedMap['consentOpen:' + ev.id];
+    var doneN = (ev.tasks || []).filter(function (t) { return t.status === 'בוצע'; }).length;
+    card.appendChild(U.el('div', { class: 'no-print', style: 'display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 0 2px;' }, [
+      U.el('button', { class: 'btn secondary', onclick: function () { collapsedMap['loz:' + ev.id] = !cLoz; saveCollapsed(); App.render(); } },
+        (cLoz ? '▸' : '▾') + ' 🗒️ לו"ז (' + (ev.schedule || []).length + ')'),
+      U.el('button', { class: 'btn secondary', onclick: function () { collapsedMap['tasks:' + ev.id] = !cTasks; saveCollapsed(); App.render(); } },
+        (cTasks ? '▸' : '▾') + ' ✅ משימות (' + doneN + '/' + (ev.tasks || []).length + ')'),
+      U.el('button', { class: 'btn secondary', onclick: function () { collapsedMap['consentOpen:' + ev.id] = !cConsent; saveCollapsed(); App.render(); } },
+        (cConsent ? '▾' : '▸') + ' 🖊️ אישורי הורים')
+    ]));
+    if (!cLoz) card.appendChild(scheduleTable(ev));
     if (!cTasks) card.appendChild(tasksTable(ev));
-
-    // אישורי הורים — חתימה דיגיטלית + מעקב
-    card.appendChild(consentSection(ev));
+    if (cConsent) card.appendChild(consentBody(ev));
 
     // הערות
     var notes = eText(ev, ev, 'notes', '📝 הערות לאירוע…', 'width:100%;font-size:13px;color:var(--muted,#6b7884);margin-top:10px;');
