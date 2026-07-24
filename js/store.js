@@ -753,6 +753,24 @@
     });
   }
 
+  // יצירת פלייר תמונה לאירוע (Nano Banana) — מחזיר data URL של התמונה
+  function generateFlyer(payload) {
+    if (!sb) return Promise.reject(new Error('נדרשת התחברות לענן'));
+    return sb.functions.invoke('event-flyer', { body: payload }).then(function (res) {
+      if (res.error) {
+        var ctx = res.error.context;
+        if (ctx && typeof ctx.json === 'function') {
+          return ctx.json().then(function (b) { throw new Error((b && b.error) || res.error.message); },
+            function () { throw new Error(res.error.message || 'שגיאה מהשרת'); });
+        }
+        throw new Error(res.error.message || 'שגיאה מהשרת');
+      }
+      if (res.data && res.data.error) throw new Error(res.data.error);
+      if (!res.data || !res.data.image) throw new Error('לא התקבלה תמונה');
+      return res.data.image;
+    });
+  }
+
   // ימים עד תאריך היעד (שלילי = באיחור); null אם אין תאריך
   function daysToDue(iso) {
     if (!iso) return null;
@@ -1136,6 +1154,7 @@
     currentEmpId: currentEmpId,
     uploadMeetingAudio: uploadMeetingAudio,
     meetingToEvents: meetingToEvents,
+    generateFlyer: generateFlyer,
     // רשימות כיתה ואישורי הורים
     classesAll: classesAll,
     classByName: classByName,
