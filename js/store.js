@@ -767,7 +767,7 @@
       }
       if (res.data && res.data.error) throw new Error(res.data.error);
       if (!res.data || !res.data.image) throw new Error('לא התקבלה תמונה');
-      return res.data.image;
+      return res.data;
     });
   }
 
