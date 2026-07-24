@@ -11,13 +11,39 @@
 
 // מפתח ייעודי לאפליקציה הזו (משותף עם meeting-to-events)
 const GEMINI_KEY = Deno.env.get("GEMINI_KEY_ADMIN") || "";
-// דגם התמונות — "Nano Banana". אם מוגדר GEMINI_IMAGE_MODEL — משתמשים רק בו;
-// אחרת מנסים כמה שמות ידועים עד שאחד עובד (עמיד לשינויי שמות).
-//   supabase secrets set GEMINI_IMAGE_MODEL=gemini-2.5-flash-image
+// דגם התמונות. אם מוגדר GEMINI_IMAGE_MODEL — משתמשים רק בו; אחרת בוחרים
+// אוטומטית את דגם התמונות הטוב ביותר הזמין למפתח (מעדיפים Gemini 3 Pro Image,
+// "Nano Banana Pro", שמרנדר עברית מדויקת), עם נפילה חזרה ל-2.5 flash image.
+//   supabase secrets set GEMINI_IMAGE_MODEL=gemini-3-pro-image-preview
 const MODEL_OVERRIDE = Deno.env.get("GEMINI_IMAGE_MODEL") || "";
-const MODEL_CANDIDATES = MODEL_OVERRIDE
-  ? [MODEL_OVERRIDE]
-  : ["gemini-2.5-flash-image", "gemini-2.5-flash-image-preview", "gemini-2.0-flash-preview-image-generation"];
+
+// ניקוד העדפה לדגם תמונות (גבוה יותר = עדיף)
+function modelScore(name: string): number {
+  const n = name.toLowerCase();
+  if (n.indexOf("image") === -1) return -1;          // לא דגם תמונות
+  if (n.indexOf("3-pro-image") !== -1) return 100;   // Nano Banana Pro (העברית הכי טובה)
+  if (n.indexOf("pro-image") !== -1) return 90;
+  if (n.indexOf("3") !== -1) return 80;
+  if (n.indexOf("2.5-flash-image") !== -1) return 50;
+  if (n.indexOf("2.0") !== -1) return 20;
+  return 10;
+}
+
+// בחירת דגם התמונות הטוב ביותר הזמין למפתח (דרך ListModels)
+async function pickImageModel(): Promise<string> {
+  if (MODEL_OVERRIDE) return MODEL_OVERRIDE;
+  try {
+    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000&key=" + GEMINI_KEY);
+    const json = await res.json();
+    const names: string[] = (json?.models || [])
+      .filter((m: any) => (m?.supportedGenerationMethods || []).indexOf("generateContent") !== -1)
+      .map((m: any) => String(m?.name || "").replace(/^models\//, ""))
+      .filter((n: string) => modelScore(n) >= 0);
+    names.sort((a, b) => modelScore(b) - modelScore(a));
+    if (names.length) return names[0];
+  } catch (_e) { /* אם ListModels נכשל — נשתמש בברירת מחדל */ }
+  return "gemini-2.5-flash-image";
+}
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -86,9 +112,9 @@ function buildFlyerPrompt(ev: any, org: string): string {
   return lines.filter(Boolean).join("\n");
 }
 
-async function tryModel(model: string, prompt: string): Promise<{ ok: boolean; img?: { data: string; mimeType: string }; retry?: boolean; err?: string }> {
-  // דגמי image-generation של דור 2.0 דורשים גם TEXT וגם IMAGE; 2.5 מסתפק ב-IMAGE
-  const modalities = model.indexOf("2.0") !== -1 ? ["TEXT", "IMAGE"] : ["IMAGE"];
+async function generateImage(model: string, prompt: string): Promise<{ data: string; mimeType: string }> {
+  // 2.5-flash-image מסתפק ב-IMAGE; דגמים אחרים (2.0 / 3-pro) — TEXT+IMAGE
+  const modalities = model.indexOf("2.5-flash-image") !== -1 ? ["IMAGE"] : ["TEXT", "IMAGE"];
   const url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + GEMINI_KEY;
   const res = await fetch(url, {
     method: "POST",
@@ -96,29 +122,14 @@ async function tryModel(model: string, prompt: string): Promise<{ ok: boolean; i
     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: modalities } }),
   });
   const json = await res.json();
-  if (!res.ok) {
-    const msg = "Gemini error " + res.status + " (" + model + "): " + JSON.stringify(json).slice(0, 400);
-    // 404 = שם דגם לא זמין → אפשר לנסות דגם אחר; שאר השגיאות (מכסה וכו') — לעצור
-    return { ok: false, retry: res.status === 404, err: msg };
-  }
+  if (!res.ok) throw new Error("Gemini error " + res.status + " (" + model + "): " + JSON.stringify(json).slice(0, 500));
   const parts = json?.candidates?.[0]?.content?.parts || [];
   for (const p of parts) {
     const inline = p?.inlineData || p?.inline_data;
-    if (inline && inline.data) return { ok: true, img: { data: inline.data, mimeType: inline.mimeType || inline.mime_type || "image/png" } };
+    if (inline && inline.data) return { data: inline.data, mimeType: inline.mimeType || inline.mime_type || "image/png" };
   }
   const reason = json?.candidates?.[0]?.finishReason || JSON.stringify(json).slice(0, 300);
-  return { ok: false, retry: true, err: "לא התקבלה תמונה מ-" + model + " (" + reason + ")" };
-}
-
-async function generateImage(prompt: string): Promise<{ data: string; mimeType: string }> {
-  let lastErr = "לא נמצא דגם תמונות זמין";
-  for (const model of MODEL_CANDIDATES) {
-    const r = await tryModel(model, prompt);
-    if (r.ok && r.img) return r.img;
-    lastErr = r.err || lastErr;
-    if (!r.retry) break; // שגיאה שאינה "דגם לא נמצא" — לעצור ולהציג
-  }
-  throw new Error(lastErr);
+  throw new Error("לא התקבלה תמונה מ-" + model + " (" + reason + ")");
 }
 
 Deno.serve(async (req: Request) => {
@@ -134,9 +145,10 @@ Deno.serve(async (req: Request) => {
   if (!payload || !payload.event) return reply({ error: "חסרים נתוני אירוע" }, 400);
 
   try {
+    const model = await pickImageModel();
     const prompt = buildFlyerPrompt(payload.event, payload.org || "");
-    const img = await generateImage(prompt);
-    return reply({ image: "data:" + img.mimeType + ";base64," + img.data });
+    const img = await generateImage(model, prompt);
+    return reply({ image: "data:" + img.mimeType + ";base64," + img.data, model: model });
   } catch (e) {
     return reply({ error: String((e as Error).message || e) }, 502);
   }

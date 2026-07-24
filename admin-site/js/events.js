@@ -335,7 +335,7 @@
       U.toast('השיתוף אינו נתמך בדפדפן זה — השתמשו בהורדה', 'error');
     }).catch(function () { U.toast('השיתוף בוטל או נכשל — השתמשו בהורדה', 'error'); });
   }
-  function showFlyerResult(ev, dataUrl) {
+  function showFlyerResult(ev, dataUrl, model) {
     var img = U.el('img', { src: dataUrl, style: 'width:100%;border-radius:10px;border:1px solid var(--border,#d6dce1);display:block;' });
     var fname = 'flyer-' + String(ev.title || 'event').replace(/[^\w֐-׿]+/g, '_') + '.png';
     var actions = U.el('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;' }, [
@@ -343,12 +343,14 @@
       U.el('button', { class: 'btn secondary', text: '🖨️ הדפסה', onclick: function () { printImage(dataUrl); } })
     ]);
     if (navigator.canShare) actions.appendChild(U.el('button', { class: 'btn secondary', html: WA_GREEN + ' שיתוף', onclick: function () { shareImage(dataUrl, fname, ev); } }));
-    Modal.open('🎨 פלייר האירוע', U.el('div', null, [img, actions]), [{ label: 'סגירה', class: 'secondary' }]);
+    var kids = [img, actions];
+    if (model) kids.push(U.el('div', { class: 'muted', style: 'font-size:11px;margin-top:8px;', text: 'נוצר ע"י: ' + model }));
+    Modal.open('🎨 פלייר האירוע', U.el('div', null, kids), [{ label: 'סגירה', class: 'secondary' }]);
   }
   function openFlyer(ev) {
     var stop = openThinking(['מכין את הפלייר…', 'ה-AI מעצב את התמונה…', 'עוד רגע — מרנדר…']);
-    Store.generateFlyer(flyerPayload(ev)).then(function (dataUrl) {
-      stop(); showFlyerResult(ev, dataUrl);
+    Store.generateFlyer(flyerPayload(ev)).then(function (data) {
+      stop(); showFlyerResult(ev, data.image, data.model);
     }).catch(function (e) { stop(); U.toast('יצירת הפלייר נכשלה: ' + e.message, 'error'); });
   }
 
