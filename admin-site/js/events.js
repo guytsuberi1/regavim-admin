@@ -4,6 +4,9 @@
   'use strict';
   var U = global.U;
 
+  // אייקון וואטסאפ בצבע הירוק הרשמי (ה-SVG משתמש ב-currentColor)
+  var WA_GREEN = '<span style="color:#25D366">' + (U.WA_SVG || '') + '</span>';
+
   var ESTATUS = [{ key: 'בתכנון', color: '#d97706' }, { key: 'מוכן', color: '#2563eb' }, { key: 'בוצע', color: '#16a34a' }];
   var TSTATUS = [{ key: 'פתוח', color: '#64748b' }, { key: 'בתהליך', color: '#2563eb' }, { key: 'בוצע', color: '#16a34a' }];
   function stColor(list, s) { var x = list.filter(function (q) { return q.key === s; })[0]; return x ? x.color : '#64748b'; }
@@ -97,6 +100,11 @@
     return U.el('div', null, [U.el('div', { class: 'tbl-scroll' }, [tbl]), addBar]);
   }
 
+  // הודעת וואטסאפ אישית למשימה בודדת (לאחראי המשויך)
+  function taskWaMsg(ev, t) {
+    return 'שלום ' + Store.empName(t.empId) + ',\nמשימה' + (ev.title ? ' עבור "' + ev.title + '"' : '') + ':\n• ' + (t.title || '');
+  }
+
   // ---------- משימות (צ'ק-ליסט) ----------
   function tasksTable(ev) {
     var roleNames = eventRoles().map(function (r) { return r.name; });
@@ -109,9 +117,16 @@
         t.empId = roleEmpId(t.role);
         saveEv(ev); App.render();
       });
+      var owner = t.empId ? Store.empById(t.empId) : null;
+      var waIcon = (owner && owner.phone)
+        ? U.el('a', { href: 'https://wa.me/' + U.waNumber(owner.phone) + '?text=' + encodeURIComponent(taskWaMsg(ev, t)),
+            target: '_blank', rel: 'noopener', title: 'שליחת המשימה בוואטסאפ ל' + Store.empName(t.empId),
+            style: 'color:#25D366;flex:0 0 auto;', html: U.WA_SVG })
+        : null;
+      var roleCell = U.el('td', null, [U.el('div', { style: 'display:flex;align-items:center;gap:6px;' }, [roleW, waIcon].filter(Boolean))]);
       return U.el('tr', null, [
         U.el('td', { style: 'min-width:170px;' }, eText(ev, t, 'title', 'משימה', 'width:100%;')),
-        U.el('td', null, roleW),
+        roleCell,
         U.el('td', { style: 'min-width:130px;' }, eText(ev, t, 'note', 'הערה', 'width:100%;')),
         U.el('td', null, eSelect(t, 'status', TSTATUS, function () { saveEv(ev); App.render(); })),
         U.el('td', null, U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקה', onclick: function () {
@@ -551,11 +566,14 @@
     var dateInp = U.el('input', { type: 'date', value: ev.date || '', class: 'chip-date-input' });
     dateInp.addEventListener('change', function () { ev.date = dateInp.value; saveEv(ev); App.render(); });
     var dateChip = U.dateChip(ev.date ? fmtDateLine(ev.date) : 'בחר תאריך', dateInp, { title: 'תאריך האירוע' });
-    var meta = U.el('div', { style: 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px;color:var(--muted,#6b7884);font-size:13px;' }, [
+    function metaChip(icon, kids) {
+      return U.el('span', { class: 'range-chip' }, [U.el('span', { class: 'rc-ic', text: icon })].concat(kids));
+    }
+    var meta = U.el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;' }, [
       dateChip,
-      U.el('span', null, ['🕗 ', eTime(ev, ev, 'startTime'), '–', eTime(ev, ev, 'endTime')]),
-      U.el('span', null, ['👥 ', eText(ev, ev, 'group', 'קבוצה/כיתה', 'min-width:120px;')]),
-      U.el('span', null, ['📍 ', eText(ev, ev, 'location', 'יעד/מקום', 'min-width:140px;')])
+      metaChip('🕗', [eTime(ev, ev, 'startTime'), U.el('span', { style: 'opacity:.6;', text: '–' }), eTime(ev, ev, 'endTime')]),
+      metaChip('👥', [eText(ev, ev, 'group', 'קבוצה/כיתה', 'min-width:90px;')]),
+      metaChip('📍', [eText(ev, ev, 'location', 'יעד/מקום', 'min-width:110px;')])
     ]);
     card.appendChild(meta);
 
@@ -582,11 +600,10 @@
 
     // פלטים
     var outputs = U.el('div', { class: 'no-print', style: 'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;padding-top:10px;border-top:1px dashed var(--border,#d6dce1);' }, [
-      U.el('a', { class: 'btn secondary', href: 'https://wa.me/?text=' + encodeURIComponent(buildLozText(ev)), target: '_blank', rel: 'noopener', html: U.WA_SVG + ' שלח לו"ז בוואטסאפ' }),
+      U.el('a', { class: 'btn secondary', href: 'https://wa.me/?text=' + encodeURIComponent(buildLozText(ev)), target: '_blank', rel: 'noopener', html: WA_GREEN + ' שלח לו"ז' }),
       U.el('button', { class: 'btn secondary', text: '🖨️ הדפס לו"ז', onclick: function () { printLoz(ev); } }),
       U.el('a', { class: 'btn secondary', href: gcalUrl(ev), target: '_blank', rel: 'noopener', text: '📅 הוסף ליומן Google' }),
-      U.el('button', { class: 'btn secondary', text: '📋 סיכום לפי אחראי', onclick: function () { copyText(summaryByOwnerText([ev], ev.title, false), 'הסיכום הועתק — הדביקו בקבוצה'); } }),
-      U.el('button', { class: 'btn secondary', text: '📤 שליחה אישית', onclick: function () { openDispatch([ev], ev.title, false); } })
+      U.el('a', { class: 'btn secondary', href: 'https://wa.me/?text=' + encodeURIComponent(summaryByOwnerText([ev], ev.title, false)), target: '_blank', rel: 'noopener', html: WA_GREEN + ' סיכום משימות' })
     ]);
     card.appendChild(outputs);
     return card;
@@ -768,7 +785,7 @@
         (e.tasks || []).forEach(function (t) { if (t.status !== 'בוצע') openTasks++; });
         if (e.date && e.date >= today && e.status !== 'בוצע') upcoming++;
       });
-      view.appendChild(U.el('div', { class: 'kpi-row' }, [
+      view.appendChild(U.el('div', { class: 'kpi-row', style: 'margin-bottom:16px;' }, [
         kpi('🗓️', events.length, 'אירועים', 'kpi-neutral'),
         kpi('📅', upcoming, 'קרובים', 'kpi-info'),
         kpi('✅', openTasks, 'משימות פתוחות', openTasks ? 'kpi-warn' : 'kpi-neutral')
