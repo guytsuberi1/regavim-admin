@@ -11,9 +11,13 @@
 
 // מפתח ייעודי לאפליקציה הזו (משותף עם meeting-to-events)
 const GEMINI_KEY = Deno.env.get("GEMINI_KEY_ADMIN") || "";
-// דגם התמונות — "Nano Banana". ניתן לשנות בלי לגעת בקוד:
+// דגם התמונות — "Nano Banana". אם מוגדר GEMINI_IMAGE_MODEL — משתמשים רק בו;
+// אחרת מנסים כמה שמות ידועים עד שאחד עובד (עמיד לשינויי שמות).
 //   supabase secrets set GEMINI_IMAGE_MODEL=gemini-2.5-flash-image
-const IMAGE_MODEL = Deno.env.get("GEMINI_IMAGE_MODEL") || "gemini-2.5-flash-image-preview";
+const MODEL_OVERRIDE = Deno.env.get("GEMINI_IMAGE_MODEL") || "";
+const MODEL_CANDIDATES = MODEL_OVERRIDE
+  ? [MODEL_OVERRIDE]
+  : ["gemini-2.5-flash-image", "gemini-2.5-flash-image-preview", "gemini-2.0-flash-preview-image-generation"];
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -82,27 +86,39 @@ function buildFlyerPrompt(ev: any, org: string): string {
   return lines.filter(Boolean).join("\n");
 }
 
-async function generateImage(prompt: string): Promise<{ data: string; mimeType: string }> {
-  const url = "https://generativelanguage.googleapis.com/v1beta/models/" +
-    IMAGE_MODEL + ":generateContent?key=" + GEMINI_KEY;
+async function tryModel(model: string, prompt: string): Promise<{ ok: boolean; img?: { data: string; mimeType: string }; retry?: boolean; err?: string }> {
+  // דגמי image-generation של דור 2.0 דורשים גם TEXT וגם IMAGE; 2.5 מסתפק ב-IMAGE
+  const modalities = model.indexOf("2.0") !== -1 ? ["TEXT", "IMAGE"] : ["IMAGE"];
+  const url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + GEMINI_KEY;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { responseModalities: ["IMAGE"] },
-    }),
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: modalities } }),
   });
   const json = await res.json();
-  if (!res.ok) throw new Error("Gemini error " + res.status + ": " + JSON.stringify(json).slice(0, 800));
+  if (!res.ok) {
+    const msg = "Gemini error " + res.status + " (" + model + "): " + JSON.stringify(json).slice(0, 400);
+    // 404 = שם דגם לא זמין → אפשר לנסות דגם אחר; שאר השגיאות (מכסה וכו') — לעצור
+    return { ok: false, retry: res.status === 404, err: msg };
+  }
   const parts = json?.candidates?.[0]?.content?.parts || [];
   for (const p of parts) {
     const inline = p?.inlineData || p?.inline_data;
-    if (inline && inline.data) return { data: inline.data, mimeType: inline.mimeType || inline.mime_type || "image/png" };
+    if (inline && inline.data) return { ok: true, img: { data: inline.data, mimeType: inline.mimeType || inline.mime_type || "image/png" } };
   }
-  // אם לא חזרה תמונה — ננסה להראות סיבה (למשל חסימת בטיחות)
-  const reason = json?.candidates?.[0]?.finishReason || JSON.stringify(json).slice(0, 400);
-  throw new Error("Gemini לא החזיר תמונה (" + reason + ")");
+  const reason = json?.candidates?.[0]?.finishReason || JSON.stringify(json).slice(0, 300);
+  return { ok: false, retry: true, err: "לא התקבלה תמונה מ-" + model + " (" + reason + ")" };
+}
+
+async function generateImage(prompt: string): Promise<{ data: string; mimeType: string }> {
+  let lastErr = "לא נמצא דגם תמונות זמין";
+  for (const model of MODEL_CANDIDATES) {
+    const r = await tryModel(model, prompt);
+    if (r.ok && r.img) return r.img;
+    lastErr = r.err || lastErr;
+    if (!r.retry) break; // שגיאה שאינה "דגם לא נמצא" — לעצור ולהציג
+  }
+  throw new Error(lastErr);
 }
 
 Deno.serve(async (req: Request) => {
