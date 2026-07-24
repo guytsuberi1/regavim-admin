@@ -307,6 +307,51 @@
     openDoc('אישור הורים — ' + (ev.title || 'אירוע'), body);
   }
 
+  // ---------- פלייר AI (Nano Banana) ----------
+  function flyerPayload(ev) {
+    return {
+      org: Store.settings().orgName || 'רגבים בנימין',
+      event: {
+        title: ev.title || '', typeLabel: typeLabel(ev.type),
+        date: ev.date || '', dateLabel: ev.date ? fmtDateLine(ev.date) : '',
+        startTime: ev.startTime || '', endTime: ev.endTime || '',
+        location: ev.location || '', group: ev.group || '', notes: ev.notes || '',
+        schedule: (ev.schedule || []).map(function (s) { return { time: s.time || '', activity: s.activity || '', note: s.note || '' }; })
+      }
+    };
+  }
+  function printImage(dataUrl) {
+    var w = global.open('', '_blank');
+    if (!w) { U.toast('הדפדפן חסם את החלון — אפשרו חלונות קופצים', 'error'); return; }
+    w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><style>@page{margin:0}body{margin:0}img{width:100%;display:block}</style></head><body><img src="' + dataUrl + '" onload="window.print()"></body></html>');
+    w.document.close();
+  }
+  function shareImage(dataUrl, fname, ev) {
+    fetch(dataUrl).then(function (r) { return r.blob(); }).then(function (blob) {
+      var file = new File([blob], fname, { type: blob.type || 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        return navigator.share({ files: [file], title: ev.title || 'פלייר', text: ev.title || '' });
+      }
+      U.toast('השיתוף אינו נתמך בדפדפן זה — השתמשו בהורדה', 'error');
+    }).catch(function () { U.toast('השיתוף בוטל או נכשל — השתמשו בהורדה', 'error'); });
+  }
+  function showFlyerResult(ev, dataUrl) {
+    var img = U.el('img', { src: dataUrl, style: 'width:100%;border-radius:10px;border:1px solid var(--border,#d6dce1);display:block;' });
+    var fname = 'flyer-' + String(ev.title || 'event').replace(/[^\w֐-׿]+/g, '_') + '.png';
+    var actions = U.el('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;' }, [
+      U.el('a', { class: 'btn', href: dataUrl, download: fname, text: '⬇️ הורדה' }),
+      U.el('button', { class: 'btn secondary', text: '🖨️ הדפסה', onclick: function () { printImage(dataUrl); } })
+    ]);
+    if (navigator.canShare) actions.appendChild(U.el('button', { class: 'btn secondary', html: WA_GREEN + ' שיתוף', onclick: function () { shareImage(dataUrl, fname, ev); } }));
+    Modal.open('🎨 פלייר האירוע', U.el('div', null, [img, actions]), [{ label: 'סגירה', class: 'secondary' }]);
+  }
+  function openFlyer(ev) {
+    var stop = openThinking(['מכין את הפלייר…', 'ה-AI מעצב את התמונה…', 'עוד רגע — מרנדר…']);
+    Store.generateFlyer(flyerPayload(ev)).then(function (dataUrl) {
+      stop(); showFlyerResult(ev, dataUrl);
+    }).catch(function (e) { stop(); U.toast('יצירת הפלייר נכשלה: ' + e.message, 'error'); });
+  }
+
   // ---------- אישורי הורים (חתימה דיגיטלית) ----------
   function norm(s) { return String(s == null ? '' : s).trim(); }
   function matchClassName(group, classes) {
@@ -607,6 +652,7 @@
     // פלטים
     var outputs = U.el('div', { class: 'no-print', style: 'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;padding-top:10px;border-top:1px dashed var(--border,#d6dce1);' }, [
       U.el('a', { class: 'btn secondary', href: 'https://wa.me/?text=' + encodeURIComponent(buildLozText(ev)), target: '_blank', rel: 'noopener', html: WA_GREEN + ' שלח לו"ז' }),
+      U.el('button', { class: 'btn secondary', text: '🎨 פלייר האירוע (AI)', onclick: function () { openFlyer(ev); } }),
       U.el('button', { class: 'btn secondary', text: '🖨️ הדפס לו"ז', onclick: function () { printLoz(ev); } }),
       U.el('a', { class: 'btn secondary', href: gcalUrl(ev), target: '_blank', rel: 'noopener', text: '📅 הוסף ליומן Google' }),
       U.el('a', { class: 'btn secondary', href: 'https://wa.me/?text=' + encodeURIComponent(summaryByOwnerText([ev], ev.title, false)), target: '_blank', rel: 'noopener', html: WA_GREEN + ' סיכום משימות' })
