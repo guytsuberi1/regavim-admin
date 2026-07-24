@@ -72,7 +72,7 @@ function buildFlyerPrompt(ev: any, org: string): string {
   const notes = ev?.notes || "";
   const schedule = Array.isArray(ev?.schedule) ? ev.schedule : [];
   const scheduleLines = schedule
-    .map((s: any) => (s?.time ? s.time + " — " : "• ") + (s?.activity || "") + (s?.note ? " (" + s.note + ")" : ""))
+    .map((s: any) => (s?.time || "—") + " = " + (s?.activity || "") + (s?.note ? " (" + s.note + ")" : ""))
     .filter(Boolean)
     .join("\n");
 
@@ -97,14 +97,14 @@ function buildFlyerPrompt(ev: any, org: string): string {
   if (scheduleLines) {
     lines.push(
       "",
-      "A TIMELINE (לו\"ז) section: a vertical line with, for each item, a round GREEN time badge showing the time and a small themed icon (house / walking person / fork-and-knife / bus etc.), next to the Hebrew activity text. The items, in order:",
+      "A TIMELINE (לו\"ז) section: a vertical line. For each item show a round GREEN badge containing ONLY the time, plus a small themed icon (prayer shawl / bowl / bus / sandwich / hiking boot etc.), and next to them the Hebrew activity text. IMPORTANT: the time must appear ONLY inside the round badge — do NOT repeat the time again in the text line. Each item is given as 'TIME = ACTIVITY' (put TIME in the badge, ACTIVITY as the text):",
       scheduleLines,
     );
   }
 
   lines.push(
     "",
-    "Footer: a gold script blessing 'מצפים לראות את כולם!' and 'ברוכים הבאים!'.",
+    "Footer: an elegant gold blessing that stays clearly legible (do not over-stylize the letters): 'מצפים לראות את כולם!' and 'ברוכים הבאים!'. Spell every Hebrew word exactly.",
     "Background: " + themeFor(typeLabel) + ", softly blended behind the content so all text stays readable.",
     "High resolution, balanced composition, real design-agency quality. Do NOT add any English text or watermarks.",
   );
