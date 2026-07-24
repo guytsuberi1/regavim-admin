@@ -311,6 +311,7 @@
   function flyerPayload(ev) {
     return {
       org: Store.settings().orgName || 'רגבים בנימין',
+      logo: Store.settings().flyerLogo || '',
       event: {
         title: ev.title || '', typeLabel: typeLabel(ev.type),
         date: ev.date || '', dateLabel: ev.date ? fmtDateLine(ev.date) : '',
