@@ -84,6 +84,74 @@
     return wrap;
   }
 
+  // ---------- התקדמות תת-משימות (פס מקוטע לפי סטטוס) ----------
+  function progressBar(p) {
+    var items = p.items || [];
+    if (!items.length) return null;
+    var counts = {}; items.forEach(function (it) { counts[it.status] = (counts[it.status] || 0) + 1; });
+    var total = items.length, done = counts['בוצע'] || 0;
+    var segs = ISTATUS.map(function (st) {
+      var n = counts[st.key] || 0;
+      return n ? U.el('div', { title: st.key + ': ' + n, style: 'height:100%;width:' + (n / total * 100) + '%;background:' + st.color + ';' }) : null;
+    }).filter(Boolean);
+    return U.el('div', { style: 'margin:2px 0 12px;' }, [
+      U.el('div', { style: 'display:flex;justify-content:space-between;font-size:12px;color:var(--muted,#6b7884);margin-bottom:4px;' }, [
+        U.el('span', { text: 'התקדמות תת-משימות' }),
+        U.el('span', { text: done + '/' + total + ' בוצעו (' + Math.round(done / total * 100) + '%)' })
+      ]),
+      U.el('div', { style: 'height:10px;border-radius:6px;overflow:hidden;display:flex;background:var(--border,#e2e8f0);' }, segs)
+    ]);
+  }
+
+  // ---------- עמודת ציר זמן לתת-משימה (מתאריך היצירה עד תאריך יעד, מול היום) ----------
+  function daysBetween(a, b) { return Math.round((Date.parse(b) - Date.parse(a)) / 86400000); }
+  function timelineCell(p, it) {
+    var wrap = U.el('div', { style: 'min-width:150px;' });
+    var dueInp = transp(U.el('input', { type: 'date', value: it.due || '', style: 'font-size:12px;' }));
+    dueInp.addEventListener('change', function () { it.due = dueInp.value; saveProj(p); App.render(); });
+    wrap.appendChild(dueInp);
+    var start = it.createdAt ? String(it.createdAt).slice(0, 10) : (p.createdAt ? String(p.createdAt).slice(0, 10) : '');
+    if (start && it.due) {
+      var today = U.todayISO();
+      var total = daysBetween(start, it.due);
+      var elapsed = daysBetween(start, today);
+      var pct = total <= 0 ? 100 : Math.max(0, Math.min(100, Math.round(elapsed / total * 100)));
+      var done = it.status === 'בוצע';
+      var overdue = !done && it.due < today;
+      var color = done ? '#16a34a' : (overdue ? '#dc2626' : '#2563eb');
+      wrap.appendChild(U.el('div', { style: 'height:7px;border-radius:5px;background:var(--border,#e2e8f0);overflow:hidden;margin-top:4px;' }, [
+        U.el('div', { style: 'height:100%;width:' + (done ? 100 : pct) + '%;background:' + color + ';' })
+      ]));
+      wrap.appendChild(U.el('div', { style: 'font-size:10px;color:var(--muted,#6b7884);margin-top:2px;', text: done ? 'בוצע' : (overdue ? 'באיחור' : pct + '% מהזמן חלף') }));
+    }
+    return wrap;
+  }
+
+  // ---------- עמודת מסמכים לתת-משימה (העלאה/הורדה מרובה) ----------
+  function docsCell(p, it) {
+    if (!it.docs) it.docs = [];
+    var wrap = U.el('div', { style: 'display:flex;flex-direction:column;gap:4px;min-width:130px;' });
+    function draw() {
+      U.clear(wrap);
+      it.docs.forEach(function (d, di) {
+        var link = U.el('a', { href: '#', text: '📎 ' + (d.name || 'קובץ'), title: d.name || 'קובץ', style: 'font-size:12px;cursor:pointer;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' });
+        link.addEventListener('click', function (e) { e.preventDefault(); Store.taskFileUrl(d.path).then(function (url) { if (url) global.open(url, '_blank'); else U.toast('הקישור אינו זמין', 'error'); }); });
+        var rm = U.el('button', { class: 'btn secondary', text: '×', title: 'הסרה', style: 'padding:0 6px;', onclick: function () { Store.deleteTaskFile(d.path); it.docs.splice(di, 1); saveProj(p); draw(); } });
+        wrap.appendChild(U.el('div', { style: 'display:flex;align-items:center;gap:4px;' }, [link, rm]));
+      });
+      var finp = U.el('input', { type: 'file', style: 'display:none;' });
+      finp.addEventListener('change', function () {
+        var f = finp.files[0]; if (!f) return; U.toast('מעלה…', 'info');
+        Store.uploadTaskFile(f).then(function (res) { it.docs.push(res); saveProj(p); draw(); U.toast('הקובץ הועלה'); })
+          .catch(function (e) { U.toast('העלאה נכשלה: ' + e.message, 'error'); });
+      });
+      wrap.appendChild(U.el('button', { class: 'btn secondary', text: '📎 העלאה', style: 'font-size:12px;padding:2px 8px;', onclick: function () { finp.click(); } }));
+      wrap.appendChild(finp);
+    }
+    draw();
+    return wrap;
+  }
+
   // ---------- טבלת תת-משימות (עם גרירה לסידור מחדש) ----------
   var dragItemId = null;
   function reorderItems(p, targetId) {
@@ -102,14 +170,17 @@
     var owners = Store.settings().taskOwners || [];
     var tbody = U.el('tbody', null, (p.items || []).map(function (it) {
       var grip = U.el('td', { style: 'width:24px;text-align:center;color:#94a3b8;cursor:grab;user-select:none;', title: 'גרור לשינוי סדר', text: '⠿' });
-      var tr = U.el('tr', null, [
+      var doneRow = it.status === 'בוצע';
+      var tr = U.el('tr', { style: doneRow ? 'background:var(--primary-light,#e8f5e9);' : '' }, [
         grip,
         U.el('td', { style: 'min-width:150px;' }, pText(p, it, 'desc', 'תיאור', 'width:100%;')),
-        U.el('td', null, pList(p, it, 'contractor', contractors, 'מבצע')),
         U.el('td', null, pList(p, it, 'owner', owners, 'אחראי')),
-        U.el('td', null, pNumber(p, it, 'cost', 'עלות', function () { App.render(); })),
-        U.el('td', { style: 'min-width:140px;' }, pText(p, it, 'notes', 'הערות', 'width:100%;')),
         U.el('td', null, pSelect(it, 'status', ISTATUS, function () { saveProj(p); App.render(); })),
+        U.el('td', null, pList(p, it, 'contractor', contractors, 'מבצע')),
+        U.el('td', null, pNumber(p, it, 'cost', 'עלות', function () { App.render(); })),
+        U.el('td', null, timelineCell(p, it)),
+        U.el('td', null, docsCell(p, it)),
+        U.el('td', { style: 'min-width:140px;' }, pText(p, it, 'notes', 'הערות', 'width:100%;')),
         U.el('td', null, U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקת שורה', onclick: function () {
           p.items = p.items.filter(function (x) { return x.id !== it.id; });
           saveProj(p); App.render();
@@ -125,7 +196,7 @@
       return tr;
     }));
     var tbl = U.el('table', { class: 'grid', style: 'margin-top:4px;' }, [
-      U.el('thead', null, U.el('tr', null, ['', 'תיאור', 'מבצע', 'באחריות של', 'עלות', 'הערות', 'סטטוס', ''].map(function (h) { return U.el('th', { text: h }); }))),
+      U.el('thead', null, U.el('tr', null, ['', 'תיאור', 'באחריות של', 'סטטוס', 'מבצע', 'עלות', 'ציר זמן', 'מסמכים', 'הערות', ''].map(function (h) { return U.el('th', { text: h }); }))),
       tbody
     ]);
     // שורת הוספה מהירה
@@ -135,7 +206,7 @@
     function addItem() {
       if (!addDesc.value.trim()) { addDesc.focus(); return; }
       if (!p.items) p.items = [];
-      p.items.push({ id: Store.uid(), desc: addDesc.value.trim(), contractor: addContractor.get(), owner: '', cost: addCost.value.trim() === '' ? '' : U.num(addCost.value), notes: '', status: 'תכנון' });
+      p.items.push({ id: Store.uid(), desc: addDesc.value.trim(), contractor: addContractor.get(), owner: '', cost: addCost.value.trim() === '' ? '' : U.num(addCost.value), notes: '', status: 'תכנון', due: '', docs: [], createdAt: new Date().toISOString() });
       rememberContractor(addContractor.get());
       saveProj(p); App.render();
     }
@@ -165,9 +236,6 @@
     var actionBtns = [];
     if (p.archived) {
       actionBtns.push(U.el('button', { class: 'btn secondary ico', text: '↩️', title: 'שחזור מהארכיון', onclick: function () { p.archived = false; saveProj(p); App.render(); } }));
-      actionBtns.push(U.el('button', { class: 'btn secondary ico', text: '🗑', title: 'מחיקה לצמיתות', onclick: function () {
-        Modal.confirm({ title: 'מחיקה לצמיתות', text: 'למחוק לצמיתות את "' + (p.name || '') + '" וכל תת-המשימות? לא ניתן לשחזר.', okLabel: 'מחיקה', danger: true }, function () { Store.deleteProject(p.id); App.render(); });
-      } }));
     } else {
       actionBtns.push(U.el('button', { class: 'btn secondary ico', text: '📦', title: 'העברה לארכיון', onclick: function () { p.archived = true; saveProj(p); App.render(); } }));
     }
@@ -192,6 +260,8 @@
     ]));
 
     card.appendChild(budgetBar(p));
+    var pb = progressBar(p);
+    if (pb) card.appendChild(pb);
     var notes = pText(p, p, 'notes', '📝 הערות לפרויקט…', 'width:100%;font-size:13px;color:var(--muted,#6b7884);');
     card.appendChild(U.el('div', { style: 'margin:2px 0 10px;' }, [notes]));
 
