@@ -273,7 +273,6 @@
     view.appendChild(collapsible('eventRoles', eventRolesCard()));
     view.appendChild(collapsible('taskCatalog', taskCatalogCard()));
     view.appendChild(collapsible('eventTypes', eventTypesCard()));
-    view.appendChild(collapsible('classes', classesCard()));
     view.appendChild(collapsible('consentText', consentTextCard()));
     view.appendChild(collapsible('flyerLogo', flyerLogoCard()));
 
