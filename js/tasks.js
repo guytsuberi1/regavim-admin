@@ -471,7 +471,8 @@
         var dueInput = U.el('input', { type: 'date', value: t.due || '', style: 'border:1px solid transparent;background:transparent;padding:4px 6px;' });
         dueInput.addEventListener('focus', function () { dueInput.style.background = 'var(--card,#fff)'; dueInput.style.borderColor = 'var(--border,#d6dce1)'; });
         dueInput.addEventListener('blur', function () { dueInput.style.background = 'transparent'; dueInput.style.borderColor = 'transparent'; });
-        dueInput.addEventListener('change', function () { saveField(t, 'due', dueInput.value); });
+        // רינדור מחדש: תאריך היעד משפיע על צבע השורה, תגית האיחור, המיון והסינון
+        dueInput.addEventListener('change', function () { saveField(t, 'due', dueInput.value); App.render(); });
 
         var kindSel = selField(t, 'kind', [{ key: 'חד פעמי' }, { key: 'קבוע' }], true);
         var kindCell = U.el('td', { style: 'white-space:nowrap;' }, [kindSel]);
