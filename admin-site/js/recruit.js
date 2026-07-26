@@ -398,6 +398,22 @@
     if (focusAdd) { focusAdd = false; setTimeout(function () { title.focus(); }, 0); }
   }
 
+  // "מאויש ע"י" — dropdown של המועמדים שהתקבלו למשרה זו
+  function filledBySelect(p) {
+    var accepted = Store.candidates()
+      .filter(function (c) { return c.status === 'התקבל' && (c.target || '') === p.title; })
+      .map(function (c) { return c.name; });
+    var cur = (p.filledBy || '').trim();
+    var opts = [''].concat(accepted);
+    if (cur && opts.indexOf(cur) === -1) opts.push(cur); // שמירת ערך קיים שאינו ברשימה (למשל מייבוא)
+    var sel = U.el('select', { style: 'padding:4px 6px;min-width:120px;' }, opts.map(function (v) {
+      return U.el('option', { value: v, text: v || 'טרם אויש' });
+    }));
+    sel.value = cur;
+    sel.addEventListener('change', function () { savePos(p, 'filledBy', sel.value); App.render(); });
+    return sel;
+  }
+
   function renderPositions(view) {
     view.appendChild(U.el('div', { class: 'page-head' }, [
       U.el('h2', { text: '📌 משרות פנויות' }),
@@ -449,7 +465,7 @@
             inpText(p, 'notes', savePos, 'הערות…', 'width:100%;font-size:12px;color:var(--muted,#6b7884);')
           ]),
           U.el('td', null, inpText(p, 'scope', savePos, '1 / 0.5…', 'max-width:80px;')),
-          U.el('td', null, inpList(p, 'filledBy', savePos, Store.employees().map(Store.empName), 'טרם אויש')),
+          U.el('td', null, filledBySelect(p)),
           U.el('td', null, [flyerSel]),
           candCell,
           U.el('td', null, U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקה', onclick: function () {
