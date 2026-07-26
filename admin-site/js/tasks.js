@@ -396,6 +396,84 @@
     host.appendChild(U.el('div', { class: 'kb-board' }, cols));
   }
 
+  // ---------- דשבורד ----------
+  function dashCard(title, rows) {
+    return U.el('div', { class: 'card' }, [
+      U.el('h3', { style: 'margin:0 0 8px;font-size:16px;color:var(--primary-dark,#1b5e20);', text: title })
+    ].concat(rows));
+  }
+  function renderDashboard(host, all) {
+    var today = U.todayISO();
+    function isOverdue(t) { var d = Store.daysToDue(t.due); return d != null && d < 0; }
+    var notDone = all.filter(function (t) { return t.status !== 'הושלם'; });
+    // דירוג חשיבות: באיחור → עדיפות → דדליין קרוב
+    var ranked = notDone.slice().sort(function (a, b) {
+      var oa = isOverdue(a) ? 0 : 1, ob = isOverdue(b) ? 0 : 1;
+      if (oa !== ob) return oa - ob;
+      if (prWeight(a.priority) !== prWeight(b.priority)) return prWeight(a.priority) - prWeight(b.priority);
+      return dueCmp(a, b);
+    });
+
+    function emptyLine(txt) { return U.el('div', { class: 'muted', style: 'font-size:13px;padding:6px 0;', text: txt }); }
+    function taskLine(t) {
+      var row = U.el('div', { style: 'display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer;border-bottom:1px solid var(--border,#eef1f4);' }, [
+        priorityDot(t.priority),
+        U.el('span', { style: 'font-weight:500;flex:1;min-width:0;', text: t.desc || '' }),
+        t.owner ? colorChip(t.owner, '👤 ') : null,
+        daysBadge(t)
+      ].filter(Boolean));
+      row.addEventListener('click', function () { openModal(JSON.parse(JSON.stringify(t))); });
+      return row;
+    }
+
+    var grid = U.el('div', { class: 'dash-cols', style: 'display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));' });
+
+    // 5 המשימות המובילות
+    var top5 = ranked.slice(0, 5);
+    grid.appendChild(dashCard('⭐ 5 המשימות המובילות', top5.length ? top5.map(taskLine) : [emptyLine('אין משימות פתוחות 🎉')]));
+
+    // עומס לפי אחראי
+    var byOwner = {}, order = [];
+    notDone.forEach(function (t) {
+      var o = t.owner || 'ללא אחראי';
+      if (!byOwner[o]) { byOwner[o] = { open: 0, overdue: 0 }; order.push(o); }
+      byOwner[o].open++; if (isOverdue(t)) byOwner[o].overdue++;
+    });
+    order.sort(function (a, b) { return byOwner[b].overdue - byOwner[a].overdue || byOwner[b].open - byOwner[a].open; });
+    grid.appendChild(dashCard('👥 עומס לפי אחראי', order.length ? order.map(function (o) {
+      var d = byOwner[o];
+      return U.el('div', { style: 'display:flex;align-items:center;gap:8px;padding:5px 0;' }, [
+        colorChip(o, '👤 ') || plainChip(o),
+        U.el('span', { class: 'spacer' }),
+        U.el('span', { class: 'tag', style: 'font-size:12px;', text: d.open + ' פתוחות' }),
+        d.overdue ? U.el('span', { class: 'tag', style: 'font-size:12px;background:#fee2e2;color:#991b1b;', text: d.overdue + ' באיחור' }) : null
+      ].filter(Boolean));
+    }) : [emptyLine('אין משימות פתוחות')]));
+
+    // אירועים קרובים השבוע
+    var eventsWeek = [];
+    if (Store.eventsAll) {
+      var eow = endOfWeekISO();
+      eventsWeek = Store.eventsAll().filter(function (e) { return !e.archived && e.date && e.date >= today && e.date <= eow; })
+        .sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
+    }
+    grid.appendChild(dashCard('🗓️ אירועים קרובים השבוע', eventsWeek.length ? eventsWeek.map(function (e) {
+      return U.el('div', { style: 'display:flex;align-items:center;gap:8px;padding:5px 0;' }, [
+        U.el('span', { style: 'font-weight:600;', text: e.title || 'אירוע' }),
+        U.el('span', { class: 'tag', style: 'font-size:12px;', text: U.gregLabel(e.date) }),
+        e.group ? plainChip(e.group) : null,
+        U.el('span', { class: 'spacer' }),
+        U.el('button', { class: 'btn secondary', style: 'font-size:12px;padding:4px 10px;', text: 'לאירוע ›', onclick: function () { App.setView('events'); } })
+      ].filter(Boolean));
+    }) : [emptyLine('אין אירועים השבוע')]));
+
+    // משימות באיחור
+    var overdueList = ranked.filter(isOverdue);
+    grid.appendChild(dashCard('⚠️ משימות באיחור (' + overdueList.length + ')', overdueList.length ? overdueList.map(taskLine) : [emptyLine('אין משימות באיחור 👍')]));
+
+    host.appendChild(grid);
+  }
+
   // ---------- רינדור ----------
   function render(view) {
     var all = Store.tasksAll();
@@ -405,7 +483,8 @@
     var addBtn = U.el('button', { class: 'btn', text: '➕ משימה חדשה', onclick: function () { openModal(null); } });
     var toggle = U.el('div', { class: 'subtabs', style: 'display:inline-flex;margin:0;' }, [
       U.el('button', { class: viewMode === 'table' ? 'active' : '', text: '☰ טבלה', onclick: function () { viewMode = 'table'; App.render(); } }),
-      U.el('button', { class: viewMode === 'kanban' ? 'active' : '', text: '▤ קנבן', onclick: function () { viewMode = 'kanban'; App.render(); } })
+      U.el('button', { class: viewMode === 'kanban' ? 'active' : '', text: '▤ קנבן', onclick: function () { viewMode = 'kanban'; App.render(); } }),
+      U.el('button', { class: viewMode === 'dashboard' ? 'active' : '', text: '📊 דשבורד', onclick: function () { viewMode = 'dashboard'; App.render(); } })
     ]);
     view.appendChild(U.el('div', { class: 'page-head' }, [
       U.el('h2', { text: '✅ ניהול משימות' }),
@@ -423,6 +502,8 @@
       kpi('⚠️', overdue, 'באיחור', overdue ? 'kpi-warn' : 'kpi-neutral')
     ]));
 
+    // בדשבורד — בלי סרגלי סינון/יעד
+    var isDash = viewMode === 'dashboard';
     // סרגל סינון
     var q = U.el('input', { value: filters.q, placeholder: '🔍 חיפוש…', style: 'max-width:200px;' });
     q.addEventListener('input', function () { filters.q = q.value; refresh(); });
@@ -448,7 +529,7 @@
       filterSel(filters.priority, PRIORITIES.map(function (x) { return x.key; }), 'כל העדיפויות', 'priority'),
       viewMode === 'table' ? sortSel : null
     ].filter(Boolean));
-    view.appendChild(bar);
+    if (!isDash) view.appendChild(bar);
 
     // סינון מהיר לפי יעד — באיחור / השבוע / בהמשך / ללא יעד
     var notDone = all.filter(function (t) { return t.status !== 'הושלם'; });
@@ -470,13 +551,14 @@
         b.addEventListener('click', function () { filters.due = active ? '' : bd.key; App.render(); });
         return b;
       })));
-    view.appendChild(dueBar);
+    if (!isDash) view.appendChild(dueBar);
 
     var host = U.el('div');
     view.appendChild(host);
 
     function refresh() {
       U.clear(host);
+      if (viewMode === 'dashboard') { renderDashboard(host, all); return; }
       var list = sortTasks(applyFilters(all));
       if (viewMode === 'kanban') {
         if (!all.length) {
