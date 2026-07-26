@@ -18,6 +18,7 @@
     cand: global.CandView,
     pos: global.PosView,
     events: global.EventsView,
+    base: global.BaseView,
     settings: global.SettingsView
   };
 
@@ -45,6 +46,9 @@
     ] },
     { id: 'events', label: '🗓️ תכנון אירועים וטיולים', subs: [
       { id: 'events', label: '🗓️ אירועים' }
+    ] },
+    { id: 'base', label: '🗂️ נתוני בסיס', subs: [
+      { id: 'base', label: '🗂️ נתוני בסיס' }
     ] }
   ];
   // פריטים עצמאיים (לא גיליונות) — הגדרות כגלגל מוצמד לתחתית (כמו בשאר האפליקציות)
@@ -58,7 +62,7 @@
 
   // הרשאות: admin רואה הכל; secretary רק מרכז למידה
   var ROLE_VIEWS = {
-    admin: ['status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'settings'],
+    admin: ['status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'base', 'settings'],
     secretary: ['lc']
   };
   function roleKey() { return Store.currentRole(); }
