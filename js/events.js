@@ -7,6 +7,19 @@
   // אייקון וואטסאפ בצבע הירוק הרשמי (ה-SVG משתמש ב-currentColor)
   var WA_GREEN = '<span style="color:#25D366">' + (U.WA_SVG || '') + '</span>';
 
+  // אייקוני קו מודרניים (בסגנון Lucide) — stroke=currentColor
+  function svg(paths, extra) {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;vertical-align:-3px;' + (extra || '') + '">' + paths + '</svg>';
+  }
+  var ICON = {
+    clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+    users: svg('<path d="M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1"/><circle cx="9" cy="8" r="3.2"/><path d="M22 20v-1a4 4 0 0 0-3-3.87"/><path d="M16 4.13a4 4 0 0 1 0 7.75"/>'),
+    pin: svg('<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>'),
+    loz: svg('<rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/><path d="M8 12h8M8 16h5"/>'),
+    tasks: svg('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'),
+    sign: svg('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>')
+  };
+
   var ESTATUS = [{ key: 'בתכנון', color: '#d97706' }, { key: 'מוכן', color: '#2563eb' }, { key: 'בוצע', color: '#16a34a' }];
   var TSTATUS = [{ key: 'פתוח', color: '#64748b' }, { key: 'בתהליך', color: '#2563eb' }, { key: 'בוצע', color: '#16a34a' }];
   function stColor(list, s) { var x = list.filter(function (q) { return q.key === s; })[0]; return x ? x.color : '#64748b'; }
@@ -631,33 +644,33 @@
     dateInp.addEventListener('change', function () { ev.date = dateInp.value; saveEv(ev); App.render(); });
     var dateChip = U.dateChip(ev.date ? fmtDateLine(ev.date) : 'בחר תאריך', dateInp, { title: 'תאריך האירוע' });
     function metaChip(icon, kids) {
-      return U.el('span', { class: 'range-chip' }, [U.el('span', { class: 'rc-ic', text: icon })].concat(kids));
+      return U.el('span', { class: 'range-chip' }, [U.el('span', { class: 'rc-ic', html: icon })].concat(kids));
     }
     var meta = U.el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;' }, [
       dateChip,
-      metaChip('🕗', [eTime(ev, ev, 'startTime'), U.el('span', { style: 'opacity:.6;', text: '–' }), eTime(ev, ev, 'endTime')]),
-      metaChip('👥', [autoField(ev, ev, 'group', 'קבוצה/כיתה')]),
-      metaChip('📍', [autoField(ev, ev, 'location', 'יעד/מקום')])
+      metaChip(ICON.clock, [eTime(ev, ev, 'startTime'), U.el('span', { style: 'opacity:.6;', text: '–' }), eTime(ev, ev, 'endTime')]),
+      metaChip(ICON.users, [autoField(ev, ev, 'group', 'קבוצה/כיתה')]),
+      metaChip(ICON.pin, [autoField(ev, ev, 'location', 'יעד/מקום')])
     ]);
     card.appendChild(meta);
 
     // סעיפים מתקפלים — סגורים בשורה משותפת; פתוח יורד לבלוק עם הכותרת מעל הטבלה שלו
     var doneN = (ev.tasks || []).filter(function (t) { return t.status === 'בוצע'; }).length;
-    function mkSec(open, label, key, storeOpen, contentFn) {
+    function mkSec(open, icon, label, key, storeOpen, contentFn) {
       var anchor = 'sec_' + ev.id + '_' + key.replace(/[^a-z0-9]/gi, '');
-      var btn = U.el('button', { class: 'btn secondary', onclick: function () {
+      var btn = U.el('button', { class: 'btn secondary', html: (open ? '▾' : '▸') + ' ' + icon + ' ' + esc(label), onclick: function () {
         var willOpen = !open;
         collapsedMap[key] = storeOpen ? willOpen : !willOpen;
         saveCollapsed();
         if (willOpen) scrollSec = anchor;
         App.render();
-      } }, (open ? '▾' : '▸') + ' ' + label);
+      } });
       return { open: open, btn: btn, contentFn: contentFn, anchor: anchor };
     }
     var secList = [
-      mkSec(!collapsedMap['loz:' + ev.id], '🗒️ לו"ז (' + (ev.schedule || []).length + ')', 'loz:' + ev.id, false, function () { return scheduleTable(ev); }),
-      mkSec(!collapsedMap['tasks:' + ev.id], '✅ משימות (' + doneN + '/' + (ev.tasks || []).length + ')', 'tasks:' + ev.id, false, function () { return tasksTable(ev); }),
-      mkSec(!!collapsedMap['consentOpen:' + ev.id], '🖊️ אישורי הורים', 'consentOpen:' + ev.id, true, function () { return consentBody(ev); })
+      mkSec(!collapsedMap['loz:' + ev.id], ICON.loz, 'לו"ז (' + (ev.schedule || []).length + ')', 'loz:' + ev.id, false, function () { return scheduleTable(ev); }),
+      mkSec(!collapsedMap['tasks:' + ev.id], ICON.tasks, 'משימות (' + doneN + '/' + (ev.tasks || []).length + ')', 'tasks:' + ev.id, false, function () { return tasksTable(ev); }),
+      mkSec(!!collapsedMap['consentOpen:' + ev.id], ICON.sign, 'אישורי הורים', 'consentOpen:' + ev.id, true, function () { return consentBody(ev); })
     ];
     var closedBtns = secList.filter(function (s) { return !s.open; }).map(function (s) { return s.btn; });
     if (closedBtns.length) card.appendChild(U.el('div', { class: 'no-print', style: 'display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 0 2px;' }, closedBtns));

@@ -9,6 +9,7 @@
   function stColor(list, s) { var x = list.filter(function (q) { return q.key === s; })[0]; return x ? x.color : '#64748b'; }
 
   var focusNewProject = false;
+  var showArchiveProj = false;
   // מצב כיווץ תת-משימות פר פרויקט (נשמר מקומית, לא בענן)
   var collapsedMap = (function () { try { return JSON.parse(localStorage.getItem('admin_proj_collapsed') || '{}'); } catch (e) { return {}; } })();
   function saveCollapsed() { try { localStorage.setItem('admin_proj_collapsed', JSON.stringify(collapsedMap)); } catch (e) {} }
@@ -159,14 +160,19 @@
     var numPill = U.el('span', { style: 'font-size:11px;font-weight:700;color:var(--muted,#6b7884);background:var(--bg,#f1f5f9);border-radius:6px;padding:2px 8px;white-space:nowrap;', text: p.num || '' });
     var nameInp = transp(U.el('input', { value: p.name || '', placeholder: 'שם הפרויקט', style: 'font-size:19px;font-weight:700;min-width:160px;flex:1;' }));
     nameInp.addEventListener('change', function () { p.name = nameInp.value.trim(); saveProj(p); });
-    var statusSel = pSelect(p, 'status', PSTATUS, function () { saveProj(p); App.render(); });
+    var statusSel = pSelect(p, 'status', PSTATUS, function () { if (p.status === 'הושלם') p.archived = true; saveProj(p); App.render(); });
     statusSel.style.cssText += 'border-radius:16px;font-weight:600;';
-    var delBtn = U.el('button', { class: 'btn secondary ico', text: '🗑', title: 'מחיקת פרויקט', onclick: function () {
-      Modal.confirm({ title: 'מחיקת פרויקט', text: 'למחוק את "' + (p.name || '') + '" וכל תת-המשימות שלו?', okLabel: 'מחיקה', danger: true }, function () { Store.deleteProject(p.id); App.render(); });
-    } });
-    card.appendChild(U.el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;' }, [
-      chevron, numPill, nameInp, U.el('span', { class: 'spacer' }), statusSel, delBtn
-    ]));
+    var actionBtns = [];
+    if (p.archived) {
+      actionBtns.push(U.el('button', { class: 'btn secondary ico', text: '↩️', title: 'שחזור מהארכיון', onclick: function () { p.archived = false; saveProj(p); App.render(); } }));
+      actionBtns.push(U.el('button', { class: 'btn secondary ico', text: '🗑', title: 'מחיקה לצמיתות', onclick: function () {
+        Modal.confirm({ title: 'מחיקה לצמיתות', text: 'למחוק לצמיתות את "' + (p.name || '') + '" וכל תת-המשימות? לא ניתן לשחזר.', okLabel: 'מחיקה', danger: true }, function () { Store.deleteProject(p.id); App.render(); });
+      } }));
+    } else {
+      actionBtns.push(U.el('button', { class: 'btn secondary ico', text: '📦', title: 'העברה לארכיון', onclick: function () { p.archived = true; saveProj(p); App.render(); } }));
+    }
+    card.appendChild(U.el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;' },
+      [chevron, numPill, nameInp, U.el('span', { class: 'spacer' }), statusSel].concat(actionBtns)));
 
     // כשמכווץ — תקציר בשורה אחת בלבד
     if (cardCollapsed) {
@@ -203,10 +209,13 @@
 
   // ---------- רינדור ----------
   function render(view) {
-    var projects = Store.projectsAll().sort(function (a, b) {
+    var all = Store.projectsAll().sort(function (a, b) {
       var w = { 'בביצוע': 0, 'תכנון': 1, 'הושלם': 2 };
       return (w[a.status] || 1) - (w[b.status] || 1);
     });
+    var activeProjects = all.filter(function (p) { return !p.archived; });
+    var archivedProjects = all.filter(function (p) { return !!p.archived; });
+    var projects = showArchiveProj ? archivedProjects : activeProjects;
 
     // הוספה מהירה
     var addName = U.el('input', { placeholder: '➕ פרויקט חדש — שם ולחץ Enter', style: 'flex:1;min-width:220px;font-size:15px;' });
@@ -222,24 +231,30 @@
       U.el('span', { class: 'spacer' })
     ]));
 
-    // סיכום
-    var totBudget = 0, totUsed = 0, over = 0;
-    projects.forEach(function (p) { var b = Store.projectBudget(p); totBudget += b.budget; totUsed += b.used; if (b.over) over++; });
-    if (projects.length) {
-      view.appendChild(U.el('div', { class: 'kpi-row' }, [
-        kpi('🏗️', projects.length, 'פרויקטים', 'kpi-neutral'),
-        kpi('💰', money(totBudget), 'סה"כ תקציב', 'kpi-neutral'),
-        kpi('📉', money(totUsed), 'סה"כ נוצל', totUsed > totBudget && totBudget ? 'kpi-warn' : 'kpi-info'),
-        over ? kpi('⚠️', over, 'בחריגת תקציב', 'kpi-warn') : null
-      ].filter(Boolean)));
+    // תת-טאבים: פרויקטים פעילים / ארכיון
+    view.appendChild(U.el('div', { class: 'subtabs', style: 'margin-bottom:12px;' }, [
+      U.el('button', { class: showArchiveProj ? '' : 'active', onclick: function () { showArchiveProj = false; App.render(); } }, '🏗️ פרויקטים (' + activeProjects.length + ')'),
+      U.el('button', { class: showArchiveProj ? 'active' : '', onclick: function () { showArchiveProj = true; App.render(); } }, '🗄️ ארכיון (' + archivedProjects.length + ')')
+    ]));
+
+    if (!showArchiveProj) {
+      var totBudget = 0, totUsed = 0, over = 0;
+      activeProjects.forEach(function (p) { var b = Store.projectBudget(p); totBudget += b.budget; totUsed += b.used; if (b.over) over++; });
+      if (activeProjects.length) {
+        view.appendChild(U.el('div', { class: 'kpi-row' }, [
+          kpi('🏗️', activeProjects.length, 'פרויקטים', 'kpi-neutral'),
+          kpi('💰', money(totBudget), 'סה"כ תקציב', 'kpi-neutral'),
+          kpi('📉', money(totUsed), 'סה"כ נוצל', totUsed > totBudget && totBudget ? 'kpi-warn' : 'kpi-info'),
+          over ? kpi('⚠️', over, 'בחריגת תקציב', 'kpi-warn') : null
+        ].filter(Boolean)));
+      }
+      view.appendChild(U.el('div', { class: 'card', style: 'padding:10px;margin-bottom:14px;display:flex;gap:6px;align-items:center;' },
+        [addName, U.el('button', { class: 'btn', text: 'צור פרויקט', onclick: addProject })]));
+      if (focusNewProject) { focusNewProject = false; setTimeout(function () { addName.focus(); }, 0); }
     }
 
-    view.appendChild(U.el('div', { class: 'card', style: 'padding:10px;margin-bottom:14px;display:flex;gap:6px;align-items:center;' },
-      [addName, U.el('button', { class: 'btn', text: 'צור פרויקט', onclick: addProject })]));
-    if (focusNewProject) { focusNewProject = false; setTimeout(function () { addName.focus(); }, 0); }
-
     if (!projects.length) {
-      view.appendChild(U.el('div', { class: 'empty' }, 'אין עדיין פרויקטים — הוסיפו אחד למעלה.'));
+      view.appendChild(U.el('div', { class: 'empty' }, showArchiveProj ? 'אין פרויקטים בארכיון.' : 'אין עדיין פרויקטים — הוסיפו אחד למעלה.'));
       return;
     }
     projects.forEach(function (p) { view.appendChild(projectCard(p)); });
