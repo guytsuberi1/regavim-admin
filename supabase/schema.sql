@@ -161,6 +161,26 @@ create policy "meeting-audio auth delete" on storage.objects
   for delete to authenticated using (bucket_id = 'meeting-audio');
 
 -- ============================================================
+-- 3ג. Storage — קבצים מצורפים לעמודת "קובץ" בגיליון המשימות
+--     העלאה/צפייה/מחיקה למשתמשים מחוברים בלבד.
+-- ============================================================
+insert into storage.buckets (id, name, public)
+  values ('task-files', 'task-files', false)
+  on conflict (id) do nothing;
+
+drop policy if exists "task-files auth insert" on storage.objects;
+create policy "task-files auth insert" on storage.objects
+  for insert to authenticated with check (bucket_id = 'task-files');
+
+drop policy if exists "task-files auth read" on storage.objects;
+create policy "task-files auth read" on storage.objects
+  for select to authenticated using (bucket_id = 'task-files');
+
+drop policy if exists "task-files auth delete" on storage.objects;
+create policy "task-files auth delete" on storage.objects
+  for delete to authenticated using (bucket_id = 'task-files');
+
+-- ============================================================
 -- 4. Realtime — עדכונים חיים בין משתמשים (מריצים בנפרד; אם כבר קיים תתקבל
 --    שגיאת "already member of publication" — זה תקין, אפשר להתעלם)
 -- ============================================================

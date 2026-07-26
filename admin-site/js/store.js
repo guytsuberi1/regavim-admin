@@ -737,6 +737,25 @@
     return sb.storage.from('meeting-audio').upload(path, file, { contentType: file.type || 'audio/mpeg', upsert: false })
       .then(function (res) { if (res.error) throw new Error(res.error.message || 'העלאת ההקלטה נכשלה'); return path; });
   }
+  // קבצים מצורפים לעמודת "קובץ" בגיליון המשימות (bucket task-files)
+  function uploadTaskFile(file) {
+    if (!sb) return Promise.reject(new Error('נדרשת התחברות לענן'));
+    var ext = (String(file.name || '').split('.').pop() || 'dat').toLowerCase().replace(/[^a-z0-9]/g, '');
+    var path = uid() + '.' + ext;
+    return sb.storage.from('task-files').upload(path, file, { upsert: false })
+      .then(function (res) { if (res.error) throw new Error(res.error.message || 'ההעלאה נכשלה'); return { path: path, name: file.name }; });
+  }
+  function taskFileUrl(path) {
+    if (!sb || !path) return Promise.resolve(null);
+    return sb.storage.from('task-files').createSignedUrl(path, 3600).then(function (res) {
+      if (res.error) { console.error('taskFileUrl', res.error); return null; }
+      return res.data && res.data.signedUrl;
+    });
+  }
+  function deleteTaskFile(path) {
+    if (!sb || !path) return Promise.resolve();
+    return sb.storage.from('task-files').remove([path]).then(function () {});
+  }
   // מסלול AI: שולח טקסט/הקלטה של פגישה ל-Edge Function (Gemini) ומחזיר טיוטת אירועים
   function meetingToEvents(payload) {
     if (!sb) return Promise.reject(new Error('נדרשת התחברות לענן'));
@@ -1157,6 +1176,9 @@
     uploadMeetingAudio: uploadMeetingAudio,
     meetingToEvents: meetingToEvents,
     generateFlyer: generateFlyer,
+    uploadTaskFile: uploadTaskFile,
+    taskFileUrl: taskFileUrl,
+    deleteTaskFile: deleteTaskFile,
     // רשימות כיתה ואישורי הורים
     classesAll: classesAll,
     classByName: classByName,
