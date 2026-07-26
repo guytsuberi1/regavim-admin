@@ -310,11 +310,131 @@
     if (focusAddDesc) { focusAddDesc = false; setTimeout(function () { desc.focus(); }, 0); }
   }
 
+  // ---------- עמודות מותאמות (סגנון Monday) ----------
+  var COL_TYPES = [
+    { key: 'text', label: '📝 טקסט' },
+    { key: 'number', label: '🔢 מספר' },
+    { key: 'date', label: '📅 תאריך' },
+    { key: 'label', label: '🏷️ תווית צבעונית' },
+    { key: 'check', label: '✔️ צ׳ק-בוקס' },
+    { key: 'link', label: '🔗 קישור' }
+  ];
+  function taskColumns() { return Store.settings().taskColumns || []; }
+  function customVal(t, colId) { return (t.custom && t.custom[colId] != null) ? t.custom[colId] : ''; }
+  function saveCustom(t, colId, val) {
+    if (!t.custom) t.custom = {};
+    if (val === '' || val == null) delete t.custom[colId]; else t.custom[colId] = val;
+    Store.upsertTask(t);
+  }
+  function transpInput(inp) {
+    inp.style.cssText += 'border:1px solid transparent;background:transparent;padding:4px 6px;';
+    inp.addEventListener('focus', function () { inp.style.background = 'var(--card,#fff)'; inp.style.borderColor = 'var(--border,#d6dce1)'; });
+    inp.addEventListener('blur', function () { inp.style.background = 'transparent'; inp.style.borderColor = 'transparent'; });
+    return inp;
+  }
+  function customCell(t, col) {
+    var val = customVal(t, col.id);
+    if (col.type === 'check') {
+      var cb = U.el('input', { type: 'checkbox' }); cb.checked = !!val;
+      cb.addEventListener('change', function () { saveCustom(t, col.id, cb.checked ? true : ''); });
+      return cb;
+    }
+    if (col.type === 'label') {
+      var opts = col.options || [];
+      var sel = U.el('select', { style: 'padding:4px 8px;border-radius:6px;border:1px solid var(--border,#d6dce1);' },
+        [U.el('option', { value: '', text: '—' })].concat(opts.map(function (o) { return U.el('option', { value: o.value, text: o.value }); })));
+      sel.value = val || '';
+      function paint() {
+        var o = opts.filter(function (x) { return x.value === sel.value; })[0];
+        if (o) { sel.style.background = o.color; sel.style.color = o.textColor || '#333'; sel.style.fontWeight = '600'; }
+        else { sel.style.background = ''; sel.style.color = ''; sel.style.fontWeight = ''; }
+      }
+      paint();
+      sel.addEventListener('change', function () { saveCustom(t, col.id, sel.value); paint(); });
+      return sel;
+    }
+    if (col.type === 'date') {
+      var di = transpInput(U.el('input', { type: 'date', value: val || '' }));
+      di.addEventListener('change', function () { saveCustom(t, col.id, di.value); });
+      return di;
+    }
+    if (col.type === 'link') {
+      var wrap = U.el('span', { style: 'display:inline-flex;align-items:center;gap:4px;' });
+      var li = transpInput(U.el('input', { value: val || '', placeholder: 'https://…', style: 'min-width:110px;' }));
+      li.addEventListener('change', function () { saveCustom(t, col.id, li.value.trim()); });
+      wrap.appendChild(li);
+      if (val) wrap.appendChild(U.el('a', { href: val, target: '_blank', rel: 'noopener', text: '↗', title: 'פתיחה', style: 'text-decoration:none;font-size:15px;' }));
+      return wrap;
+    }
+    var inp = transpInput(U.el('input', { value: val || '', type: col.type === 'number' ? 'number' : 'text', style: 'min-width:80px;' }));
+    inp.addEventListener('change', function () { saveCustom(t, col.id, col.type === 'number' ? (inp.value === '' ? '' : U.num(inp.value)) : inp.value.trim()); });
+    return inp;
+  }
+  function openColumnModal(col) {
+    var isNew = !col;
+    col = col ? JSON.parse(JSON.stringify(col)) : { id: 'c_' + Store.uid(), name: '', type: 'text', options: [] };
+    var name = U.el('input', { value: col.name || '', placeholder: 'שם העמודה (למשל: מסמך, קטגוריה)' });
+    var type = U.el('select', null, COL_TYPES.map(function (c) { return U.el('option', { value: c.key, text: c.label }); })); type.value = col.type || 'text';
+    var err = U.el('div', { class: 'field-err' });
+    var optWrap = U.el('div');
+    function drawOpts() {
+      U.clear(optWrap);
+      (col.options || []).forEach(function (o, i) {
+        var v = U.el('input', { value: o.value || '', placeholder: 'ערך', style: 'flex:1;' });
+        v.addEventListener('change', function () { o.value = v.value.trim(); });
+        var sw = U.el('span', { style: 'width:22px;height:22px;border-radius:5px;flex:0 0 auto;background:' + (o.color || '#e2e8f0') + ';border:1px solid #0002;' });
+        var del = U.el('button', { class: 'btn secondary', text: '🗑', onclick: function () { col.options.splice(i, 1); drawOpts(); } });
+        optWrap.appendChild(U.el('div', { style: 'display:flex;gap:6px;align-items:center;margin-bottom:6px;' }, [sw, v, del]));
+      });
+      var addv = U.el('input', { placeholder: '➕ ערך חדש ולחץ Enter', style: 'flex:1;' });
+      function addOpt() { var x = addv.value.trim(); if (!x) return; if (!col.options) col.options = []; var c = CHIP_COLORS[col.options.length % CHIP_COLORS.length]; col.options.push({ value: x, color: c[0], textColor: c[1] }); addv.value = ''; drawOpts(); }
+      addv.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addOpt(); } });
+      optWrap.appendChild(U.el('div', { style: 'display:flex;gap:6px;' }, [addv, U.el('button', { class: 'btn secondary', text: 'הוסף', onclick: addOpt })]));
+    }
+    var optField = U.el('div', { class: 'field' }, [U.el('label', { text: 'ערכי התווית' }), optWrap]);
+    function syncType() { optField.style.display = type.value === 'label' ? '' : 'none'; drawOpts(); }
+    type.addEventListener('change', syncType); syncType();
+    function fld(l, n) { return U.el('div', { class: 'field' }, [U.el('label', { text: l }), n]); }
+    var body = U.el('div', null, [fld('שם העמודה', name), fld('סוג', type), optField, err]);
+    var buttons = [
+      { label: 'ביטול', class: 'secondary' },
+      { label: 'שמירה', onClick: function (close) {
+        if (!name.value.trim()) { err.textContent = 'נדרש שם עמודה'; return; }
+        col.name = name.value.trim(); col.type = type.value;
+        if (col.type !== 'label') delete col.options;
+        var s = Store.settings(); if (!s.taskColumns) s.taskColumns = [];
+        var idx = s.taskColumns.map(function (x) { return x.id; }).indexOf(col.id);
+        if (idx >= 0) s.taskColumns[idx] = col; else s.taskColumns.push(col);
+        Store.saveSettings(); close(); App.render();
+      } }
+    ];
+    if (!isNew) {
+      buttons.splice(1, 0, { label: '🗑 מחיקת עמודה', class: 'danger', onClick: function (close) {
+        close();
+        Modal.confirm({ title: 'מחיקת עמודה', text: 'למחוק את העמודה "' + (col.name || '') + '"? הנתונים בעמודה יוסרו מהתצוגה.', okLabel: 'מחיקה', danger: true }, function () {
+          var s = Store.settings(); var idx = (s.taskColumns || []).map(function (x) { return x.id; }).indexOf(col.id);
+          if (idx >= 0) s.taskColumns.splice(idx, 1); Store.saveSettings(); App.render();
+        });
+      } });
+    }
+    Modal.open(isNew ? '➕ עמודה חדשה' : '✏️ עמודה: ' + (col.name || ''), body, buttons);
+  }
+
   function renderTable(host, list) {
     quickAddRow(host);
     if (!list.length) { host.appendChild(U.el('div', { class: 'empty' }, 'אין משימות שתואמות לסינון')); return; }
+    var cols = taskColumns();
+    var headCells = ['#', 'תחום', 'תיאור', 'אחראי', 'עדיפות', 'סטטוס', 'יעד', 'סוג'].map(function (h) { return U.el('th', { text: h }); });
+    cols.forEach(function (col) {
+      headCells.push(U.el('th', { style: 'white-space:nowrap;' }, [
+        U.el('span', { text: col.name }),
+        U.el('button', { text: '⋮', title: 'עריכת עמודה', style: 'background:none;border:none;cursor:pointer;color:inherit;font-size:15px;padding:0 2px;', onclick: function () { openColumnModal(col); } })
+      ]));
+    });
+    headCells.push(U.el('th', { style: 'white-space:nowrap;' }, [U.el('button', { class: 'btn secondary', text: '＋ עמודה', title: 'הוספת עמודה', style: 'font-size:12px;padding:2px 8px;', onclick: function () { openColumnModal(null); } })]));
+    headCells.push(U.el('th', { text: '' }));
     var tbl = U.el('table', { class: 'grid' }, [
-      U.el('thead', null, U.el('tr', null, ['#', 'תחום', 'תיאור', 'אחראי', 'עדיפות', 'סטטוס', 'יעד', 'סוג', ''].map(function (h) { return U.el('th', { text: h }); }))),
+      U.el('thead', null, U.el('tr', null, headCells)),
       U.el('tbody', null, list.map(function (t) {
         var overdue = (Store.daysToDue(t.due) != null && Store.daysToDue(t.due) < 0 && t.status !== 'הושלם');
         var descCell = U.el('td', { style: 'min-width:200px;' }, [
@@ -335,7 +455,7 @@
           kindCell.appendChild(U.el('div', null, [freqSel]));
         }
 
-        return U.el('tr', { style: overdue ? 'background:#fef2f2;' : '' }, [
+        var rowCells = [
           U.el('td', { style: 'white-space:nowrap;color:#94a3b8;font-size:12px;', text: t.num || '' }),
           U.el('td', null, chipEdit(t, 'domain', Store.settings().taskDomains || [], 'תחום')),
           descCell,
@@ -343,11 +463,14 @@
           U.el('td', null, selField(t, 'priority', PRIORITIES, false)),
           U.el('td', null, selField(t, 'status', STATUSES, false)),
           U.el('td', { style: 'white-space:nowrap;' }, [dueInput, daysBadge(t) ? U.el('div', { style: 'margin-top:2px;' }, [daysBadge(t)]) : null]),
-          kindCell,
-          U.el('td', null, U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקה', onclick: function () {
-            Modal.confirm({ title: 'מחיקת משימה', text: 'למחוק את "' + (t.desc || '') + '"?', okLabel: 'מחיקה', danger: true }, function () { Store.deleteTask(t.id); App.render(); });
-          } }))
-        ]);
+          kindCell
+        ];
+        cols.forEach(function (col) { rowCells.push(U.el('td', null, [customCell(t, col)])); });
+        rowCells.push(U.el('td', { text: '' })); // עמודת ה־＋
+        rowCells.push(U.el('td', null, U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקה', onclick: function () {
+          Modal.confirm({ title: 'מחיקת משימה', text: 'למחוק את "' + (t.desc || '') + '"?', okLabel: 'מחיקה', danger: true }, function () { Store.deleteTask(t.id); App.render(); });
+        } })));
+        return U.el('tr', { style: overdue ? 'background:#fef2f2;' : '' }, rowCells);
       }))
     ]);
     host.appendChild(U.el('div', { class: 'tbl-scroll' }, [tbl]));
