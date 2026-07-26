@@ -11,6 +11,28 @@
     ].filter(Boolean));
   }
 
+  // כיווץ/פתיחה לכל כרטיס הגדרה בנפרד (ברירת מחדל: מכווץ)
+  var collapseState = (function () { try { return JSON.parse(localStorage.getItem('admin_settings_collapse') || '{}'); } catch (e) { return {}; } })();
+  function saveCollapseState() { try { localStorage.setItem('admin_settings_collapse', JSON.stringify(collapseState)); } catch (e) {} }
+  function collapsible(key, card) {
+    var open = collapseState[key] === true; // ברירת מחדל מכווץ
+    var h3 = card.querySelector('h3');
+    var body = U.el('div');
+    Array.prototype.slice.call(card.childNodes).forEach(function (n) { if (n !== h3) body.appendChild(n); });
+    body.style.display = open ? '' : 'none';
+    if (h3) {
+      h3.style.cursor = 'pointer';
+      h3.style.display = 'flex';
+      h3.style.alignItems = 'center';
+      h3.style.justifyContent = 'space-between';
+      h3.style.margin = open ? '' : '0';
+      h3.appendChild(U.el('span', { text: open ? '▾' : '▸', style: 'font-size:14px;color:var(--muted,#6b7884);' }));
+      h3.addEventListener('click', function () { collapseState[key] = !open; saveCollapseState(); App.render(); });
+    }
+    card.appendChild(body);
+    return card;
+  }
+
   // ---------- אירועים וטיולים: תפקידים, מחסן משימות, סוגי אירועים ----------
   function empOptions(selectedId) {
     return [U.el('option', { value: '', text: '— לא משויך —' })].concat(
@@ -71,39 +93,55 @@
   }
   function eventTypesCard() {
     var s = Store.settings();
-    var list = U.el('div');
-    function draw() {
-      U.clear(list);
-      (s.eventTypes || []).forEach(function (t, idx) {
-        var label = U.el('input', { value: t.label || '', style: 'font-weight:600;flex:1;min-width:140px;' });
-        label.addEventListener('change', function () { t.label = label.value.trim(); Store.saveSettings(); });
-        var del = U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקת סוג', onclick: function () { s.eventTypes.splice(idx, 1); Store.saveSettings(); draw(); } });
-        var checks = (s.taskCatalog || []).map(function (c) {
-          var cb = U.el('input', { type: 'checkbox', checked: (t.defaultTaskIds || []).indexOf(c.id) !== -1 });
-          cb.addEventListener('change', function () {
-            if (!t.defaultTaskIds) t.defaultTaskIds = [];
-            var i = t.defaultTaskIds.indexOf(c.id);
-            if (cb.checked && i === -1) t.defaultTaskIds.push(c.id);
-            else if (!cb.checked && i !== -1) t.defaultTaskIds.splice(i, 1);
-            Store.saveSettings();
-          });
-          return U.el('label', { style: 'display:inline-flex;align-items:center;gap:4px;font-size:12px;margin:0 8px 4px 0;cursor:pointer;' }, [cb, c.title]);
-        });
-        list.appendChild(U.el('div', { style: 'border:1px solid var(--border,#d6dce1);border-radius:8px;padding:10px;margin-bottom:8px;' }, [
-          U.el('div', { style: 'display:flex;gap:6px;align-items:center;margin-bottom:6px;' }, [label, del]),
-          U.el('div', { style: 'display:flex;flex-wrap:wrap;' }, checks.length ? checks : [U.el('span', { class: 'muted', style: 'font-size:12px;', text: 'אין משימות במחסן' })])
-        ]));
-      });
+    var sel = U.el('select', { style: 'min-width:220px;' });
+    var editor = U.el('div', { style: 'margin-top:10px;' });
+    function fillSel() {
+      U.clear(sel);
+      sel.appendChild(U.el('option', { value: '', text: '— בחר סוג אירוע —' }));
+      (s.eventTypes || []).forEach(function (t) { sel.appendChild(U.el('option', { value: t.id, text: t.label })); });
     }
-    draw();
+    function drawEditor() {
+      U.clear(editor);
+      var t = (s.eventTypes || []).filter(function (x) { return x.id === sel.value; })[0];
+      if (!t) return;
+      var label = U.el('input', { value: t.label || '', style: 'font-weight:600;min-width:170px;' });
+      label.addEventListener('change', function () { t.label = label.value.trim(); Store.saveSettings(); var v = t.id; fillSel(); sel.value = v; });
+      var del = U.el('button', { class: 'btn secondary', text: '🗑 מחיקת סוג', onclick: function () {
+        var i = s.eventTypes.map(function (x) { return x.id; }).indexOf(t.id); if (i >= 0) s.eventTypes.splice(i, 1);
+        Store.saveSettings(); sel.value = ''; fillSel(); drawEditor();
+      } });
+      var checks = (s.taskCatalog || []).map(function (c) {
+        var cb = U.el('input', { type: 'checkbox', checked: (t.defaultTaskIds || []).indexOf(c.id) !== -1 });
+        cb.addEventListener('change', function () {
+          if (!t.defaultTaskIds) t.defaultTaskIds = [];
+          var i = t.defaultTaskIds.indexOf(c.id);
+          if (cb.checked && i === -1) t.defaultTaskIds.push(c.id);
+          else if (!cb.checked && i !== -1) t.defaultTaskIds.splice(i, 1);
+          Store.saveSettings();
+        });
+        return U.el('label', { style: 'display:inline-flex;align-items:center;gap:4px;font-size:12px;margin:0 8px 4px 0;cursor:pointer;' }, [cb, c.title]);
+      });
+      editor.appendChild(U.el('div', { style: 'border:1px solid var(--border,#d6dce1);border-radius:8px;padding:10px;' }, [
+        U.el('div', { style: 'display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap;' }, [U.el('span', { class: 'muted', style: 'font-size:12px;', text: 'שם הסוג:' }), label, U.el('span', { class: 'spacer' }), del]),
+        U.el('div', { class: 'muted', style: 'font-size:12px;margin-bottom:4px;', text: 'משימות שיסומנו מראש בעת יצירת אירוע מהסוג הזה:' }),
+        U.el('div', { style: 'display:flex;flex-wrap:wrap;' }, checks.length ? checks : [U.el('span', { class: 'muted', style: 'font-size:12px;', text: 'אין משימות במחסן' })])
+      ]));
+    }
+    fillSel();
+    sel.addEventListener('change', drawEditor);
     var addL = U.el('input', { placeholder: 'סוג אירוע חדש', style: 'flex:1;min-width:150px;' });
-    function add() { if (!addL.value.trim()) return; if (!s.eventTypes) s.eventTypes = []; s.eventTypes.push({ id: Store.uid(), label: addL.value.trim(), defaultTaskIds: [], scheduleTemplate: [] }); Store.saveSettings(); addL.value = ''; draw(); }
+    function add() {
+      if (!addL.value.trim()) return; if (!s.eventTypes) s.eventTypes = [];
+      var nt = { id: Store.uid(), label: addL.value.trim(), defaultTaskIds: [], scheduleTemplate: [] };
+      s.eventTypes.push(nt); Store.saveSettings(); addL.value = ''; fillSel(); sel.value = nt.id; drawEditor();
+    }
     addL.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); add(); } });
     return U.el('div', { class: 'card', style: 'max-width:560px;margin-bottom:16px;' }, [
       U.el('h3', { text: '🗓️ סוגי אירועים ותבניות משימות' }),
-      U.el('p', { class: 'muted', style: 'margin-top:0;font-size:12px;', text: 'לכל סוג אירוע — סמנו אילו משימות מהמחסן יסומנו מראש בעת יצירת אירוע מהסוג הזה.' }),
-      list,
-      U.el('div', { style: 'display:flex;gap:6px;margin-top:8px;' }, [addL, U.el('button', { class: 'btn secondary', text: 'הוסף סוג', onclick: add })])
+      U.el('p', { class: 'muted', style: 'margin-top:0;font-size:12px;', text: 'בחרו סוג אירוע כדי לערוך אילו משימות יסומנו מראש.' }),
+      U.el('div', { style: 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;' }, [U.el('span', { class: 'muted', style: 'font-size:13px;', text: 'סוג:' }), sel]),
+      editor,
+      U.el('div', { style: 'display:flex;gap:6px;margin-top:12px;border-top:1px solid var(--border,#d6dce1);padding-top:10px;' }, [addL, U.el('button', { class: 'btn secondary', text: 'הוסף סוג', onclick: add })])
     ]);
   }
 
@@ -228,16 +266,16 @@
         } })
       ])
     ]);
-    view.appendChild(ratesCard);
+    view.appendChild(collapsible('rates', ratesCard));
 
     // ---------- אירועים וטיולים ----------
     view.appendChild(U.el('div', { class: 'page-head', style: 'margin-top:8px;' }, [U.el('h3', { text: '🗓️ תכנון אירועים וטיולים', style: 'font-size:17px;color:var(--primary-dark,#1b5e20);' })]));
-    view.appendChild(eventRolesCard());
-    view.appendChild(taskCatalogCard());
-    view.appendChild(eventTypesCard());
-    view.appendChild(classesCard());
-    view.appendChild(consentTextCard());
-    view.appendChild(flyerLogoCard());
+    view.appendChild(collapsible('eventRoles', eventRolesCard()));
+    view.appendChild(collapsible('taskCatalog', taskCatalogCard()));
+    view.appendChild(collapsible('eventTypes', eventTypesCard()));
+    view.appendChild(collapsible('classes', classesCard()));
+    view.appendChild(collapsible('consentText', consentTextCard()));
+    view.appendChild(collapsible('flyerLogo', flyerLogoCard()));
 
     // ---------- גיבוי ושחזור ----------
     var backupCard = U.el('div', { class: 'card danger-zone', style: 'max-width:560px;' }, [
@@ -262,7 +300,7 @@
         } })
       ])
     ]);
-    view.appendChild(backupCard);
+    view.appendChild(collapsible('backup', backupCard));
   }
 
   global.SettingsView = { render: render };
