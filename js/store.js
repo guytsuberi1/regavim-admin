@@ -106,7 +106,8 @@
         taskCatalog: defaultTaskCatalog(),
         eventTypes: defaultEventTypes(),
         classes: [],               // רשימות כיתה: [{ id, name, students:[{id,name}] }] — למעקב אישורי הורים
-        consentText: defaultConsentText()
+        consentText: defaultConsentText(),
+        taskColumns: []            // עמודות מותאמות בגיליון המשימות: [{ id, name, type, options:[{value,color}] }]
       },
       // { id, firstName, lastName, phone, email, tz, role:''|'admin'|'secretary',
       //   tags:['מתגבר','מורה',...], active, notes }
@@ -165,6 +166,7 @@
     if (!core.settings.eventTypes || !core.settings.eventTypes.length) core.settings.eventTypes = defaultEventTypes();
     if (!Array.isArray(core.settings.classes)) core.settings.classes = [];
     if (!core.settings.consentText) core.settings.consentText = defaultConsentText();
+    if (!Array.isArray(core.settings.taskColumns)) core.settings.taskColumns = [];
     return core;
   }
 
