@@ -9,13 +9,11 @@
 
   var EMPLOYMENT = [
     { key: 'amuta', label: 'עמותה' },
-    { key: 'moe', label: 'משרד החינוך' },
-    { key: 'kablan', label: 'קבלן' }
+    { key: 'moe', label: 'משרד החינוך' }
   ];
-  function employmentLabel(k) {
-    var e = EMPLOYMENT.filter(function (x) { return x.key === k; })[0];
-    return e ? e.label : '';
-  }
+  // מיפוי תוויות כולל ערכים היסטוריים (כמו 'קבלן') כדי שרשומות קיימות עדיין יוצגו נכון
+  var EMPLOYMENT_LABELS = { amuta: 'עמותה', moe: 'משרד החינוך', kablan: 'קבלן' };
+  function employmentLabel(k) { return EMPLOYMENT_LABELS[k] || ''; }
 
   var ONBOARD = [
     { key: 'none', label: 'לא התחיל' },
@@ -244,8 +242,7 @@
           var jobTitle = cell(rows[r], 'jobTitle');
           var amutaCell = cell(rows[r], 'amuta');
           var employment = '';
-          if (/קבלן/.test(amutaCell) || /קבלן/.test(cell(rows[r], 'onboard'))) employment = 'kablan';
-          else if (isChecked(cell(rows[r], 'moe'))) employment = 'moe';
+          if (isChecked(cell(rows[r], 'moe'))) employment = 'moe';
           else if (isChecked(amutaCell)) employment = 'amuta';
 
           var fresh = {
@@ -654,7 +651,6 @@
 
     view.appendChild(U.el('div', { class: 'kpi-row' }, [
       kpi('👥', active.length, 'עובדים פעילים'),
-      kpi('📥', active.filter(function (e) { return e.onboard.status === 'progress'; }).length, 'בתהליך קליטה'),
       kpi('🏢', active.filter(function (e) { return e.employment === 'amuta'; }).length, 'עובדי עמותה'),
       kpi('🏫', active.filter(function (e) { return e.employment === 'moe'; }).length, 'משרד החינוך')
     ]));
@@ -693,7 +689,7 @@
         return;
       }
       var tbl = U.el('table', { class: 'grid' }, [
-        U.el('thead', null, U.el('tr', null, ['שם', 'טלפון', 'סוג העסקה', 'ימי עבודה', 'קליטה', 'תגיות', 'סטטוס'].map(function (h) {
+        U.el('thead', null, U.el('tr', null, ['שם', 'טלפון', 'סוג העסקה', 'ימי עבודה', 'תגיות', 'סטטוס'].map(function (h) {
           return U.el('th', { text: h });
         }))),
         U.el('tbody', null, emps.map(function (e) {
@@ -707,7 +703,6 @@
             U.el('td', null, e.workDays.length
               ? U.el('span', { class: 'wd-mini', text: e.workDays.map(function (i) { return DAYS_SHORT[i]; }).join(' ') })
               : U.el('span', { class: 'muted', text: '—' })),
-            U.el('td', null, [onboardChip(e)]),
             U.el('td', null, (e.tags || []).map(function (t) { return U.el('span', { class: 'tag', text: t, style: 'margin-inline-end:4px;' }); })),
             U.el('td', { text: e.active === false ? 'לא פעיל' : 'פעיל' })
           ]);
