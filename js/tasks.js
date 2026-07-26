@@ -317,7 +317,8 @@
     { key: 'date', label: '📅 תאריך' },
     { key: 'label', label: '🏷️ תווית צבעונית' },
     { key: 'check', label: '✔️ צ׳ק-בוקס' },
-    { key: 'link', label: '🔗 קישור' }
+    { key: 'link', label: '🔗 קישור' },
+    { key: 'file', label: '📎 קובץ / מסמך' }
   ];
   function taskColumns() { return Store.settings().taskColumns || []; }
   function customVal(t, colId) { return (t.custom && t.custom[colId] != null) ? t.custom[colId] : ''; }
@@ -357,6 +358,31 @@
       var di = transpInput(U.el('input', { type: 'date', value: val || '' }));
       di.addEventListener('change', function () { saveCustom(t, col.id, di.value); });
       return di;
+    }
+    if (col.type === 'file') {
+      var fwrap = U.el('span', { style: 'display:inline-flex;align-items:center;gap:6px;' });
+      var drawFile = function () {
+        U.clear(fwrap);
+        var v = customVal(t, col.id);
+        if (v && v.path) {
+          var link = U.el('a', { href: '#', text: '📎 ' + (v.name || 'קובץ'), title: v.name || 'קובץ', style: 'cursor:pointer;font-size:13px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle;' });
+          link.addEventListener('click', function (e) { e.preventDefault(); Store.taskFileUrl(v.path).then(function (url) { if (url) global.open(url, '_blank'); else U.toast('הקישור אינו זמין', 'error'); }); });
+          var rm = U.el('button', { class: 'btn secondary', text: '×', title: 'הסרת הקובץ', style: 'padding:0 7px;', onclick: function () { Store.deleteTaskFile(v.path); saveCustom(t, col.id, ''); drawFile(); } });
+          fwrap.appendChild(link); fwrap.appendChild(rm);
+        } else {
+          var finp = U.el('input', { type: 'file', style: 'display:none;' });
+          finp.addEventListener('change', function () {
+            var f = finp.files[0]; if (!f) return;
+            U.toast('מעלה…', 'info');
+            Store.uploadTaskFile(f).then(function (res) { saveCustom(t, col.id, res); drawFile(); U.toast('הקובץ הועלה'); })
+              .catch(function (e) { U.toast('העלאה נכשלה: ' + e.message, 'error'); });
+          });
+          fwrap.appendChild(U.el('button', { class: 'btn secondary', text: '📎 העלאה', style: 'font-size:12px;padding:2px 8px;', onclick: function () { finp.click(); } }));
+          fwrap.appendChild(finp);
+        }
+      };
+      drawFile();
+      return fwrap;
     }
     if (col.type === 'link') {
       var wrap = U.el('span', { style: 'display:inline-flex;align-items:center;gap:4px;' });
