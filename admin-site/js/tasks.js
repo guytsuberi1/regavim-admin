@@ -519,6 +519,60 @@
     host.appendChild(U.el('div', { class: 'kb-board' }, cols));
   }
 
+  // ---------- ציר זמן (Gantt) ----------
+  function renderTimeline(host, list) {
+    var today = U.todayISO();
+    function startOf(t) { return t.createdAt ? String(t.createdAt).slice(0, 10) : today; }
+    function daysBetween(a, b) { return Math.round((Date.parse(b) - Date.parse(a)) / 86400000); }
+    var withDue = list.filter(function (t) { return t.due; });
+    if (!withDue.length) { host.appendChild(U.el('div', { class: 'empty' }, list.length ? 'אין משימות עם תאריך יעד להצגה בציר הזמן.' : 'אין משימות.')); return; }
+    var minD = today, maxD = today;
+    withDue.forEach(function (t) { var s = startOf(t); if (s < minD) minD = s; if (t.due < minD) minD = t.due; if (t.due > maxD) maxD = t.due; });
+    minD = U.addDays(minD, -3); maxD = U.addDays(maxD, 3);
+    var span = Math.max(1, daysBetween(minD, maxD));
+    var pxDay = span <= 30 ? 26 : span <= 90 ? 13 : span <= 240 ? 6 : 3;
+    var barW = span * pxDay, LABEL_W = 190;
+    function x(iso) { return daysBetween(minD, iso) * pxDay; }
+
+    var inner = U.el('div', { style: 'direction:ltr;min-width:' + (LABEL_W + barW + 24) + 'px;' });
+    // סרגל תאריכים (תוויות בימי ראשון)
+    var ruler = U.el('div', { style: 'position:relative;height:20px;margin-left:' + LABEL_W + 'px;border-bottom:1px solid var(--border,#d6dce1);' });
+    var cur = minD;
+    while (cur <= maxD) {
+      var dt = new Date(cur + 'T00:00:00');
+      if (dt.getDay() === 0 || cur === minD) {
+        ruler.appendChild(U.el('span', { style: 'position:absolute;bottom:2px;left:' + x(cur) + 'px;font-size:10px;color:var(--muted,#6b7884);white-space:nowrap;', text: dt.getDate() + '/' + (dt.getMonth() + 1) }));
+      }
+      cur = U.addDays(cur, 1);
+    }
+    inner.appendChild(ruler);
+
+    withDue.sort(function (a, b) { return String(startOf(a)).localeCompare(String(startOf(b))) || dueCmp(a, b); });
+    withDue.forEach(function (t) {
+      var s = startOf(t); if (s > t.due) s = t.due;
+      var overdue = t.status !== 'הושלם' && t.due < today;
+      var done = t.status === 'הושלם';
+      var barColor = done ? '#16a34a' : prColor(t.priority);
+      var left = x(s), w = Math.max(6, x(t.due) - x(s));
+      var track = U.el('div', { style: 'position:relative;height:26px;flex:0 0 auto;width:' + barW + 'px;border-bottom:1px solid #f1f5f9;' });
+      track.appendChild(U.el('div', { style: 'position:absolute;top:0;bottom:0;left:' + x(today) + 'px;width:2px;background:#dc2626;opacity:.7;' }));
+      var bar = U.el('div', {
+        title: (t.desc || '') + ' · ' + U.gregLabel(s) + ' → ' + U.gregLabel(t.due),
+        style: 'position:absolute;top:5px;height:16px;border-radius:8px;cursor:pointer;left:' + left + 'px;width:' + w + 'px;background:' + barColor + ';' + (overdue ? 'box-shadow:0 0 0 2px #dc2626;' : '') + (done ? 'opacity:.55;' : '')
+      });
+      bar.addEventListener('click', function () { openModal(JSON.parse(JSON.stringify(t))); });
+      track.appendChild(bar);
+      var label = U.el('div', { title: t.desc || '', style: 'direction:rtl;flex:0 0 ' + LABEL_W + 'px;width:' + LABEL_W + 'px;padding:4px 8px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid #f1f5f9;' }, [
+        priorityDot(t.priority), U.el('span', { text: t.desc || '' })
+      ]);
+      inner.appendChild(U.el('div', { style: 'display:flex;align-items:stretch;' }, [label, track]));
+    });
+    host.appendChild(U.el('div', { class: 'tbl-scroll' }, [inner]));
+
+    var noDue = list.filter(function (t) { return !t.due; });
+    if (noDue.length) host.appendChild(U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:10px;', text: noDue.length + ' משימות ללא תאריך יעד אינן מוצגות בציר.' }));
+  }
+
   // ---------- דשבורד ----------
   function dashCard(title, rows) {
     return U.el('div', { class: 'card' }, [
@@ -607,6 +661,7 @@
     var toggle = U.el('div', { class: 'subtabs', style: 'display:inline-flex;margin:0;' }, [
       U.el('button', { class: viewMode === 'table' ? 'active' : '', text: '☰ טבלה', onclick: function () { viewMode = 'table'; App.render(); } }),
       U.el('button', { class: viewMode === 'kanban' ? 'active' : '', text: '▤ קנבן', onclick: function () { viewMode = 'kanban'; App.render(); } }),
+      U.el('button', { class: viewMode === 'timeline' ? 'active' : '', text: '📅 ציר זמן', onclick: function () { viewMode = 'timeline'; App.render(); } }),
       U.el('button', { class: viewMode === 'dashboard' ? 'active' : '', text: '📊 דשבורד', onclick: function () { viewMode = 'dashboard'; App.render(); } })
     ]);
     view.appendChild(U.el('div', { class: 'page-head' }, [
@@ -674,7 +729,7 @@
         b.addEventListener('click', function () { filters.due = active ? '' : bd.key; App.render(); });
         return b;
       })));
-    if (!isDash) view.appendChild(dueBar);
+    if (viewMode === 'table' || viewMode === 'kanban') view.appendChild(dueBar);
 
     var host = U.el('div');
     view.appendChild(host);
@@ -682,6 +737,7 @@
     function refresh() {
       U.clear(host);
       if (viewMode === 'dashboard') { renderDashboard(host, all); return; }
+      if (viewMode === 'timeline') { renderTimeline(host, applyFilters(all)); return; }
       var list = sortTasks(applyFilters(all));
       if (viewMode === 'kanban') {
         if (!all.length) {
