@@ -658,7 +658,7 @@
     var doneN = (ev.tasks || []).filter(function (t) { return t.status === 'בוצע'; }).length;
     function mkSec(open, icon, label, key, storeOpen, contentFn) {
       var anchor = 'sec_' + ev.id + '_' + key.replace(/[^a-z0-9]/gi, '');
-      var btn = U.el('button', { class: 'btn secondary', html: (open ? '▾' : '▸') + ' ' + icon + ' ' + esc(label), onclick: function () {
+      var btn = U.el('button', { class: 'btn', style: 'background:var(--primary-light,#e8f5e9);color:var(--primary-dark,#1b5e20);border:1px solid var(--primary,#2e7d32);font-weight:700;', html: (open ? '▾' : '▸') + ' ' + icon + ' ' + esc(label), onclick: function () {
         var willOpen = !open;
         collapsedMap[key] = storeOpen ? willOpen : !willOpen;
         saveCollapsed();
