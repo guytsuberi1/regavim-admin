@@ -347,6 +347,80 @@
     return wrap;
   }
 
+  // ---------- תת-משימות (בתבנית Subitems של Monday) ----------
+  var subOpen = (function () { try { return JSON.parse(localStorage.getItem('admin_task_subopen') || '{}'); } catch (e) { return {}; } })();
+  function saveSubOpen() { try { localStorage.setItem('admin_task_subopen', JSON.stringify(subOpen)); } catch (e) {} }
+  function subsOf(t) { return Array.isArray(t.subs) ? t.subs : []; }
+  // Rollup: סיכום תת-המשימות אל שורת האב
+  function subRollup(t) {
+    var subs = subsOf(t);
+    if (!subs.length) return null;
+    var done = subs.filter(function (s) { return s.status === 'הושלם'; }).length;
+    return { done: done, total: subs.length, pct: Math.round(done / subs.length * 100) };
+  }
+  function rollupChip(t) {
+    var r = subRollup(t);
+    if (!r) return null;
+    var full = r.done === r.total;
+    return U.el('span', {
+      class: 'm-rollup', title: 'תת-משימות: ' + r.done + ' מתוך ' + r.total + ' הושלמו',
+      style: full ? 'border-color:var(--ok,#16a34a);color:var(--ok,#16a34a);' : ''
+    }, [
+      U.el('span', { text: '⛓ ' + r.done + '/' + r.total }),
+      U.el('span', { class: 'm-rbar' }, [U.el('span', { style: 'width:' + r.pct + '%;background:' + (full ? 'var(--ok,#16a34a)' : 'var(--brand,#1d4e89)') + ';' })])
+    ]);
+  }
+  // טבלת תת-המשימות שנפתחת מתחת לשורת האב
+  function subTable(t) {
+    if (!t.subs) t.subs = [];
+    var owners = Store.settings().taskOwners || [];
+    var rows = t.subs.map(function (s, idx) {
+      var title = U.el('input', { value: s.title || '', placeholder: 'תת-משימה', style: 'width:100%;border:1px solid transparent;background:transparent;padding:5px 7px;' });
+      title.addEventListener('focus', function () { title.style.background = '#fff'; title.style.borderColor = 'var(--border,#e2e7ec)'; });
+      title.addEventListener('blur', function () { title.style.background = 'transparent'; title.style.borderColor = 'transparent'; });
+      title.addEventListener('change', function () { s.title = title.value.trim(); Store.upsertTask(t); });
+
+      var ow = U.dataListInput(s.owner || '', owners, 'אחראי');
+      ow._input.style.cssText = 'min-width:100px;border:1px solid transparent;background:transparent;padding:5px 7px;';
+      ow._input.addEventListener('change', function () { s.owner = ow.get(); rememberValue('taskOwners', ow.get()); Store.upsertTask(t); });
+
+      var st = U.el('select', { class: 'm-status', style: 'min-width:92px;font-size:12px;padding:6px 8px;' },
+        STATUSES.map(function (o) { return U.el('option', { value: o.key, text: o.key }); }));
+      st.value = s.status || 'פתוח';
+      st.style.background = stColor(st.value);
+      st.addEventListener('change', function () { s.status = st.value; Store.upsertTask(t); App.render(); });
+
+      var due = U.el('input', { type: 'date', value: s.due || '', style: 'border:1px solid transparent;background:transparent;padding:5px 7px;font-size:12px;' });
+      due.addEventListener('change', function () { s.due = due.value; Store.upsertTask(t); App.render(); });
+
+      var del = U.el('button', { class: 'm-iconbtn', text: '🗑', title: 'מחיקת תת-משימה', onclick: function () {
+        t.subs.splice(idx, 1); Store.upsertTask(t); App.render();
+      } });
+      return U.el('tr', null, [
+        U.el('td', { style: 'min-width:180px;' }, [title]),
+        U.el('td', null, [ow]),
+        U.el('td', null, [st]),
+        U.el('td', { style: 'white-space:nowrap;' }, [due]),
+        U.el('td', null, [U.el('div', { class: 'm-actions' }, [del])])
+      ]);
+    });
+    var tbl = U.el('table', { class: 'grid m-grid m-subgrid' }, [
+      U.el('thead', null, U.el('tr', null, ['תת-משימה', 'אחראי', 'סטטוס', 'יעד', ''].map(function (h) { return U.el('th', { text: h }); }))),
+      U.el('tbody', null, rows)
+    ]);
+    var add = U.el('input', { placeholder: '➕ תת-משימה — כתוב ולחץ Enter', style: 'flex:1;min-width:200px;' });
+    function addSub() {
+      var v = add.value.trim(); if (!v) return;
+      t.subs.push({ id: Store.uid(), title: v, owner: '', status: 'פתוח', due: '' });
+      Store.upsertTask(t); subOpen[t.id] = true; saveSubOpen(); App.render();
+    }
+    add.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addSub(); } });
+    return U.el('div', { class: 'm-subwrap' }, [
+      rows.length ? tbl : U.el('div', { class: 'muted', style: 'font-size:12.5px;padding:2px 0 8px;', text: 'אין עדיין תת-משימות.' }),
+      U.el('div', { style: 'display:flex;gap:6px;margin-top:8px;' }, [add, U.el('button', { class: 'btn secondary', text: 'הוסף', onclick: addSub })])
+    ]);
+  }
+
   function selField(t, field, opts, onChangeRerender) {
     var sel = U.el('select', { style: 'padding:4px 6px;' }, opts.map(function (o) { return U.el('option', { value: o.key || o, text: o.label || o.key || o }); }));
     sel.value = t[field] || (opts[0].key || opts[0]);
@@ -553,11 +627,35 @@
           U.el('span', { class: 'm-gcount', text: items.length + ' משימות · ' + openDone + ' פתוחות' })
         ]);
         host.appendChild(headBtn);
-        if (!isCollapsed) host.appendChild(tableFor(items));
+        if (!isCollapsed) {
+          host.appendChild(tableFor(items));
+          if (!showArchive) host.appendChild(groupAddRow(g));
+        }
       });
       return;
     }
     host.appendChild(tableFor(list));
+    if (!showArchive) host.appendChild(groupAddRow(null));
+  }
+  // שורת "+ הוספה" בתחתית כל קבוצה (כמו Monday) — יורשת אוטומטית את ערך הקבוצה
+  function groupAddRow(g) {
+    var inp = U.el('input', {
+      class: 'm-addinput',
+      placeholder: '＋ הוסף משימה' + (g ? ' ל' + g : '') + ' — כתוב ולחץ Enter'
+    });
+    function add() {
+      var v = inp.value.trim(); if (!v) return;
+      var rec = { desc: v, domain: '', owner: '', priority: 'בינוני', status: 'פתוח', due: '', notes: '', kind: 'חד פעמי', freq: '', subs: [] };
+      // ירושת ערך הקבוצה שאליה מוסיפים
+      if (g && groupBy === 'domain' && g !== 'ללא תחום') rec.domain = g;
+      if (g && groupBy === 'owner' && g !== 'ללא אחראי') rec.owner = g;
+      if (g && groupBy === 'status') rec.status = g;
+      Store.upsertTask(rec);
+      focusAddDesc = true;
+      App.render();
+    }
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+    return U.el('div', { class: 'm-addrow' }, [inp]);
   }
   function tableFor(list) {
     var cols = taskColumns();
@@ -572,11 +670,25 @@
     headCells.push(U.el('th', { text: '' }));
     var tbl = U.el('table', { class: 'grid m-grid' }, [
       U.el('thead', null, U.el('tr', null, headCells)),
-      U.el('tbody', null, list.map(function (t) {
+      U.el('tbody', null, list.reduce(function (acc, t) {
         var overdue = (Store.daysToDue(t.due) != null && Store.daysToDue(t.due) < 0 && t.status !== 'הושלם');
+        var isSubOpen = !!subOpen[t.id];
+        var nSubs = subsOf(t).length;
+        // חץ פתיחת תת-משימות (בתבנית Monday) — משמאל לתיאור
+        var chev = U.el('button', {
+          class: 'm-chev' + (isSubOpen ? ' open' : '') + (nSubs ? ' has' : ''),
+          title: nSubs ? (isSubOpen ? 'סגירת תת-משימות' : 'פתיחת ' + nSubs + ' תת-משימות') : 'הוספת תת-משימות',
+          onclick: function () { subOpen[t.id] = !isSubOpen; saveSubOpen(); App.render(); }
+        }, isSubOpen ? '▾' : '▸');
         var descCell = U.el('td', { style: 'min-width:200px;' }, [
-          areaText(t, 'desc', 'תיאור', 'font-weight:500;'),
-          areaText(t, 'notes', 'הערות…', 'font-size:12px;color:var(--muted,#6b7884);'),
+          U.el('div', { style: 'display:flex;align-items:flex-start;gap:4px;' }, [
+            chev,
+            U.el('div', { style: 'flex:1;min-width:0;' }, [
+              areaText(t, 'desc', 'תיאור', 'font-weight:500;'),
+              areaText(t, 'notes', 'הערות…', 'font-size:12px;color:var(--muted,#6b7884);')
+            ])
+          ]),
+          rollupChip(t),
           t.kind === 'קבוע' && t.lastDoneAt ? U.el('div', { class: 'muted', style: 'font-size:11px;padding-inline:6px;', text: 'בוצע לאחרונה: ' + new Date(t.lastDoneAt).toLocaleDateString('he-IL') }) : null
         ]);
         var dueInput = U.el('input', { type: 'date', value: t.due || '', style: 'border:1px solid transparent;background:transparent;padding:4px 6px;' });
@@ -618,8 +730,15 @@
           } }));
         }
         rowCells.push(U.el('td', { style: 'white-space:nowrap;' }, [U.el('div', { class: 'm-actions' }, acts)]));
-        return U.el('tr', { style: overdue ? 'background:#fef2f2;' : (t.status === 'הושלם' ? 'background:var(--primary-light,#e8f5e9);' : '') }, rowCells);
-      }))
+        acc.push(U.el('tr', { style: overdue ? 'background:#fef2f2;' : (t.status === 'הושלם' ? 'background:var(--primary-light,#e8f5e9);' : '') }, rowCells));
+        // שורת תת-המשימות — נפתחת מתחת לאב על כל רוחב הטבלה
+        if (isSubOpen) {
+          acc.push(U.el('tr', { class: 'm-subrow' }, [
+            U.el('td', { colspan: String(rowCells.length) }, [subTable(t)])
+          ]));
+        }
+        return acc;
+      }, []))
     ]);
     return U.el('div', { class: 'tbl-scroll' }, [tbl]);
   }
