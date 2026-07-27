@@ -24,9 +24,25 @@
   function stColor(s) { var x = STATUSES.filter(function (q) { return q.key === s; })[0]; return x ? x.color : '#64748b'; }
   function prWeight(p) { return p === 'גבוה' ? 0 : p === 'בינוני' ? 1 : 2; }
 
-  var viewMode = 'table'; // 'table' | 'kanban'
+  var viewMode = 'table'; // 'table' | 'kanban' | 'timeline' | 'dashboard'
   var filters = { q: '', status: '', domain: '', owner: '', priority: '', due: '' };
   var sortBy = 'due';
+  var showArchive = false;
+  var groupBy = ''; // '' | 'domain' | 'owner' | 'status'
+  // קיבוצים מכווצים (נשמר מקומית)
+  var groupCollapsed = (function () { try { return JSON.parse(localStorage.getItem('admin_task_groups') || '{}'); } catch (e) { return {}; } })();
+  function saveGroupState() { try { localStorage.setItem('admin_task_groups', JSON.stringify(groupCollapsed)); } catch (e) {} }
+
+  // ארכוב אוטומטי: משימה שהושלמה לפני יותר מ-30 יום עוברת לארכיון
+  var AUTO_ARCHIVE_DAYS = 30;
+  function autoArchiveOld() {
+    var cutoff = Date.now() - AUTO_ARCHIVE_DAYS * 86400000;
+    Store.tasksAll().forEach(function (t) {
+      if (t.archived || t.status !== 'הושלם') return;
+      var when = Date.parse(t.lastDoneAt || t.updatedAt || '');
+      if (when && when < cutoff) { t.archived = true; Store.upsertTask(t); }
+    });
+  }
 
   // ---------- צבעי תגיות (תחום/אחראי) — צבע קבוע ועקבי לפי הטקסט ----------
   var CHIP_COLORS = [
@@ -446,9 +462,36 @@
     Modal.open(isNew ? '➕ עמודה חדשה' : '✏️ עמודה: ' + (col.name || ''), body, buttons);
   }
 
+  function groupLabel(t) {
+    if (groupBy === 'domain') return t.domain || 'ללא תחום';
+    if (groupBy === 'owner') return t.owner || 'ללא אחראי';
+    if (groupBy === 'status') return t.status || 'פתוח';
+    return '';
+  }
   function renderTable(host, list) {
-    quickAddRow(host);
-    if (!list.length) { host.appendChild(U.el('div', { class: 'empty' }, 'אין משימות שתואמות לסינון')); return; }
+    if (!showArchive) quickAddRow(host);
+    if (!list.length) { host.appendChild(U.el('div', { class: 'empty' }, showArchive ? 'הארכיון ריק.' : 'אין משימות שתואמות לסינון')); return; }
+    if (groupBy) {
+      var groups = {}, order = [];
+      list.forEach(function (t) { var g = groupLabel(t); if (!groups[g]) { groups[g] = []; order.push(g); } groups[g].push(t); });
+      order.sort(function (a, b) { return String(a).localeCompare(String(b), 'he'); });
+      order.forEach(function (g) {
+        var items = groups[g];
+        var openDone = items.filter(function (t) { return t.status !== 'הושלם'; }).length;
+        var key = groupBy + ':' + g;
+        var isCollapsed = !!groupCollapsed[key];
+        var headBtn = U.el('button', {
+          class: 'btn', style: 'background:var(--primary-light,#e8f5e9);color:var(--primary-dark,#1b5e20);border:1px solid var(--primary,#2e7d32);font-weight:700;margin:14px 0 4px;',
+          onclick: function () { groupCollapsed[key] = !isCollapsed; saveGroupState(); App.render(); }
+        }, (isCollapsed ? '▸' : '▾') + ' ' + g + ' — ' + items.length + ' משימות · ' + openDone + ' פתוחות');
+        host.appendChild(headBtn);
+        if (!isCollapsed) host.appendChild(tableFor(items));
+      });
+      return;
+    }
+    host.appendChild(tableFor(list));
+  }
+  function tableFor(list) {
     var cols = taskColumns();
     var headCells = ['#', 'תחום', 'תיאור', 'אחראי', 'עדיפות', 'סטטוס', 'יעד', 'סוג'].map(function (h) { return U.el('th', { text: h }); });
     cols.forEach(function (col) {
@@ -494,13 +537,20 @@
         ];
         cols.forEach(function (col) { rowCells.push(U.el('td', null, [customCell(t, col)])); });
         rowCells.push(U.el('td', { text: '' })); // עמודת ה־＋
-        rowCells.push(U.el('td', null, U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקה', onclick: function () {
-          Modal.confirm({ title: 'מחיקת משימה', text: 'למחוק את "' + (t.desc || '') + '"?', okLabel: 'מחיקה', danger: true }, function () { Store.deleteTask(t.id); App.render(); });
-        } })));
-        return U.el('tr', { style: overdue ? 'background:#fef2f2;' : '' }, rowCells);
+        var acts = [];
+        if (t.archived) {
+          acts.push(U.el('button', { class: 'btn secondary', text: '↩️', title: 'שחזור מהארכיון', onclick: function () { saveField(t, 'archived', false); App.render(); } }));
+          acts.push(U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקה לצמיתות', onclick: function () {
+            Modal.confirm({ title: 'מחיקה לצמיתות', text: 'למחוק לצמיתות את "' + (t.desc || '') + '"?', okLabel: 'מחיקה', danger: true }, function () { Store.deleteTask(t.id); App.render(); });
+          } }));
+        } else {
+          acts.push(U.el('button', { class: 'btn secondary', text: '📦', title: 'העברה לארכיון', onclick: function () { saveField(t, 'archived', true); App.render(); } }));
+        }
+        rowCells.push(U.el('td', { style: 'white-space:nowrap;' }, acts));
+        return U.el('tr', { style: overdue ? 'background:#fef2f2;' : (t.status === 'הושלם' ? 'background:var(--primary-light,#e8f5e9);' : '') }, rowCells);
       }))
     ]);
-    host.appendChild(U.el('div', { class: 'tbl-scroll' }, [tbl]));
+    return U.el('div', { class: 'tbl-scroll' }, [tbl]);
   }
 
   // ---------- קנבן ----------
@@ -680,7 +730,11 @@
 
   // ---------- רינדור ----------
   function render(view) {
-    var all = Store.tasksAll();
+    autoArchiveOld();
+    var everything = Store.tasksAll();
+    var activeTasks = everything.filter(function (t) { return !t.archived; });
+    var archivedTasks = everything.filter(function (t) { return !!t.archived; });
+    var all = showArchive ? archivedTasks : activeTasks;
     var s = Store.settings();
 
     // שתי דרכים להוסיף: שורת הוספה מהירה בטבלה + כפתור חלון (זמין תמיד)
@@ -694,7 +748,13 @@
     view.appendChild(U.el('div', { class: 'page-head' }, [
       U.el('h2', { text: '✅ ניהול משימות' }),
       U.el('span', { class: 'spacer' }),
-      toggle, addBtn
+      toggle, showArchive ? null : addBtn
+    ].filter(Boolean)));
+
+    // תת-טאבים: משימות פעילות / ארכיון
+    view.appendChild(U.el('div', { class: 'subtabs', style: 'margin-bottom:12px;' }, [
+      U.el('button', { class: showArchive ? '' : 'active', onclick: function () { showArchive = false; App.render(); } }, '✅ משימות (' + activeTasks.length + ')'),
+      U.el('button', { class: showArchive ? 'active' : '', onclick: function () { showArchive = true; App.render(); } }, '🗄️ ארכיון (' + archivedTasks.length + ')')
     ]));
 
     // סיכום
@@ -726,13 +786,22 @@
     ]);
     sortSel.value = sortBy;
     sortSel.addEventListener('change', function () { sortBy = sortSel.value; refresh(); });
+    var groupSel = U.el('select', null, [
+      U.el('option', { value: '', text: 'קיבוץ: ללא' }),
+      U.el('option', { value: 'domain', text: 'קיבוץ: תחום' }),
+      U.el('option', { value: 'owner', text: 'קיבוץ: אחראי' }),
+      U.el('option', { value: 'status', text: 'קיבוץ: סטטוס' })
+    ]);
+    groupSel.value = groupBy;
+    groupSel.addEventListener('change', function () { groupBy = groupSel.value; refresh(); });
     var bar = U.el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;align-items:center;' }, [
       q,
       filterSel(filters.status, STATUSES.map(function (x) { return x.key; }), 'כל הסטטוסים', 'status'),
       filterSel(filters.domain, s.taskDomains || [], 'כל התחומים', 'domain'),
       filterSel(filters.owner, s.taskOwners || [], 'כל האחראים', 'owner'),
       filterSel(filters.priority, PRIORITIES.map(function (x) { return x.key; }), 'כל העדיפויות', 'priority'),
-      viewMode === 'table' ? sortSel : null
+      viewMode === 'table' ? sortSel : null,
+      viewMode === 'table' ? groupSel : null
     ].filter(Boolean));
     if (!isDash) view.appendChild(bar);
 
