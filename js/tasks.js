@@ -24,7 +24,7 @@
   function stColor(s) { var x = STATUSES.filter(function (q) { return q.key === s; })[0]; return x ? x.color : '#64748b'; }
   function prWeight(p) { return p === 'גבוה' ? 0 : p === 'בינוני' ? 1 : 2; }
 
-  var viewMode = 'table'; // 'table' | 'kanban' | 'timeline' | 'dashboard'
+  var viewMode = 'table'; // 'table' | 'kanban'  (ציר זמן/דשבורד עברו לדשבורד המנהלים)
   var filters = { q: '', status: '', domain: '', owner: '', priority: '', due: '' };
   var sortBy = 'due';
   var showArchive = false;
@@ -929,11 +929,10 @@
 
     // שתי דרכים להוסיף: שורת הוספה מהירה בטבלה + כפתור חלון (זמין תמיד)
     var addBtn = U.el('button', { class: 'btn', text: '➕ משימה חדשה', onclick: function () { openModal(null); } });
+    // ציר הזמן והדשבורד הועברו לגיליון "דשבורד מנהלים" (ייבנה בהמשך)
     var toggle = U.el('div', { class: 'subtabs', style: 'display:inline-flex;margin:0;' }, [
       U.el('button', { class: viewMode === 'table' ? 'active' : '', text: '☰ טבלה', onclick: function () { viewMode = 'table'; App.render(); } }),
-      U.el('button', { class: viewMode === 'kanban' ? 'active' : '', text: '▤ קנבן', onclick: function () { viewMode = 'kanban'; App.render(); } }),
-      U.el('button', { class: viewMode === 'timeline' ? 'active' : '', text: '📅 ציר זמן', onclick: function () { viewMode = 'timeline'; App.render(); } }),
-      U.el('button', { class: viewMode === 'dashboard' ? 'active' : '', text: '📊 דשבורד', onclick: function () { viewMode = 'dashboard'; App.render(); } })
+      U.el('button', { class: viewMode === 'kanban' ? 'active' : '', text: '▤ קנבן', onclick: function () { viewMode = 'kanban'; App.render(); } })
     ]);
     view.appendChild(U.el('div', { class: 'page-head' }, [
       U.el('h2', { text: '✅ ניהול משימות' }),
@@ -1063,8 +1062,6 @@
 
     function refresh() {
       U.clear(host);
-      if (viewMode === 'dashboard') { renderDashboard(host, all); return; }
-      if (viewMode === 'timeline') { renderTimeline(host, applyFilters(all)); return; }
       var list = sortTasks(applyFilters(all));
       if (viewMode === 'kanban') {
         if (!all.length) {
@@ -1114,5 +1111,6 @@
     ]);
   }
 
-  global.TasksView = { render: render };
+  // renderTimeline/renderDashboard נשמרים לשימוש גיליון "דשבורד מנהלים" שייבנה בהמשך
+  global.TasksView = { render: render, renderTimeline: renderTimeline, renderDashboard: renderDashboard };
 })(window);
