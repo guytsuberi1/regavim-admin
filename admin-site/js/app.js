@@ -130,10 +130,28 @@
     });
   }
 
+  // מיקומי גלילה שיש לשמר בין רינדורים — אחרת שינוי בתא (למשל סטטוס) מקפיץ
+  // את הטבלה חזרה לתחילתה ואת העמוד למעלה
+  var SCROLLERS = '.tbl-scroll, .kb-board, .m-toolbar, .subtabs, .kpi-row';
+  function snapshotScroll(view) {
+    var snap = { y: window.pageYOffset || 0, els: [] };
+    U.$all(SCROLLERS, view).forEach(function (el, i) {
+      if (el.scrollLeft) snap.els.push({ i: i, l: el.scrollLeft });
+    });
+    return snap;
+  }
+  function restoreScroll(view, snap) {
+    if (!snap) return;
+    var list = U.$all(SCROLLERS, view);
+    snap.els.forEach(function (s) { if (list[s.i]) list[s.i].scrollLeft = s.l; });
+    if (snap.y) window.scrollTo(0, snap.y);
+  }
+
   function render() {
     updateQueueBadge();
     highlightNav();
     var view = U.$('#view');
+    var scrollSnap = snapshotScroll(view);
     U.clear(view);
 
     // אם המסך הנוכחי שייך לגיליון עם יותר ממסך אחד — הצג תת-טאבים
@@ -168,6 +186,9 @@
       p.insertBefore(wrap, t);
       wrap.appendChild(t);
     });
+
+    // שחזור מיקומי הגלילה אחרי שהמבנה הושלם (כולל עטיפות הטבלאות)
+    restoreScroll(view, scrollSnap);
   }
 
   function setView(viewId) {
