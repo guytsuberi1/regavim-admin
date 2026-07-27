@@ -957,65 +957,106 @@
       kpi('⚠️', overdue, 'באיחור', overdue ? 'kpi-warn' : 'kpi-neutral')
     ]));
 
-    // בדשבורד — בלי סרגלי סינון/יעד
+    // ---------- סרגל כלים קומפקטי: חיפוש + סינון אחד + מיון + קיבוץ ----------
     var isDash = viewMode === 'dashboard';
-    // סרגל סינון
-    var q = U.el('input', { value: filters.q, placeholder: '🔍 חיפוש…', style: 'max-width:200px;' });
-    q.addEventListener('input', function () { filters.q = q.value; refresh(); });
-    function filterSel(cur, opts, label, key) {
-      var sl = U.el('select', null, [U.el('option', { value: '', text: label })].concat(opts.map(function (o) { return U.el('option', { value: o, text: o }); })));
-      sl.value = cur;
-      sl.addEventListener('change', function () { filters[key] = sl.value; refresh(); });
-      return sl;
-    }
-    var sortSel = U.el('select', null, [
-      U.el('option', { value: 'due', text: 'מיון: יעד' }),
-      U.el('option', { value: 'priority', text: 'מיון: עדיפות' }),
-      U.el('option', { value: 'domain', text: 'מיון: תחום' }),
-      U.el('option', { value: 'owner', text: 'מיון: אחראי' })
-    ]);
-    sortSel.value = sortBy;
-    sortSel.addEventListener('change', function () { sortBy = sortSel.value; refresh(); });
-    var groupSel = U.el('select', null, [
-      U.el('option', { value: '', text: 'קיבוץ: ללא' }),
-      U.el('option', { value: 'domain', text: 'קיבוץ: תחום' }),
-      U.el('option', { value: 'owner', text: 'קיבוץ: אחראי' }),
-      U.el('option', { value: 'status', text: 'קיבוץ: סטטוס' })
-    ]);
-    groupSel.value = groupBy;
-    groupSel.addEventListener('change', function () { groupBy = groupSel.value; refresh(); });
-    var bar = U.el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;align-items:center;' }, [
-      q,
-      filterSel(filters.status, STATUSES.map(function (x) { return x.key; }), 'כל הסטטוסים', 'status'),
-      filterSel(filters.domain, s.taskDomains || [], 'כל התחומים', 'domain'),
-      filterSel(filters.owner, s.taskOwners || [], 'כל האחראים', 'owner'),
-      filterSel(filters.priority, PRIORITIES.map(function (x) { return x.key; }), 'כל העדיפויות', 'priority'),
-      viewMode === 'table' ? sortSel : null,
-      viewMode === 'table' ? groupSel : null
-    ].filter(Boolean));
-    if (!isDash) view.appendChild(bar);
-
-    // סינון מהיר לפי יעד — באיחור / השבוע / בהמשך / ללא יעד
     var notDone = all.filter(function (t) { return t.status !== 'הושלם'; });
     var bucketDefs = [
-      { key: 'overdue', label: '⚠️ באיחור', activeStyle: 'background:#fee2e2;color:#991b1b;border-color:#991b1b;' },
-      { key: 'week', label: '📅 השבוע', activeStyle: 'background:#fef3c7;color:#92400e;border-color:#92400e;' },
-      { key: 'ahead', label: '⏭️ בהמשך', activeStyle: '' },
-      { key: 'none', label: '🚫 ללא יעד', activeStyle: '' }
+      { key: 'overdue', label: '⚠️ באיחור' },
+      { key: 'week', label: '📅 השבוע' },
+      { key: 'ahead', label: '⏭️ בהמשך' },
+      { key: 'none', label: '🚫 ללא יעד' }
     ];
-    var dueBar = U.el('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px;align-items:center;' },
-      [U.el('span', { class: 'muted', style: 'font-size:13px;', text: 'יעד:' })].concat(bucketDefs.map(function (bd) {
-        var n = notDone.filter(function (t) { return dueBucket(t) === bd.key; }).length;
-        var active = filters.due === bd.key;
-        var b = U.el('button', {
-          class: 'tag',
-          style: 'cursor:pointer;font-size:12px;' + (active ? (bd.activeStyle || 'background:var(--brand-light);') + 'outline:2px solid var(--brand);' : ''),
-          text: bd.label + ' ' + n
+    var DUE_LBL = {}; bucketDefs.forEach(function (b) { DUE_LBL[b.key] = b.label; });
+    var SORT_LBL = { due: 'יעד', priority: 'עדיפות', domain: 'תחום', owner: 'אחראי' };
+    var GROUP_LBL = { '': 'ללא', domain: 'תחום', owner: 'אחראי', status: 'סטטוס' };
+
+    if (!isDash) {
+      var q = U.el('input', { class: 'm-search', value: filters.q, placeholder: '🔍 חיפוש משימה…' });
+      q.addEventListener('input', function () { filters.q = q.value; refresh(); });
+
+      // כפתור שפותח פאנל (משתמש במנגנון הסגירה הגלובלי של amenu)
+      function popBtn(label, badge, buildBody, extraClass) {
+        var wrap = U.el('div', { class: 'amenu m-pop' });
+        var btn = U.el('button', { class: 'btn secondary m-popbtn' + (badge ? ' on' : '') + (extraClass || '') }, [
+          U.el('span', { text: label }),
+          badge ? U.el('span', { class: 'm-badge', text: String(badge) }) : null,
+          U.el('span', { style: 'font-size:10px;opacity:.6;', text: '▾' })
+        ].filter(Boolean));
+        var pop = U.el('div', { class: 'amenu-pop m-poppanel' });
+        buildBody(pop);
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var was = pop.classList.contains('open');
+          U.$all('.amenu-pop.open').forEach(function (p) { p.classList.remove('open'); });
+          if (!was) pop.classList.add('open');
         });
-        b.addEventListener('click', function () { filters.due = active ? '' : bd.key; App.render(); });
-        return b;
-      })));
-    if (viewMode === 'table' || viewMode === 'kanban') view.appendChild(dueBar);
+        pop.addEventListener('click', function (e) { e.stopPropagation(); });
+        wrap.appendChild(btn); wrap.appendChild(pop);
+        return wrap;
+      }
+      function popSection(title, node) {
+        return U.el('div', { class: 'm-popsec' }, [U.el('label', { text: title }), node]);
+      }
+      function filterSel(cur, opts, label, key) {
+        var sl = U.el('select', null, [U.el('option', { value: '', text: label })].concat(opts.map(function (o) { return U.el('option', { value: o, text: o }); })));
+        sl.value = cur;
+        // רינדור מלא — כדי שמונה הסינונים והצ'יפים הפעילים יתעדכנו מיד
+        sl.addEventListener('change', function () { filters[key] = sl.value; App.render(); });
+        return sl;
+      }
+      var activeCount = ['status', 'domain', 'owner', 'priority', 'due'].filter(function (k) { return filters[k]; }).length;
+
+      var filterBtn = popBtn('⚙️ סינון', activeCount, function (pop) {
+        pop.appendChild(popSection('סטטוס', filterSel(filters.status, STATUSES.map(function (x) { return x.key; }), 'הכל', 'status')));
+        pop.appendChild(popSection('תחום', filterSel(filters.domain, s.taskDomains || [], 'הכל', 'domain')));
+        pop.appendChild(popSection('אחראי', filterSel(filters.owner, s.taskOwners || [], 'הכל', 'owner')));
+        pop.appendChild(popSection('עדיפות', filterSel(filters.priority, PRIORITIES.map(function (x) { return x.key; }), 'הכל', 'priority')));
+        var dueWrap = U.el('div', { style: 'display:flex;gap:5px;flex-wrap:wrap;' }, bucketDefs.map(function (bd) {
+          var n = notDone.filter(function (t) { return dueBucket(t) === bd.key; }).length;
+          var on = filters.due === bd.key;
+          var b = U.el('button', { class: 'm-duechip' + (on ? ' on' : ''), text: bd.label + ' ' + n });
+          b.addEventListener('click', function () { filters.due = on ? '' : bd.key; App.render(); });
+          return b;
+        }));
+        pop.appendChild(popSection('תאריך יעד', dueWrap));
+        if (activeCount) {
+          pop.appendChild(U.el('button', { class: 'btn secondary', style: 'width:100%;margin-top:10px;justify-content:center;', text: '✕ ניקוי כל הסינונים', onclick: function () {
+            filters.status = filters.domain = filters.owner = filters.priority = filters.due = ''; App.render();
+          } }));
+        }
+      });
+
+      var toolbar = U.el('div', { class: 'm-toolbar' }, [q, filterBtn]);
+      if (viewMode === 'table') {
+        toolbar.appendChild(popBtn('↕️ מיון: ' + SORT_LBL[sortBy], 0, function (pop) {
+          Object.keys(SORT_LBL).forEach(function (k) {
+            pop.appendChild(U.el('button', { class: 'm-popitem' + (sortBy === k ? ' on' : ''), text: SORT_LBL[k], onclick: function () { sortBy = k; App.render(); } }));
+          });
+        }));
+        toolbar.appendChild(popBtn('▦ קיבוץ: ' + GROUP_LBL[groupBy], 0, function (pop) {
+          Object.keys(GROUP_LBL).forEach(function (k) {
+            pop.appendChild(U.el('button', { class: 'm-popitem' + (groupBy === k ? ' on' : ''), text: GROUP_LBL[k], onclick: function () { groupBy = k; App.render(); } }));
+          });
+        }));
+      }
+      view.appendChild(toolbar);
+
+      // צ'יפים של הסינונים הפעילים — הסרה בלחיצה
+      if (activeCount) {
+        var chipDefs = [
+          { key: 'status', txt: filters.status }, { key: 'domain', txt: filters.domain },
+          { key: 'owner', txt: '👤 ' + filters.owner }, { key: 'priority', txt: 'עדיפות: ' + filters.priority },
+          { key: 'due', txt: DUE_LBL[filters.due] }
+        ].filter(function (c) { return filters[c.key]; });
+        view.appendChild(U.el('div', { class: 'm-chiprow' }, chipDefs.map(function (c) {
+          return U.el('button', { class: 'm-fchip', title: 'הסרת הסינון', text: c.txt + '  ✕', onclick: function () { filters[c.key] = ''; App.render(); } });
+        }).concat([
+          U.el('button', { class: 'm-clearall', text: 'נקה הכל', onclick: function () {
+            filters.status = filters.domain = filters.owner = filters.priority = filters.due = ''; App.render();
+          } })
+        ])));
+      }
+    }
 
     var host = U.el('div');
     view.appendChild(host);
