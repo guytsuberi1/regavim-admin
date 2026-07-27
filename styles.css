@@ -43,12 +43,18 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
-  font-family: "Segoe UI", "Rubik", Arial, sans-serif;
+  /* מחסנית הפונטים של Monday: Figtree + Noto Sans Hebrew, עם נפילה חזרה לפונטי המערכת */
+  font-family: "Figtree", "Noto Sans Hebrew", "Segoe UI", "Rubik", Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
   font-size: 15px;
+  line-height: 1.5;
   direction: rtl;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+/* כותרות: משקל מלא ומעט tracking שלילי — כמו בטוקנים של Vibe */
+h1, h2, h3 { letter-spacing: -0.2px; }
 
 /* ---------- פריסה: סרגל צד + תוכן ---------- */
 .layout { display: flex; align-items: flex-start; }
