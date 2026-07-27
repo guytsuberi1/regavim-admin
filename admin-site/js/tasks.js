@@ -456,7 +456,9 @@
     }
     desc.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); add(); } });
     var addBtn = U.el('button', { class: 'btn', text: 'הוסף', onclick: add });
-    var card = U.el('div', { class: 'card', style: 'padding:10px;margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;' },
+    // בנייד מוצגים רק התיאור וכפתור ההוספה; שאר השדות נערכים בשורה עצמה
+    [domain, owner, priority, due].forEach(function (n) { n.classList.add('m-qa-extra'); });
+    var card = U.el('div', { class: 'card m-quickadd', style: 'padding:10px;margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;' },
       [desc, domain, owner, priority, due, addBtn]);
     host.appendChild(card);
     if (focusAddDesc) { focusAddDesc = false; setTimeout(function () { desc.focus(); }, 0); }
