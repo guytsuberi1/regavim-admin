@@ -640,11 +640,17 @@
     if (!showArchive) host.appendChild(groupAddRow(null));
   }
   // שורת "+ הוספה" בתחתית כל קבוצה (כמו Monday) — יורשת אוטומטית את ערך הקבוצה
+  var focusAddGroup = null; // הקבוצה שיש להחזיר אליה פוקוס אחרי הוספה
   function groupAddRow(g) {
     var inp = U.el('input', {
       class: 'm-addinput',
       placeholder: '＋ הוסף משימה' + (g ? ' ל' + g : '') + ' — כתוב ולחץ Enter'
     });
+    // הפוקוס נשאר בשורת הקבוצה שממנה הוספת, ולא קופץ לתיבה העליונה
+    if (focusAddGroup === (g || '__none__')) {
+      focusAddGroup = null;
+      setTimeout(function () { inp.focus(); }, 0);
+    }
     function add() {
       var v = inp.value.trim(); if (!v) return;
       var rec = { desc: v, domain: '', owner: '', priority: 'בינוני', status: 'פתוח', due: '', notes: '', kind: 'חד פעמי', freq: '', subs: [] };
@@ -653,7 +659,7 @@
       if (g && groupBy === 'owner' && g !== 'ללא אחראי') rec.owner = g;
       if (g && groupBy === 'status') rec.status = g;
       Store.upsertTask(rec);
-      focusAddDesc = true;
+      focusAddGroup = g || '__none__';
       App.render();
     }
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); add(); } });
@@ -732,7 +738,7 @@
           } }));
         }
         rowCells.push(U.el('td', { style: 'white-space:nowrap;' }, [U.el('div', { class: 'm-actions' }, acts)]));
-        acc.push(U.el('tr', { style: overdue ? 'background:#fef2f2;' : (t.status === 'הושלם' ? 'background:var(--primary-light,#e8f5e9);' : '') }, rowCells));
+        acc.push(U.el('tr', { class: overdue ? 'row-over' : (t.status === 'הושלם' ? 'row-done' : '') }, rowCells));
         // שורת תת-המשימות — נפתחת מתחת לאב על כל רוחב הטבלה
         if (isSubOpen) {
           acc.push(U.el('tr', { class: 'm-subrow' }, [
