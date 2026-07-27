@@ -706,3 +706,45 @@ table.m-subgrid td { height: 40px; padding: 4px 10px; }
 .m-fchip:hover { filter: brightness(.95); }
 .m-clearall { background: none; border: 0; color: var(--muted); font-size: 12.5px; font-family: inherit; cursor: pointer; text-decoration: underline; padding: 4px 6px; }
 .m-clearall:hover { color: var(--danger); }
+
+/* ============================================================
+   התאמות נייד — פאנלים, סרגלים וטבלאות
+   ============================================================ */
+@media (max-width: 640px) {
+  /* פאנלים נפתחים (סינון/מיון/קיבוץ/⋮) — לא נחתכים מחוץ למסך */
+  .amenu-pop {
+    position: fixed; inset-inline: 12px; top: auto; min-width: 0; width: auto;
+    max-height: 65vh; overflow-y: auto; box-shadow: 0 -6px 30px rgba(0,0,0,.28);
+    border-radius: var(--r-b);
+  }
+  .amenu-pop.open { display: block; }
+  .m-poppanel { padding: 14px; }
+  .m-popsec select { padding: 11px 12px; font-size: 15px; }
+  .m-popitem { padding: 12px; font-size: 15px; }
+  .m-duechip { padding: 8px 13px; font-size: 13px; }
+
+  /* סרגל הכלים — שורה אחת נגללת במקום לגלוש לשורות רבות */
+  .m-toolbar { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+  .m-toolbar::-webkit-scrollbar { height: 0; }
+  .m-search { flex: 1 0 150px; min-width: 150px; }
+  .m-popbtn { flex: 0 0 auto; padding: 8px 11px; font-size: 13px; }
+
+  /* טאבים ותת-טאבים — גלילה אופקית במקום שבירה */
+  .subtabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+  .subtabs::-webkit-scrollbar { height: 0; }
+  .subtabs button { flex: 0 0 auto; white-space: nowrap; }
+
+  /* כרטיסי הסיכום — נגללים במקום להצטופף */
+  .kpi-row { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+  .kpi-row::-webkit-scrollbar { height: 0; }
+  .kpi { flex: 0 0 auto; }
+
+  /* הוספה מהירה — רק תיאור + כפתור */
+  .m-quickadd .m-qa-extra { display: none !important; }
+  .m-quickadd input:first-child { flex: 1 1 100%; }
+
+  /* טבלה — שורות נמוכות מעט וריפוד קטן יותר */
+  table.grid.m-grid td { padding: 6px 10px; height: 44px; }
+  table.grid.m-grid th { padding: 8px 10px; }
+  .m-addinput { max-width: none; }
+}
