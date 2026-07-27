@@ -285,6 +285,68 @@
     show();
     return wrap;
   }
+  // --- רכיבים בסגנון Monday ---
+  // תא סטטוס צבוע-מלא (החתימה הוויזואלית של Monday)
+  function mStatusSel(t) {
+    var sel = U.el('select', { class: 'm-status' }, STATUSES.map(function (o) { return U.el('option', { value: o.key, text: o.key }); }));
+    sel.value = t.status || STATUSES[0].key;
+    sel.style.background = stColor(sel.value);
+    sel.addEventListener('change', function () {
+      var r = Store.setTaskStatus(t.id, sel.value);
+      if (r && r._renewed) U.toast('המשימה הקבועה חודשה ליעד ' + U.gregLabel(r.due));
+      App.render();
+    });
+    return sel;
+  }
+  // עדיפות כגלולה צבעונית
+  function mPrioSel(t) {
+    var sel = U.el('select', { class: 'm-prio' }, PRIORITIES.map(function (o) { return U.el('option', { value: o.key, text: o.key }); }));
+    sel.value = t.priority || 'בינוני';
+    function paint() { var c = prColor(sel.value); sel.style.background = c + '22'; sel.style.color = c; }
+    paint();
+    sel.addEventListener('change', function () { saveField(t, 'priority', sel.value); paint(); });
+    return sel;
+  }
+  // אווטאר עגול עם ראשי תיבות + פתיחה לעריכה בלחיצה
+  function initialsOf(name) {
+    var p = String(name || '').trim().split(/\s+/);
+    return ((p[0] || '')[0] || '') + ((p[1] || '')[0] || '');
+  }
+  function ownerAvatar(t) {
+    var wrap = U.el('span', { style: 'display:inline-block;' });
+    function show() {
+      U.clear(wrap);
+      var name = t.owner;
+      if (name) {
+        var c = chipColor(name);
+        wrap.appendChild(U.el('span', { class: 'm-owner', title: 'לחיצה לשינוי האחראי', onclick: edit }, [
+          U.el('span', { class: 'm-avatar', style: 'background:' + c[1] + ';', text: initialsOf(name) }),
+          U.el('span', { class: 'm-oname', text: name })
+        ]));
+      } else {
+        wrap.appendChild(U.el('span', { class: 'm-owner empty', title: 'שיוך אחראי', onclick: edit, text: '+ אחראי' }));
+      }
+    }
+    function edit() {
+      U.clear(wrap);
+      var w = U.dataListInput(t.owner || '', Store.settings().taskOwners || [], 'אחראי');
+      w._input.style.minWidth = '120px';
+      wrap.appendChild(w); w._input.focus();
+      var done = false;
+      function commit() {
+        if (done) return; done = true;
+        saveField(t, 'owner', w.get());
+        rememberValue('taskOwners', w.get());
+        show();
+      }
+      w._input.addEventListener('change', commit);
+      w._input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); commit(); } });
+      w._input.addEventListener('blur', function () { setTimeout(commit, 120); });
+    }
+    show();
+    return wrap;
+  }
+
   function selField(t, field, opts, onChangeRerender) {
     var sel = U.el('select', { style: 'padding:4px 6px;' }, opts.map(function (o) { return U.el('option', { value: o.key || o, text: o.label || o.key || o }); }));
     sel.value = t[field] || (opts[0].key || opts[0]);
@@ -480,10 +542,16 @@
         var openDone = items.filter(function (t) { return t.status !== 'הושלם'; }).length;
         var key = groupBy + ':' + g;
         var isCollapsed = !!groupCollapsed[key];
+        var gc = groupBy === 'status' ? stColor(g) : chipColor(g)[1];
         var headBtn = U.el('button', {
-          class: 'btn', style: 'background:var(--primary-light,#e8f5e9);color:var(--primary-dark,#1b5e20);border:1px solid var(--primary,#2e7d32);font-weight:700;margin:14px 0 4px;',
+          class: 'm-group',
           onclick: function () { groupCollapsed[key] = !isCollapsed; saveGroupState(); App.render(); }
-        }, (isCollapsed ? '▸' : '▾') + ' ' + g + ' — ' + items.length + ' משימות · ' + openDone + ' פתוחות');
+        }, [
+          U.el('span', { style: 'color:var(--muted);font-size:12px;', text: isCollapsed ? '▸' : '▾' }),
+          U.el('span', { class: 'm-gbar', style: 'background:' + gc + ';' }),
+          U.el('span', { class: 'm-gname', style: 'color:' + gc + ';', text: g }),
+          U.el('span', { class: 'm-gcount', text: items.length + ' משימות · ' + openDone + ' פתוחות' })
+        ]);
         host.appendChild(headBtn);
         if (!isCollapsed) host.appendChild(tableFor(items));
       });
@@ -502,7 +570,7 @@
     });
     headCells.push(U.el('th', { style: 'white-space:nowrap;' }, [U.el('button', { class: 'btn secondary', text: '＋ עמודה', title: 'הוספת עמודה', style: 'font-size:12px;padding:2px 8px;', onclick: function () { openColumnModal(null); } })]));
     headCells.push(U.el('th', { text: '' }));
-    var tbl = U.el('table', { class: 'grid' }, [
+    var tbl = U.el('table', { class: 'grid m-grid' }, [
       U.el('thead', null, U.el('tr', null, headCells)),
       U.el('tbody', null, list.map(function (t) {
         var overdue = (Store.daysToDue(t.due) != null && Store.daysToDue(t.due) < 0 && t.status !== 'הושלם');
@@ -529,9 +597,9 @@
           U.el('td', { style: 'white-space:nowrap;color:#94a3b8;font-size:12px;', text: t.num || '' }),
           U.el('td', null, chipEdit(t, 'domain', Store.settings().taskDomains || [], 'תחום')),
           descCell,
-          U.el('td', null, chipEdit(t, 'owner', Store.settings().taskOwners || [], 'אחראי', '👤 ', true)),
-          U.el('td', null, selField(t, 'priority', PRIORITIES, false)),
-          U.el('td', null, selField(t, 'status', STATUSES, false)),
+          U.el('td', null, ownerAvatar(t)),
+          U.el('td', null, mPrioSel(t)),
+          U.el('td', { style: 'min-width:120px;' }, mStatusSel(t)),
           U.el('td', { style: 'white-space:nowrap;' }, [dueInput, daysBadge(t) ? U.el('div', { style: 'margin-top:2px;' }, [daysBadge(t)]) : null]),
           kindCell
         ];
@@ -539,14 +607,17 @@
         rowCells.push(U.el('td', { text: '' })); // עמודת ה־＋
         var acts = [];
         if (t.archived) {
-          acts.push(U.el('button', { class: 'btn secondary', text: '↩️', title: 'שחזור מהארכיון', onclick: function () { saveField(t, 'archived', false); App.render(); } }));
-          acts.push(U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקה לצמיתות', onclick: function () {
+          acts.push(U.el('button', { class: 'm-iconbtn', text: '↩️', title: 'שחזור מהארכיון', onclick: function () { saveField(t, 'archived', false); App.render(); } }));
+          acts.push(U.el('button', { class: 'm-iconbtn', text: '🗑', title: 'מחיקה לצמיתות', onclick: function () {
             Modal.confirm({ title: 'מחיקה לצמיתות', text: 'למחוק לצמיתות את "' + (t.desc || '') + '"?', okLabel: 'מחיקה', danger: true }, function () { Store.deleteTask(t.id); App.render(); });
           } }));
         } else {
-          acts.push(U.el('button', { class: 'btn secondary', text: '📦', title: 'העברה לארכיון', onclick: function () { saveField(t, 'archived', true); App.render(); } }));
+          acts.push(U.el('button', { class: 'm-iconbtn', text: '📦', title: 'העברה לארכיון', onclick: function () { saveField(t, 'archived', true); App.render(); } }));
+          acts.push(U.el('button', { class: 'm-iconbtn', text: '🗑', title: 'מחיקה', onclick: function () {
+            Modal.confirm({ title: 'מחיקת משימה', text: 'למחוק את "' + (t.desc || '') + '"?', okLabel: 'מחיקה', danger: true }, function () { Store.deleteTask(t.id); App.render(); });
+          } }));
         }
-        rowCells.push(U.el('td', { style: 'white-space:nowrap;' }, acts));
+        rowCells.push(U.el('td', { style: 'white-space:nowrap;' }, [U.el('div', { class: 'm-actions' }, acts)]));
         return U.el('tr', { style: overdue ? 'background:#fef2f2;' : (t.status === 'הושלם' ? 'background:var(--primary-light,#e8f5e9);' : '') }, rowCells);
       }))
     ]);
