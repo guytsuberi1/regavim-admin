@@ -254,6 +254,48 @@
                             klass: $('tripKlass').value.trim(), note: $('tripNote').value.trim() } };
       }
 
+      // כל פעולת רשת מוגבלת בזמן — כדי שהמסך לא ייתקע לנצח
+      function withTimeout(promise, ms, label) {
+        return new Promise(function (resolve, reject) {
+          var done = false;
+          var t = setTimeout(function () {
+            if (!done) { done = true; reject(new Error(label + ' — הרשת איטית מדי')); }
+          }, ms);
+          Promise.resolve(promise).then(function (v) {
+            if (!done) { done = true; clearTimeout(t); resolve(v); }
+          }, function (e) {
+            if (!done) { done = true; clearTimeout(t); reject(e); }
+          });
+        });
+      }
+
+      // כיווץ תמונה בדפדפן לפני העלאה — צילום מהטלפון הוא 3–8 מגה,
+      // וברשת סלולרית חלשה זה נתקע. אחרי הכיווץ מדובר בכ-200KB.
+      function shrinkImage(file) {
+        return new Promise(function (resolve) {
+          if (!file || file.type.indexOf('image/') !== 0) return resolve(file);
+          var url = URL.createObjectURL(file);
+          var img = new Image();
+          img.onload = function () {
+            try {
+              var MAX = 1600;
+              var w = img.width, h = img.height;
+              var scale = Math.min(1, MAX / Math.max(w, h));
+              var c = document.createElement('canvas');
+              c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+              c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+              c.toBlob(function (blob) {
+                URL.revokeObjectURL(url);
+                // אם הכיווץ לא עזר — שולחים את המקור
+                resolve(blob && blob.size < file.size ? blob : file);
+              }, 'image/jpeg', 0.75);
+            } catch (e) { URL.revokeObjectURL(url); resolve(file); }
+          };
+          img.onerror = function () { URL.revokeObjectURL(url); resolve(file); };
+          img.src = url;
+        });
+      }
+
       $('form').addEventListener('submit', function (ev) {
         ev.preventDefault();
         var err = $('err');
@@ -267,31 +309,49 @@
         btn.disabled = true;
         btn.textContent = 'שולח…';
 
+        var fileFailed = false;
         var filePromise = Promise.resolve(null);
         if (currentType === 'absence' && chosenFile) {
-          var safe = chosenFile.name.replace(/[^\w.\-֐-׿]/g, '_');
-          var path = new Date().toISOString().slice(0, 7) + '/' + Date.now().toString(36) + '_' + safe;
-          filePromise = sb.storage.from('admin-approvals').upload(path, chosenFile).then(function (res) {
-            if (res.error) throw new Error('העלאת הקובץ נכשלה: ' + res.error.message);
-            return path;
+          btn.textContent = 'מעלה קובץ…';
+          filePromise = shrinkImage(chosenFile).then(function (blob) {
+            var isJpeg = blob !== chosenFile;
+            var safe = chosenFile.name.replace(/[^\w.\-֐-׿]/g, '_');
+            if (isJpeg) safe = safe.replace(/\.[^.]+$/, '') + '.jpg';
+            var path = new Date().toISOString().slice(0, 7) + '/' + Date.now().toString(36) + '_' + safe;
+            return withTimeout(
+              sb.storage.from('admin-approvals').upload(path, blob, { contentType: isJpeg ? 'image/jpeg' : (chosenFile.type || undefined) }),
+              60000, 'העלאת הקובץ נכשלה'
+            ).then(function (res) {
+              if (res && res.error) throw new Error(res.error.message);
+              return path;
+            });
+          }).catch(function () {
+            // הקובץ נכשל — לא מפילים את כל הדיווח. הדיווח חשוב יותר מהקובץ.
+            fileFailed = true;
+            return null;
           });
         }
 
         filePromise.then(function (filePath) {
-          return sb.from('admin_submissions').insert({
+          btn.textContent = 'שולח…';
+          return withTimeout(sb.from('admin_submissions').insert({
             employee_name: name,
             type: currentType,
             payload: built.payload,
             file_path: filePath,
             status: 'pending'
-          });
+          }), 30000, 'השליחה נכשלה');
         }).then(function (res) {
-          if (res.error) throw new Error(res.error.message);
+          if (res && res.error) throw new Error(res.error.message + (res.error.hint ? ' (' + res.error.hint + ')' : ''));
+          if (fileFailed) {
+            $('successTxt').innerHTML = 'הדיווח נקלט אצל גיא.<br><b>שימו לב:</b> הקובץ המצורף לא הצליח לעלות — שלחו אותו לגיא בוואטסאפ.';
+          }
           $('form').classList.add('hidden');
           $('success').classList.remove('hidden');
           window.scrollTo(0, 0);
         }).catch(function (e) {
-          err.textContent = 'השליחה נכשלה — ' + e.message;
+          err.innerHTML = 'השליחה נכשלה — ' + (e && e.message ? e.message : 'שגיאה לא ידועה') +
+            '<br>בדקו את החיבור לאינטרנט ונסו שוב.';
         }).finally(function () {
           btn.disabled = false;
           btn.textContent = 'שליחת הדיווח';
