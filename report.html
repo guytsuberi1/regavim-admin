@@ -144,26 +144,36 @@
       'use strict';
       var SB_URL = 'https://dcnndzrdimkogfjsvcku.supabase.co';
       var SB_KEY = 'sb_publishable_LoALeRJVUqiyBwWhCF_0qQ_RpLwS4ew';
+
+      function $(id) { return document.getElementById(id); }
+
+      // אם ספריית Supabase לא נטענה (רשת חסומה/איטית) — להציג שגיאה ברורה ולא מסך תקוע
+      if (typeof supabase === 'undefined' || !supabase.createClient) {
+        $('loading').innerHTML = 'לא הצלחנו להתחבר לשרת.<br>בדקו את החיבור לאינטרנט ורעננו את הדף.';
+        return;
+      }
       var sb = supabase.createClient(SB_URL, SB_KEY);
 
       var currentType = 'absence';
       var chosenFile = null;
 
-      function $(id) { return document.getElementById(id); }
+      // הטופס מוצג מיד — רשימת השמות נטענת ברקע.
+      // כך אף עובד לא נתקע על "טוען…" בגלל רשת איטית.
+      $('loading').classList.add('hidden');
+      $('form').classList.remove('hidden');
 
       // רשימת שמות מתוך שורת portal (קריאה אנונימית מותרת רק לשורה הזו)
-      function showForm() {
-        $('loading').classList.add('hidden');
-        $('form').classList.remove('hidden');
+      var namesDone = false;
+      function freeTextOnly() {
+        // אין רשימה זמינה — נופלים להקלדה חופשית כדי שהדיווח לא ייחסם
+        $('empSelect').classList.add('hidden');
+        $('empName').classList.remove('hidden');
       }
       function fillNames(names) {
+        if (namesDone) return;
+        namesDone = true;
         var sel = $('empSelect'), free = $('empName');
-        if (!names.length) {
-          // אין רשימה זמינה — נופלים להקלדה חופשית כדי שהדיווח לא ייחסם
-          sel.classList.add('hidden');
-          free.classList.remove('hidden');
-          return;
-        }
+        if (!names.length) { freeTextOnly(); return; }
         names.forEach(function (n) {
           var o = document.createElement('option');
           o.value = n; o.textContent = n;
@@ -177,10 +187,13 @@
           else free.classList.add('hidden');
         });
       }
-      sb.from('admin_state').select('data').eq('id', 'portal').maybeSingle().then(function (res) {
-        showForm();
-        fillNames((res.data && res.data.data && res.data.data.names) || []);
-      }, function () { showForm(); fillNames([]); });
+      // אם הטעינה נתקעת יותר מ-8 שניות — עוברים להקלדה חופשית
+      setTimeout(function () { fillNames([]); }, 8000);
+      try {
+        sb.from('admin_state').select('data').eq('id', 'portal').maybeSingle().then(function (res) {
+          fillNames((res.data && res.data.data && res.data.data.names) || []);
+        }, function () { fillNames([]); });
+      } catch (e) { fillNames([]); }
 
       // השם שנבחר — מהרשימה או מהקלדה חופשית
       function chosenName() {
