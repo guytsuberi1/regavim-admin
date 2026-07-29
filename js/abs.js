@@ -59,11 +59,55 @@
       ]);
       deduction.value = (rec.deduction === 'yes' || /יש/.test(rec.deduction || '')) ? 'yes' : 'none';
       var note = U.el('input', { value: rec.note || '', placeholder: 'הערות' });
+
+      // מסמך אישור — להשלמת קובץ שהגיע אחרי הדיווח (או להחלפת קובץ קיים)
+      var filePath = rec.filePath || '';
+      var fileInput = U.el('input', { type: 'file', accept: 'image/*,.pdf', style: 'display:none;' });
+      var pickBtn = U.el('button', { type: 'button', class: 'btn secondary small' });
+      var viewBtn = U.el('button', { type: 'button', class: 'btn secondary small', text: '📎 צפייה' });
+      var fileStatus = U.el('span', { class: 'muted', style: 'font-size:13px;' });
+      function paintFile(msg) {
+        pickBtn.textContent = filePath ? '🔄 החלפת הקובץ' : '⬆️ העלאת קובץ';
+        viewBtn.style.display = filePath ? '' : 'none';
+        fileStatus.textContent = msg || (filePath ? '✓ קובץ מצורף' : 'לא צורף קובץ');
+      }
+      paintFile();
+      pickBtn.addEventListener('click', function () { fileInput.click(); });
+      viewBtn.addEventListener('click', function () {
+        viewBtn.disabled = true;
+        Store.approvalFileUrl(filePath).then(function (url) {
+          viewBtn.disabled = false;
+          if (url) window.open(url, '_blank');
+          else U.toast('לא הצלחתי לפתוח את הקובץ', 'error');
+        });
+      });
+      fileInput.addEventListener('change', function () {
+        var f = fileInput.files[0];
+        if (!f) return;
+        err.textContent = '';
+        pickBtn.disabled = true;
+        paintFile('מעלה…');
+        Store.uploadApproval(f).then(function (path) {
+          filePath = path;
+          approval.value = 'received';   // יש קובץ → הסטטוס מתעדכן לבד
+          pickBtn.disabled = false;
+          paintFile('✓ הקובץ הועלה');
+          U.toast('הקובץ הועלה — הסטטוס עודכן ל"אישור התקבל". נותר לשמור.');
+        }).catch(function (e) {
+          pickBtn.disabled = false;
+          paintFile();
+          err.textContent = 'העלאת הקובץ נכשלה: ' + (e && e.message ? e.message : 'שגיאה לא ידועה');
+        });
+        fileInput.value = '';
+      });
+
       fields = [
         fld('שם העובד', name.node),
         U.el('div', { class: 'row' }, [fld('מתאריך', fromDate), fld('עד תאריך (לטווח)', toDate)]),
         U.el('div', { class: 'row' }, [fld('מס׳ שעות', hours), fld('סיבת ההיעדרות', reason)]),
         U.el('div', { class: 'row' }, [fld('אישור היעדרות', approval), fld('ניכוי מהשכר', deduction)]),
+        fld('מסמך אישור', U.el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;' },
+          [pickBtn, viewBtn, fileStatus, fileInput])),
         fld('הערות', note)
       ];
       collect = function () {
@@ -75,6 +119,7 @@
         rec.approval = approval.value;
         rec.deduction = deduction.value; // 'none' | 'yes'
         rec.note = note.value.trim();
+        rec.filePath = filePath;
         return rec.fromDate ? null : 'נדרש תאריך';
       };
     } else if (kind === 'work') {
