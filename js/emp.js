@@ -32,6 +32,16 @@
     { key: 'whatsapp', label: 'ווטסאפ הודעות' },
     { key: 'firstAid', label: 'קורס עזרה ראשונה' }
   ];
+  // סיום העסקה
+  var OFF_REASONS = ['התפטרות', 'סיום חוזה', 'פיטורים', 'פרישה', 'מעבר תפקיד', 'אחר'];
+  var OFF_CHECKS = [
+    { key: 'equipment', label: 'החזרת ציוד ומפתחות' },
+    { key: 'access', label: 'ביטול מייל והרשאות' },
+    { key: 'groups', label: 'הוצאה מקבוצות ווטסאפ' },
+    { key: 'settle', label: 'גמר חשבון ותלוש אחרון' },
+    { key: 'form161', label: 'טופס 161 / מכתב סיום העסקה' },
+    { key: 'handover', label: 'חפיפה והעברת אחריות' }
+  ];
   function keyLabel(list, k) {
     var x = list.filter(function (i) { return i.key === k; })[0];
     return x ? x.label : list[0].label;
@@ -43,6 +53,8 @@
     if (!e.onboard) e.onboard = { status: 'none', note: '' };
     if (!e.pension) e.pension = { status: 'none', note: '' };
     if (!e.roleDef) e.roleDef = { purpose: '', duties: '', reportsTo: '', metrics: '' };
+    if (!e.offboard) e.offboard = { date: '', reason: '', note: '', checks: {} };
+    if (!e.offboard.checks) e.offboard.checks = {};
     if (!Array.isArray(e.workDays)) e.workDays = [];
     // מבנה שבועי עם שעות: workHours = { יום: {from,to} }. תאימות: ימים שסומנו לפני שהיו שעות
     if (!e.workHours) e.workHours = {};
@@ -63,6 +75,7 @@
   var cardTab = 'info';
   var filterTag = '';
   var filterEmployment = '';
+  var filterStatus = '';  // '' | 'active' | 'left'
 
   // ---------- טופס פרטי עובד (מודאל) ----------
   function openEmpModal(emp) {
@@ -399,6 +412,109 @@
   }
   function txt(v) { return v ? U.el('span', { text: v }) : null; }
 
+  // ---------- סיום העסקה ----------
+  function offLabel(emp) {
+    if (!emp.offboard || !emp.offboard.date) return 'לא פעיל';
+    // gregLabel מחזיר יום/חודש — לתאריך עזיבה השנה חשובה
+    return 'עזב · ' + U.gregLabel(emp.offboard.date) + '/' + emp.offboard.date.slice(2, 4);
+  }
+
+  function openOffboardModal(emp) {
+    var date = U.el('input', { type: 'date', value: emp.offboard.date || U.todayISO() });
+    var reason = U.el('select', null, [U.el('option', { value: '', text: '— בחרו סיבה —' })].concat(
+      OFF_REASONS.map(function (r) { return U.el('option', { value: r, text: r }); })));
+    if (emp.offboard.reason) reason.value = emp.offboard.reason;
+    var note = U.el('textarea', { rows: 2, placeholder: 'הערות — לאן עבר, סיכומים, מה נשאר לסגור…' }, emp.offboard.note || '');
+    var err = U.el('div', { class: 'field-err' });
+    function fld(label, node) { return U.el('div', { class: 'field', style: 'margin-bottom:10px;' }, [U.el('label', { text: label }), node]); }
+
+    Modal.open('🚪 סיום העסקה — ' + Store.empName(emp), U.el('div', null, [
+      fld('תאריך סיום', date),
+      fld('סיבת הסיום', reason),
+      fld('הערות', note),
+      U.el('div', { class: 'muted', style: 'font-size:13px;' },
+        'העובד יסומן כלא-פעיל ויוסתר מבוררי העובדים בדוחות השכר. ' +
+        'ההיסטוריה בדוחות הקיימים נשארת, ותמיד אפשר להחזיר אותו לפעילות.'),
+      err
+    ]), [
+      { label: 'ביטול', class: 'secondary' },
+      { label: 'סיום העסקה', onClick: function (close) {
+        if (!date.value) { err.textContent = 'נדרש תאריך סיום'; return; }
+        emp.offboard.date = date.value;
+        emp.offboard.reason = reason.value;
+        emp.offboard.note = note.value.trim();
+        emp.active = false;
+        Store.upsertEmployee(emp);
+        close();
+        U.toast(Store.empName(emp) + ' סומן כסיים העסקה');
+        cardTab = 'offboard';
+        App.render();
+      } }
+    ]);
+  }
+
+  function reactivate(emp) {
+    Modal.confirm({
+      title: 'החזרה לפעילות',
+      text: 'להחזיר את ' + Store.empName(emp) + ' למצבת הפעילים?\nפרטי סיום ההעסקה יישמרו לתיעוד.',
+      okLabel: 'החזרה לפעילות'
+    }, function () {
+      emp.active = true;
+      Store.upsertEmployee(emp);
+      U.toast(Store.empName(emp) + ' חזר למצבת הפעילים');
+      App.render();
+    });
+  }
+
+  function renderOffboardTab(body, emp, isAdmin) {
+    function saveNow() { Store.upsertEmployee(emp); }
+    function fld(label, node) { return U.el('div', { class: 'field', style: 'margin-bottom:10px;' }, [U.el('label', { text: label }), node]); }
+
+    var date = U.el('input', { type: 'date', value: emp.offboard.date || '', disabled: !isAdmin });
+    date.addEventListener('change', function () { emp.offboard.date = date.value; saveNow(); App.render(); });
+    var reason = U.el('select', { disabled: !isAdmin }, [U.el('option', { value: '', text: '—' })].concat(
+      OFF_REASONS.map(function (r) { return U.el('option', { value: r, text: r }); })));
+    reason.value = emp.offboard.reason || '';
+    reason.addEventListener('change', function () { emp.offboard.reason = reason.value; saveNow(); });
+    var note = U.el('textarea', { rows: 3, placeholder: 'הערות', disabled: !isAdmin }, emp.offboard.note || '');
+    note.addEventListener('change', function () { emp.offboard.note = note.value.trim(); saveNow(); });
+
+    var done = 0;
+    var checkRows = OFF_CHECKS.map(function (ck) {
+      if (emp.offboard.checks[ck.key]) done++;
+      var cb = U.el('input', { type: 'checkbox', checked: !!emp.offboard.checks[ck.key], disabled: !isAdmin });
+      cb.addEventListener('change', function () { emp.offboard.checks[ck.key] = cb.checked; saveNow(); App.render(); });
+      return U.el('label', { style: 'display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 0;' }, [cb, ck.label]);
+    });
+    var pct = Math.round(done / OFF_CHECKS.length * 100);
+
+    body.appendChild(U.el('div', { class: 'cards-3' }, [
+      U.el('div', { class: 'card' }, [
+        U.el('h3', { text: '🚪 פרטי סיום ההעסקה', style: 'margin-top:0;' }),
+        fld('תאריך סיום', date),
+        fld('סיבה', reason),
+        fld('הערות', note)
+      ]),
+      U.el('div', { class: 'card' }, [
+        U.el('h3', { text: '✅ צ׳קליסט עזיבה', style: 'margin-top:0;' }),
+        U.el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:6px;',
+          text: done + ' מתוך ' + OFF_CHECKS.length + ' הושלמו (' + pct + '%)' }),
+        U.el('div', null, checkRows)
+      ]),
+      U.el('div', { class: 'card' }, [
+        U.el('h3', { text: '↩️ החזרה לפעילות', style: 'margin-top:0;' }),
+        U.el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:10px;' },
+          emp.active === false
+            ? 'העובד מוסתר מבוררי העובדים בדוחות השכר. אם הוא חוזר לעבוד — אפשר להחזיר אותו.'
+            : 'העובד עדיין מסומן כפעיל.'),
+        isAdmin && emp.active === false
+          ? U.el('button', { class: 'btn secondary', text: '↩️ החזרה למצבת הפעילים', onclick: function () { reactivate(emp); } })
+          : null
+      ].filter(Boolean))
+    ]));
+    body.appendChild(U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:8px;', text: 'שינויים במסך זה נשמרים מיד' }));
+  }
+
   function renderCard(view, emp) {
     norm(emp);
     var isAdmin = Store.isAdmin();
@@ -407,21 +523,29 @@
     var head = U.el('div', { class: 'page-head' }, [
       U.el('button', { class: 'btn secondary', text: '→ חזרה למצבת', onclick: function () { selectedId = null; App.render(); } }),
       U.el('h2', { text: Store.empName(emp), style: 'margin-inline-start:8px;' }),
-      emp.active === false ? U.el('span', { class: 'tag', text: 'לא פעיל', style: 'opacity:.7;' }) : null,
+      emp.active === false ? U.el('span', { class: 'tag', text: offLabel(emp), style: 'opacity:.7;' }) : null,
       U.el('span', { class: 'spacer' }),
+      isAdmin && emp.active === false
+        ? U.el('button', { class: 'btn secondary', text: '↩️ החזרה לפעילות', onclick: function () { reactivate(emp); } })
+        : null,
+      isAdmin && emp.active !== false
+        ? U.el('button', { class: 'btn secondary', text: '🚪 סיום העסקה', onclick: function () { openOffboardModal(emp); } })
+        : null,
       isAdmin && U.el('button', { class: 'btn secondary', text: '🖨️ דף לעובד', onclick: function () { openEmpDoc(emp); } }),
       isAdmin && U.el('button', { class: 'btn', text: '✏️ עריכת פרטים', onclick: function () { openEmpModal(emp); } })
     ].filter(Boolean));
     view.appendChild(head);
     if (emp.jobTitle) view.appendChild(U.el('div', { class: 'muted', style: 'margin:-8px 0 12px;font-size:15px;', text: emp.jobTitle }));
 
-    // לשוניות הכרטיס
+    // לשוניות הכרטיס — לשונית העזיבה מופיעה רק כשהיא רלוונטית
     var tabs = [
       { id: 'info', label: '👤 פרטים' },
       { id: 'roledef', label: '📄 תפקיד ומבנה שבועי' },
       { id: 'onboard', label: '📥 קליטה' },
       { id: 'activity', label: '📊 פעילות' }
     ];
+    if (emp.active === false || emp.offboard.date) tabs.push({ id: 'offboard', label: '🚪 סיום העסקה' });
+    if (cardTab === 'offboard' && !(emp.active === false || emp.offboard.date)) cardTab = 'info';
     view.appendChild(U.el('div', { class: 'subtabs', style: 'margin-bottom:14px;' }, tabs.map(function (t) {
       return U.el('button', { class: cardTab === t.id ? 'active' : '', onclick: function () { cardTab = t.id; App.render(); } }, t.label);
     })));
@@ -431,6 +555,7 @@
     if (cardTab === 'info') renderInfoTab(body, emp);
     else if (cardTab === 'roledef') renderRoleDefTab(body, emp, isAdmin);
     else if (cardTab === 'onboard') renderOnboardTab(body, emp, isAdmin);
+    else if (cardTab === 'offboard') renderOffboardTab(body, emp, isAdmin);
     else renderActivityTab(body, emp);
   }
 
@@ -649,10 +774,12 @@
     ].filter(Boolean));
     view.appendChild(head);
 
+    var left = all.filter(function (e) { return e.active === false; });
     view.appendChild(U.el('div', { class: 'kpi-row' }, [
       kpi('👥', active.length, 'עובדים פעילים'),
       kpi('🏢', active.filter(function (e) { return e.employment === 'amuta'; }).length, 'עובדי עמותה'),
-      kpi('🏫', active.filter(function (e) { return e.employment === 'moe'; }).length, 'משרד החינוך')
+      kpi('🏫', active.filter(function (e) { return e.employment === 'moe'; }).length, 'משרד החינוך'),
+      kpi('🚪', left.length, 'סיימו העסקה')
     ]));
 
     var search = U.el('input', { placeholder: '🔍 חיפוש עובד…', style: 'max-width:220px;' });
@@ -666,7 +793,15 @@
     empSel.value = filterEmployment;
     empSel.addEventListener('change', function () { filterEmployment = empSel.value; App.render(); });
 
-    view.appendChild(U.el('div', { style: 'display:flex;gap:10px;margin:12px 0;align-items:center;flex-wrap:wrap;' }, [search, tagChips, empSel]));
+    var statSel = U.el('select', { style: 'max-width:150px;' }, [
+      U.el('option', { value: '', text: 'כל העובדים' }),
+      U.el('option', { value: 'active', text: 'פעילים בלבד' }),
+      U.el('option', { value: 'left', text: 'סיימו העסקה' })
+    ]);
+    statSel.value = filterStatus;
+    statSel.addEventListener('change', function () { filterStatus = statSel.value; App.render(); });
+
+    view.appendChild(U.el('div', { style: 'display:flex;gap:10px;margin:12px 0;align-items:center;flex-wrap:wrap;' }, [search, tagChips, empSel, statSel]));
 
     var tblWrap = U.el('div');
     view.appendChild(tblWrap);
@@ -678,6 +813,8 @@
         if (q && Store.empName(e).indexOf(q) === -1 && (e.jobTitle || '').indexOf(q) === -1) return false;
         if (filterTag && (e.tags || []).indexOf(filterTag) === -1) return false;
         if (filterEmployment && e.employment !== filterEmployment) return false;
+        if (filterStatus === 'active' && e.active === false) return false;
+        if (filterStatus === 'left' && e.active !== false) return false;
         return true;
       });
       emps.sort(function (a, b) {
@@ -685,7 +822,9 @@
         return Store.empName(a).localeCompare(Store.empName(b), 'he');
       });
       if (!emps.length) {
-        tblWrap.appendChild(U.el('div', { class: 'empty' }, 'אין עובדים תואמים — ייבאו מאקסל (⋮ למעלה) או הוסיפו ידנית'));
+        tblWrap.appendChild(U.el('div', { class: 'empty' }, filterStatus === 'left'
+          ? 'אין עובדים שסיימו העסקה'
+          : 'אין עובדים תואמים — ייבאו מאקסל (⋮ למעלה) או הוסיפו ידנית'));
         return;
       }
       var tbl = U.el('table', { class: 'grid' }, [
@@ -704,7 +843,7 @@
               ? U.el('span', { class: 'wd-mini', text: e.workDays.map(function (i) { return DAYS_SHORT[i]; }).join(' ') })
               : U.el('span', { class: 'muted', text: '—' })),
             U.el('td', null, (e.tags || []).map(function (t) { return U.el('span', { class: 'tag', text: t, style: 'margin-inline-end:4px;' }); })),
-            U.el('td', { text: e.active === false ? 'לא פעיל' : 'פעיל' })
+            U.el('td', { text: e.active === false ? offLabel(e) : 'פעיל' })
           ]);
           tr.addEventListener('click', function () { openCard(e.id); });
           return tr;
