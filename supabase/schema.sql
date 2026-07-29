@@ -132,6 +132,12 @@ drop policy if exists "approvals anon upload" on storage.objects;
 create policy "approvals anon upload" on storage.objects
   for insert to anon with check (bucket_id = 'admin-approvals');
 
+-- גיא (מחובר) מעלה אישור מתוך האפליקציה. חובה בנפרד מ-anon:
+-- מדיניות "to anon" לא חלה על משתמש מחובר, וההעלאה נדחית ב-RLS.
+drop policy if exists "approvals auth insert" on storage.objects;
+create policy "approvals auth insert" on storage.objects
+  for insert to authenticated with check (bucket_id = 'admin-approvals');
+
 drop policy if exists "approvals auth read" on storage.objects;
 create policy "approvals auth read" on storage.objects
   for select to authenticated using (bucket_id = 'admin-approvals');
