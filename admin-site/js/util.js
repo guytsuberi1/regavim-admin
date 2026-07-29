@@ -249,9 +249,35 @@
     return wrap;
   }
 
+  // כיווץ תמונה בדפדפן לפני העלאה — צילום מהטלפון הוא 3–8 מגה וברשת חלשה זה נתקע.
+  // אחרי הכיווץ ~200KB. קובץ שאינו תמונה (PDF) חוזר כמו שהוא.
+  function shrinkImage(file, maxPx, quality) {
+    return new Promise(function (resolve) {
+      if (!file || String(file.type).indexOf('image/') !== 0) return resolve(file);
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var MAX = maxPx || 1600;
+          var scale = Math.min(1, MAX / Math.max(img.width, img.height));
+          var c = document.createElement('canvas');
+          c.width = Math.round(img.width * scale);
+          c.height = Math.round(img.height * scale);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          c.toBlob(function (blob) {
+            URL.revokeObjectURL(url);
+            resolve(blob && blob.size < file.size ? blob : file);
+          }, 'image/jpeg', quality || 0.75);
+        } catch (e) { URL.revokeObjectURL(url); resolve(file); }
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
+  }
+
   global.U = {
     el: el, clear: clear, $: $, $all: $all,
-    dataListInput: dataListInput,
+    dataListInput: dataListInput, shrinkImage: shrinkImage,
     todayISO: todayISO, toISO: toISO, fromISO: fromISO, addDays: addDays,
     weekdayName: weekdayName, WEEKDAYS: WEEKDAYS,
     hebrewDate: hebrewDate, gregLabel: gregLabel,

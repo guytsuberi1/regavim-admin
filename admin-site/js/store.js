@@ -882,6 +882,22 @@
       return loadSubmissions();
     });
   }
+  // העלאת קובץ אישור מתוך האפליקציה (כשהמסמך הגיע אחרי הדיווח) — מחזיר את הנתיב שנשמר
+  function uploadApproval(file) {
+    if (!sb) return Promise.reject(new Error('אין חיבור לענן'));
+    if (!file) return Promise.reject(new Error('לא נבחר קובץ'));
+    return U.shrinkImage(file).then(function (blob) {
+      var isJpeg = blob !== file;
+      var safe = String(file.name || 'file').replace(/[^\w.\-֐-׿]/g, '_');
+      if (isJpeg) safe = safe.replace(/\.[^.]+$/, '') + '.jpg';
+      var path = nowISO().slice(0, 7) + '/' + Date.now().toString(36) + '_' + safe;
+      var opt = isJpeg ? { contentType: 'image/jpeg' } : (file.type ? { contentType: file.type } : undefined);
+      return sb.storage.from(BUCKET).upload(path, blob, opt).then(function (res) {
+        if (res && res.error) throw new Error(res.error.message);
+        return path;
+      });
+    });
+  }
   function approvalFileUrl(path) {
     if (!sb || !path) return Promise.resolve(null);
     return sb.storage.from(BUCKET).createSignedUrl(path, 3600).then(function (res) {
@@ -1193,6 +1209,7 @@
     pendingCount: pendingCount,
     updateSubmission: updateSubmission,
     approvalFileUrl: approvalFileUrl,
+    uploadApproval: uploadApproval,
     onSubmissions: onSubmissions,
     offSubmissions: offSubmissions,
     // גיבוי
