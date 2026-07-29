@@ -64,9 +64,10 @@
 
     <form id="form" class="hidden" autocomplete="off">
       <div class="card">
-        <label for="empName">שם העובד</label>
-        <input list="empList" id="empName" placeholder="התחילו להקליד את השם…" required />
-        <datalist id="empList"></datalist>
+        <label for="empSelect">שם העובד</label>
+        <!-- select אמיתי (ולא datalist) — נפתח בלחיצה גם בנייד -->
+        <select id="empSelect"><option value="">— בחרו את שמכם —</option></select>
+        <input id="empName" class="hidden" placeholder="הקלידו את שמכם המלא" style="margin-top:8px" />
 
         <label>מה מדווחים?</label>
         <div class="types">
@@ -80,8 +81,8 @@
       <div class="card" id="f-absence">
         <label>סיבת ההיעדרות</label>
         <select id="absReason">
+          <option selected>מילואים</option>
           <option>מחלה</option>
-          <option>מילואים</option>
           <option>אחר</option>
         </select>
         <div class="row2">
@@ -151,20 +152,42 @@
       function $(id) { return document.getElementById(id); }
 
       // רשימת שמות מתוך שורת portal (קריאה אנונימית מותרת רק לשורה הזו)
-      sb.from('admin_state').select('data').eq('id', 'portal').maybeSingle().then(function (res) {
+      function showForm() {
         $('loading').classList.add('hidden');
         $('form').classList.remove('hidden');
-        var names = (res.data && res.data.data && res.data.data.names) || [];
-        var dl = $('empList');
+      }
+      function fillNames(names) {
+        var sel = $('empSelect'), free = $('empName');
+        if (!names.length) {
+          // אין רשימה זמינה — נופלים להקלדה חופשית כדי שהדיווח לא ייחסם
+          sel.classList.add('hidden');
+          free.classList.remove('hidden');
+          return;
+        }
         names.forEach(function (n) {
           var o = document.createElement('option');
-          o.value = n;
-          dl.appendChild(o);
+          o.value = n; o.textContent = n;
+          sel.appendChild(o);
         });
-      }, function () {
-        $('loading').classList.add('hidden');
-        $('form').classList.remove('hidden');
-      });
+        var other = document.createElement('option');
+        other.value = '__other__'; other.textContent = 'אחר — השם שלי לא ברשימה';
+        sel.appendChild(other);
+        sel.addEventListener('change', function () {
+          if (sel.value === '__other__') { free.classList.remove('hidden'); free.focus(); }
+          else free.classList.add('hidden');
+        });
+      }
+      sb.from('admin_state').select('data').eq('id', 'portal').maybeSingle().then(function (res) {
+        showForm();
+        fillNames((res.data && res.data.data && res.data.data.names) || []);
+      }, function () { showForm(); fillNames([]); });
+
+      // השם שנבחר — מהרשימה או מהקלדה חופשית
+      function chosenName() {
+        var sel = $('empSelect'), free = $('empName');
+        if (!sel.classList.contains('hidden') && sel.value && sel.value !== '__other__') return sel.value;
+        return free.value.trim();
+      }
 
       // בחירת סוג דיווח
       Array.prototype.forEach.call(document.querySelectorAll('.type-btn'), function (btn) {
@@ -222,7 +245,7 @@
         ev.preventDefault();
         var err = $('err');
         err.textContent = '';
-        var name = $('empName').value.trim();
+        var name = chosenName();
         if (!name) { err.textContent = 'נא למלא את שם העובד'; return; }
         var built = buildPayload();
         if (built.err) { err.textContent = built.err; return; }

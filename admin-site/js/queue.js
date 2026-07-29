@@ -11,6 +11,80 @@
 
   var showHandled = false;
 
+  // ---------- שיתוף הקישור לפורטל הדיווח ----------
+  var WA_GREEN = '<span style="color:#25D366">' + (U.WA_SVG || '') + '</span>';
+  function portalUrl() {
+    // הפורטל יושב לצד index.html באותה תיקייה
+    return location.origin + location.pathname.replace(/[^/]*$/, '') + 'report.html';
+  }
+  function defaultMsg() {
+    return 'שלום, לדיווח היעדרויות (מחלה/מילואים), נסיעות וטיולים — נא למלא בקישור הבא:\n'
+      + portalUrl() + '\nבוחרים שם מהרשימה, ממלאים פרטים ומצרפים אישור. תודה!';
+  }
+  function copyText(txt, okMsg) {
+    function fallback() {
+      var ta = U.el('textarea', { style: 'position:fixed;opacity:0;' });
+      ta.value = txt; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); U.toast(okMsg); } catch (e) { U.toast('ההעתקה נכשלה', 'error'); }
+      document.body.removeChild(ta);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(function () { U.toast(okMsg); }, fallback);
+    } else fallback();
+  }
+  function openSharePortal() {
+    var msgBox = U.el('textarea', { rows: 4, style: 'width:100%;font-size:13px;' });
+    msgBox.value = defaultMsg();
+
+    var linkRow = U.el('div', { style: 'display:flex;gap:6px;align-items:center;margin-bottom:12px;flex-wrap:wrap;' }, [
+      U.el('input', { value: portalUrl(), readonly: 'readonly', style: 'flex:1;min-width:200px;direction:ltr;text-align:left;font-size:12.5px;' }),
+      U.el('button', { class: 'btn secondary', text: '🔗 העתק', onclick: function () { copyText(portalUrl(), 'הקישור הועתק'); } })
+    ]);
+
+    // שליחה אישית — לכל עובד פעיל עם טלפון במצבת
+    var people = Store.employees().filter(function (e) { return e.active !== false; })
+      .map(function (e) { return { name: Store.empName(e), phone: e.phone, wa: e.phone ? U.waNumber(e.phone) : null }; })
+      .sort(function (a, b) { return a.name.localeCompare(b.name, 'he'); });
+    var withPhone = people.filter(function (p) { return p.wa; });
+
+    var listWrap = U.el('div', { style: 'max-height:230px;overflow-y:auto;margin-top:6px;' });
+    function drawList() {
+      U.clear(listWrap);
+      people.forEach(function (p) {
+        var action = p.wa
+          ? U.el('a', { class: 'btn secondary', href: 'https://wa.me/' + p.wa + '?text=' + encodeURIComponent(msgBox.value),
+              target: '_blank', rel: 'noopener', html: WA_GREEN + ' שלח' })
+          : U.el('span', { class: 'muted', style: 'font-size:12px;', text: 'אין טלפון במצבת' });
+        listWrap.appendChild(U.el('div', { style: 'display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;margin-bottom:5px;' },
+          [U.el('span', { style: 'font-weight:600;font-size:13.5px;', text: p.name }), U.el('span', { class: 'spacer' }), action]));
+      });
+    }
+    drawList();
+    msgBox.addEventListener('input', drawList); // הקישורים מתעדכנים לפי הטקסט
+
+    var body = U.el('div', null, [
+      U.el('div', { class: 'muted', style: 'font-size:12.5px;margin-bottom:6px;', text: 'הפורטל פתוח — העובד לא צריך סיסמה. הדיווחים חוזרים לכאן, לתור האישורים.' }),
+      linkRow,
+      U.el('div', { class: 'field' }, [U.el('label', { text: 'נוסח ההודעה' }), msgBox]),
+      U.el('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 4px;' }, [
+        U.el('a', { class: 'btn', href: 'https://wa.me/?text=' + encodeURIComponent(msgBox.value), target: '_blank', rel: 'noopener',
+          html: WA_GREEN + ' שליחה לקבוצה', onclick: function (e) { e.currentTarget.href = 'https://wa.me/?text=' + encodeURIComponent(msgBox.value); } }),
+        U.el('button', { class: 'btn secondary', text: '📋 העתק הודעה', onclick: function () { copyText(msgBox.value, 'ההודעה הועתקה'); } }),
+        // מוודא שרשימת השמות בפורטל מעודכנת (היא נגזרת מהמצבת ומתפרסמת בשמירה)
+        U.el('button', { class: 'btn secondary', text: '🔄 עדכן רשימת שמות בפורטל', onclick: function () {
+          try { Store.publishPortal(); U.toast('רשימת השמות בפורטל עודכנה'); }
+          catch (e) { U.toast('העדכון נכשל: ' + e.message, 'error'); }
+        } })
+      ]),
+      U.el('div', { style: 'border-top:1px solid var(--border);margin-top:10px;padding-top:10px;' }, [
+        U.el('div', { style: 'font-weight:700;font-size:13.5px;margin-bottom:2px;', text: '📤 שליחה אישית (' + withPhone.length + ' מתוך ' + people.length + ')' }),
+        U.el('div', { class: 'muted', style: 'font-size:12px;margin-bottom:6px;', text: 'לחיצה פותחת צ\'אט פרטי עם העובד כשההודעה מוכנה.' })
+      ]),
+      listWrap
+    ]);
+    Modal.open('📤 שליחת קישור הדיווח לעובדים', body, [{ label: 'סגירה', class: 'secondary' }]);
+  }
+
   function payloadSummary(s) {
     var p = s.payload || {};
     if (s.type === 'absence') {
@@ -124,6 +198,7 @@
     view.appendChild(U.el('div', { class: 'page-head' }, [
       U.el('h2', { text: '📥 תור אישורים' }),
       U.el('span', { class: 'spacer' }),
+      U.el('button', { class: 'btn', html: WA_GREEN + ' שלח קישור לעובדים', onclick: openSharePortal }),
       U.el('button', { class: 'btn secondary', text: '🔄 רענון', onclick: function () {
         Store.loadSubmissions().then(function () { App.render(); });
       } })
