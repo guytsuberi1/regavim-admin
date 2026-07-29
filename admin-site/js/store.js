@@ -882,15 +882,22 @@
       return loadSubmissions();
     });
   }
+  // שם קובץ ל-Storage: אותיות לטיניות/ספרות בלבד.
+  // Supabase דוחה מפתח עם תווים בעברית ("Invalid key") — לכן שם עברי הופך ל-'file'.
+  function storageName(orig, forceJpeg) {
+    var name = String(orig || 'file');
+    var ext = forceJpeg ? '.jpg' : ((name.match(/\.[A-Za-z0-9]{1,8}$/) || [''])[0].toLowerCase() || '');
+    var base = name.replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[-_.]+|[-_.]+$/g, '').slice(0, 40);
+    return (base || 'file') + ext;
+  }
+
   // העלאת קובץ אישור מתוך האפליקציה (כשהמסמך הגיע אחרי הדיווח) — מחזיר את הנתיב שנשמר
   function uploadApproval(file) {
     if (!sb) return Promise.reject(new Error('אין חיבור לענן'));
     if (!file) return Promise.reject(new Error('לא נבחר קובץ'));
     return U.shrinkImage(file).then(function (blob) {
       var isJpeg = blob !== file;
-      var safe = String(file.name || 'file').replace(/[^\w.\-֐-׿]/g, '_');
-      if (isJpeg) safe = safe.replace(/\.[^.]+$/, '') + '.jpg';
-      var path = nowISO().slice(0, 7) + '/' + Date.now().toString(36) + '_' + safe;
+      var path = nowISO().slice(0, 7) + '/' + Date.now().toString(36) + '_' + storageName(file.name, isJpeg);
       var opt = isJpeg ? { contentType: 'image/jpeg' } : (file.type ? { contentType: file.type } : undefined);
       return sb.storage.from(BUCKET).upload(path, blob, opt).then(function (res) {
         if (res && res.error) throw new Error(res.error.message);
