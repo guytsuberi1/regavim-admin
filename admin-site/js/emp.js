@@ -589,11 +589,14 @@
       U.el('h2', { text: Store.empName(emp), style: 'margin-inline-start:8px;' }),
       emp.active === false ? U.el('span', { class: 'tag', text: offLabel(emp), style: 'opacity:.7;' }) : null,
       U.el('span', { class: 'spacer' }),
-      isAdmin && emp.active === false
+      // עובד לא-פעיל שאין לו רישום עזיבה (למשל סומן "עזב" בייבוא מאקסל) —
+      // עדיין צריך כפתור להשלמת הפרטים, אחרת אין דרך להגיע לתהליך.
+      isAdmin && emp.active === false && emp.offboard.date
         ? U.el('button', { class: 'btn secondary', text: '↩️ החזרה לפעילות', onclick: function () { reactivate(emp); } })
         : null,
-      isAdmin && emp.active !== false
-        ? U.el('button', { class: 'btn secondary', text: '🚪 סיום העסקה', onclick: function () { openOffboardModal(emp); } })
+      isAdmin && (emp.active !== false || !emp.offboard.date)
+        ? U.el('button', { class: 'btn', text: emp.active === false ? '🚪 רישום פרטי עזיבה' : '🚪 סיום העסקה',
+            onclick: function () { openOffboardModal(emp); } })
         : null,
       isAdmin && U.el('button', { class: 'btn secondary', text: '🖨️ דף לעובד', onclick: function () { openEmpDoc(emp); } }),
       isAdmin && U.el('button', { class: 'btn', text: '✏️ עריכת פרטים', onclick: function () { openEmpModal(emp); } })
