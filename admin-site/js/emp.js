@@ -397,6 +397,65 @@
     w.document.close();
   }
 
+  // מכתב סיום העסקה — מסמך עצמאי להדפסה/PDF, בתבנית של "דף לעובד"
+  function openOffboardDoc(emp) {
+    norm(emp);
+    var s = Store.settings();
+    var today = U.todayISO();
+    function dateFull(iso) { return iso ? U.gregLabel(iso) + '/' + iso.slice(0, 4) : ''; }
+    var name = Store.empName(emp);
+    var endTxt = dateFull(emp.offboard.date);
+    var startTxt = dateFull(emp.startDate);
+
+    var period = startTxt
+      ? 'החל מיום ' + esc(startTxt) + ' ועד ליום ' + esc(endTxt)
+      : 'עד ליום ' + esc(endTxt);
+
+    var h = '<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="utf-8">'
+      + '<title>מכתב סיום העסקה — ' + esc(name) + '</title>'
+      + '<style>'
+      + 'body{font-family:"Rubik","Segoe UI",Arial,sans-serif;margin:0;padding:0;color:#111;background:#f1f5f9;}'
+      + '.bar{position:sticky;top:0;background:#143b69;color:#fff;padding:10px 16px;display:flex;gap:10px;align-items:center;}'
+      + '.bar button{background:#1d4e89;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:8px;padding:8px 18px;font-size:15px;font-family:inherit;cursor:pointer;}'
+      + 'section.page{background:#fff;max-width:800px;margin:16px auto;padding:30px 36px;box-shadow:0 1px 4px rgba(0,0,0,.15);}'
+      + '.head{text-align:center;border-bottom:2px solid #143b69;padding-bottom:12px;margin-bottom:20px;}'
+      + '.head h1{margin:0;font-size:26px;color:#143b69;} .head .sub{font-size:15px;color:#555;margin-top:4px;}'
+      + '.date{text-align:left;font-size:14px;color:#555;margin-bottom:18px;}'
+      + '.to{font-size:15px;margin-bottom:18px;line-height:1.7;}'
+      + 'h2{font-size:17px;color:#143b69;margin:22px 0 8px;text-align:center;text-decoration:underline;}'
+      + 'p{font-size:15px;line-height:1.9;margin:10px 0;}'
+      + '.sign{display:flex;justify-content:space-between;gap:40px;margin-top:56px;font-size:14px;}'
+      + '.sign div{flex:1;border-top:1px solid #333;padding-top:6px;text-align:center;}'
+      + '@media print{body{background:#fff;} .bar{display:none;} section.page{box-shadow:none;margin:0;max-width:none;padding:12mm 14mm;}}'
+      + '</style></head><body>'
+      + '<div class="bar"><button onclick="window.print()">🖨️ הדפסה / שמירה כ-PDF</button>'
+      + '<span style="font-size:13px;opacity:.85;">מכתב סיום העסקה — לחתימה ומסירה לעובד</span></div>'
+      + '<section class="page">'
+      + '<div class="head"><h1>' + esc(s.orgName || 'ישיבת רגבים בנימין') + '</h1>'
+      + '<div class="sub">הנהלת הישיבה</div></div>'
+      + '<div class="date">' + esc(U.hebrewDate(today)) + '<br>' + esc(dateFull(today)) + '</div>'
+      + '<div class="to">לכבוד<br><strong>' + esc(name) + '</strong>'
+      + (emp.tz ? '<br>ת.ז ' + esc(emp.tz) : '') + '</div>'
+      + '<h2>הנדון: אישור סיום העסקה</h2>'
+      + '<p>שלום רב,</p>'
+      + '<p>הרינו לאשר בזאת כי ' + esc(name) + (emp.tz ? ', ת.ז ' + esc(emp.tz) + ',' : '')
+      + ' הועסק/ה ב' + esc(s.orgName || 'ישיבת רגבים בנימין')
+      + (emp.jobTitle ? ' בתפקיד <strong>' + esc(emp.jobTitle) + '</strong>' : '')
+      + ', ' + period + '.</p>'
+      + (emp.offboard.reason ? '<p>סיבת סיום ההעסקה: <strong>' + esc(emp.offboard.reason) + '</strong>.</p>' : '')
+      + (emp.offboard.note ? '<p>' + esc(emp.offboard.note) + '</p>' : '')
+      + '<p>אישור זה ניתן לבקשת העובד/ת ולכל מטרה חוקית.</p>'
+      + '<p>אנו מודים ל' + esc(name) + ' על תרומתו/ה לישיבה, ומאחלים הצלחה רבה בהמשך הדרך.</p>'
+      + '<div class="sign"><div>' + esc(s.managerName || '') + '<br>מנהלן הישיבה</div>'
+      + '<div>חתימה וחותמת</div></div>'
+      + '</section></body></html>';
+
+    var w = window.open('', '_blank');
+    if (!w) { U.toast('הדפדפן חסם את החלון — אפשרו חלונות קופצים', 'error'); return; }
+    w.document.write(h);
+    w.document.close();
+  }
+
   // ---------- כרטיס עובד ----------
   function openCard(id, tab) {
     selectedId = id;
@@ -493,7 +552,12 @@
         U.el('h3', { text: '🚪 פרטי סיום ההעסקה', style: 'margin-top:0;' }),
         fld('תאריך סיום', date),
         fld('סיבה', reason),
-        fld('הערות', note)
+        fld('הערות', note),
+        U.el('button', { class: 'btn secondary', text: '🖨️ מכתב סיום העסקה',
+          onclick: function () {
+            if (!emp.offboard.date) { U.toast('נדרש תאריך סיום לפני הפקת המכתב', 'error'); return; }
+            openOffboardDoc(emp);
+          } })
       ]),
       U.el('div', { class: 'card' }, [
         U.el('h3', { text: '✅ צ׳קליסט עזיבה', style: 'margin-top:0;' }),
