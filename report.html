@@ -269,6 +269,15 @@
         });
       }
 
+      // שם קובץ ל-Storage: אותיות לטיניות/ספרות בלבד.
+      // Supabase דוחה מפתח עם תווים בעברית ("Invalid key") — לכן שם עברי הופך ל-'file'.
+      function storageName(orig, forceJpeg) {
+        var name = String(orig || 'file');
+        var ext = forceJpeg ? '.jpg' : ((name.match(/\.[A-Za-z0-9]{1,8}$/) || [''])[0].toLowerCase() || '');
+        var base = name.replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[-_.]+|[-_.]+$/g, '').slice(0, 40);
+        return (base || 'file') + ext;
+      }
+
       // כיווץ תמונה בדפדפן לפני העלאה — צילום מהטלפון הוא 3–8 מגה,
       // וברשת סלולרית חלשה זה נתקע. אחרי הכיווץ מדובר בכ-200KB.
       function shrinkImage(file) {
@@ -315,9 +324,7 @@
           btn.textContent = 'מעלה קובץ…';
           filePromise = shrinkImage(chosenFile).then(function (blob) {
             var isJpeg = blob !== chosenFile;
-            var safe = chosenFile.name.replace(/[^\w.\-֐-׿]/g, '_');
-            if (isJpeg) safe = safe.replace(/\.[^.]+$/, '') + '.jpg';
-            var path = new Date().toISOString().slice(0, 7) + '/' + Date.now().toString(36) + '_' + safe;
+            var path = new Date().toISOString().slice(0, 7) + '/' + Date.now().toString(36) + '_' + storageName(chosenFile.name, isJpeg);
             return withTimeout(
               sb.storage.from('admin-approvals').upload(path, blob, { contentType: isJpeg ? 'image/jpeg' : (chosenFile.type || undefined) }),
               60000, 'העלאת הקובץ נכשלה'
