@@ -13,9 +13,6 @@
     { key: 'closed', label: '🏁 דווח ונסגר', color: '#475569' },
     { key: 'rejected', label: '❌ לא אושר / לא רלוונטי', color: '#b91c1c' }
   ];
-  // התחומים כפי שמופיעים בעמודת "באחריות" באקסל ("בינוי- גיא צוברי")
-  var DOMAINS = ['בינוי', 'ביטחון', 'פנימיה', 'בית ספר', 'הכנה לצה"ל', 'הסעות',
-                 'הצטיידות', 'חקלאות', 'מטבח', 'בוגרים', 'אחר'];
   // סטטוס שורת תכנון — במילים של האקסל
   var PLAN_STATUS = ['תכנון', 'בביצוע'];
   function stDef(k) { return STATUSES.filter(function (s) { return s.key === k; })[0] || STATUSES[0]; }
@@ -59,9 +56,6 @@
 
     var name = U.el('input', { value: rec.name || '', placeholder: 'שם הקול הקורא' });
     var funder = U.el('input', { value: rec.funder || '', placeholder: 'משרד החינוך / מפעל הפיס / הרשות…' });
-    var domain = U.el('select', null, [U.el('option', { value: '', text: '— ללא תחום —' })].concat(
-      DOMAINS.map(function (d) { return U.el('option', { value: d, text: d }); })));
-    domain.value = rec.domain || '';
     var status = U.el('select', null, STATUSES.map(function (s) { return U.el('option', { value: s.key, text: s.label }); }));
     status.value = rec.status || 'published';
     var year = U.el('input', { value: rec.year || fyLabel(), placeholder: 'שנת כספים' });
@@ -88,8 +82,7 @@
 
     Modal.open(isNew ? '➕ קול קורא חדש' : '✏️ עריכת קול קורא', U.el('div', null, [
       fld('שם הקול הקורא', name),
-      U.el('div', { class: 'row' }, [fld('תחום', domain), fld('אחראי', owner)]),
-      fld('גוף מממן', funder),
+      U.el('div', { class: 'row' }, [fld('אחראי', owner), fld('גוף מממן', funder)]),
       U.el('div', { class: 'row' }, [fld('סטטוס', status), fld('שנת כספים', year)]),
       fld('קטגוריה באפליקציית התקציב (מקור החשבוניות)', budgetSub),
       U.el('div', { class: 'row' }, [fld('תאריך פרסום', publishedAt), fld('תאריך הגשה אחרון', deadline)]),
@@ -104,7 +97,6 @@
         if (!name.value.trim()) { err.textContent = 'נדרש שם'; name.focus(); return; }
         rec.name = name.value.trim();
         rec.funder = funder.value.trim();
-        rec.domain = domain.value;
         rec.status = status.value;
         rec.year = year.value.trim();
         rec.budgetSub = budgetSub.value;
@@ -246,7 +238,6 @@
         onclick: function () { selectedId = null; App.render(); } }),
       U.el('h2', { text: rec.name || '(ללא שם)', style: 'margin-inline-start:8px;' }),
       U.el('span', { class: 'tag', style: 'background:' + st.color + '22;border-color:' + st.color + ';color:' + st.color + ';', text: st.label }),
-      rec.domain ? U.el('span', { class: 'tag', text: rec.domain }) : null,
       U.el('span', { class: 'spacer' }),
       isFunded(rec) ? deadlineChip(rec.spendDeadline, 'ניצול עד') : deadlineChip(rec.deadline, 'הגשה עד'),
       U.el('button', { class: 'btn', text: '✏️ עריכה', onclick: function () { openModal(rec); } })
@@ -358,10 +349,16 @@
     }
 
     function table(list) {
-      // מיון לפי תחום ואז שם — כמו סדר האקסל (עמודת "באחריות")
+      // מיון לפי דחיפות: קודם כסף שאושר ולא תוכנן, אחריו הגשות שהדדליין מתקרב, ואז לפי שם
       list = list.slice().sort(function (a, b) {
-        var d = String(a.domain || 'תתת').localeCompare(String(b.domain || 'תתת'), 'he');
-        return d || String(a.name || '').localeCompare(String(b.name || ''), 'he');
+        var ma = Store.kkMoney(a), mb = Store.kkMoney(b);
+        var ua = isFunded(a) ? Math.max(0, ma.unplanned) : 0;
+        var ub = isFunded(b) ? Math.max(0, mb.unplanned) : 0;
+        if (ua !== ub) return ub - ua;
+        var da = (!isFunded(a) && daysTo(a.deadline) !== null && daysTo(a.deadline) >= 0) ? daysTo(a.deadline) : 9999;
+        var db = (!isFunded(b) && daysTo(b.deadline) !== null && daysTo(b.deadline) >= 0) ? daysTo(b.deadline) : 9999;
+        if (da !== db) return da - db;
+        return String(a.name || '').localeCompare(String(b.name || ''), 'he');
       });
       var tot = { approved: 0, used: 0, planned: 0, balance: 0 };
       var body = list.map(function (r) {
@@ -375,7 +372,6 @@
             U.el('strong', { text: r.name || '(ללא שם)' }),
             r.funder ? U.el('div', { class: 'muted', style: 'font-size:12px;', text: r.funder }) : null
           ].filter(Boolean)),
-          U.el('td', null, r.domain ? U.el('span', { class: 'tag', text: r.domain }) : U.el('span', { class: 'muted', text: '—' })),
           U.el('td', null, U.el('span', { class: 'tag', style: 'background:' + st.color + '22;border-color:' + st.color + ';color:' + st.color + ';', text: st.label })),
           U.el('td', { style: 'font-weight:600;', text: m.approved ? ils(m.approved) : '—' }),
           U.el('td', { style: m.used ? 'color:#16a34a;' : '', text: m.used ? ils(m.used) : '—' }),
@@ -390,7 +386,7 @@
       });
       // שורת סיכום — כמו "סה"כ כסף" בסוף האקסל
       body.push(U.el('tr', { style: 'background:var(--brand-light);font-weight:700;' }, [
-        U.el('td', { text: 'סה"כ' }), U.el('td'), U.el('td'),
+        U.el('td', { text: 'סה"כ' }), U.el('td'),
         U.el('td', { text: ils(tot.approved) }),
         U.el('td', { text: ils(tot.used) }),
         U.el('td', { text: ils(tot.planned) }),
@@ -399,7 +395,7 @@
       ]));
       return U.el('div', { class: 'tbl-scroll' }, [U.el('table', { class: 'grid' }, [
         U.el('thead', null, U.el('tr', null,
-          ['שם הקול הקורא', 'תחום', 'סטטוס', 'הקצבה', 'נוצל', 'מתוכנן', 'נותר ללא תכנון', 'הגשה עד', 'באחריות']
+          ['שם הקול הקורא', 'סטטוס', 'הקצבה', 'נוצל', 'מתוכנן', 'נותר ללא תכנון', 'הגשה עד', 'באחריות']
             .map(function (h) { return U.el('th', { text: h }); }))),
         U.el('tbody', null, body)
       ])]);
