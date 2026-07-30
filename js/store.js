@@ -752,11 +752,19 @@
     subs.forEach(function (c) {
       var existing = bySub[c.sub];
       if (existing) {
-        // התקציב התמלא בינתיים — משלימים סכום חסר, בלי לדרוס סכום שהוזן ידנית
-        if (c.annualBudget && (existing.amountFunder === '' || existing.amountFunder == null) && !existing.deleted) {
+        if (existing.deleted) return;
+        var changed = false;
+        // הסכום מוזרם מהתקציב — אלא אם הוזן כאן ידנית (amountManual)
+        if (!existing.amountManual && c.annualBudget && knum(existing.amountFunder) !== knum(c.annualBudget)) {
           existing.amountFunder = c.annualBudget;
-          upsertKk(existing);
+          changed = true;
         }
+        // הגיע סכום → הק"ק כבר לא רק "פורסם"
+        if (knum(existing.amountFunder) > 0 && existing.status === 'published') {
+          existing.status = 'approved';
+          changed = true;
+        }
+        if (changed) upsertKk(existing);
         return;
       }
       upsertKk({

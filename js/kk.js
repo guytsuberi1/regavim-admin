@@ -104,7 +104,10 @@
         rec.deadline = deadline.value;
         rec.submittedAt = submittedAt.value;
         rec.approvedAt = approvedAt.value;
-        rec.amountFunder = amountFunder.value.trim() === '' ? '' : U.num(amountFunder.value);
+        var newFunder = amountFunder.value.trim() === '' ? '' : U.num(amountFunder.value);
+        // סכום שהוזן ידנית לא ידרס בסנכרון הבא מהתקציב
+        if (newFunder !== rec.amountFunder) rec.amountManual = true;
+        rec.amountFunder = newFunder;
         rec.amountSelf = amountSelf.value.trim() === '' ? '' : U.num(amountSelf.value);
         rec.spendDeadline = spendDeadline.value;
         rec.reportDate = reportDate.value;
@@ -374,10 +377,12 @@
           ].filter(Boolean)),
           U.el('td', null, U.el('span', { class: 'tag', style: 'background:' + st.color + '22;border-color:' + st.color + ';color:' + st.color + ';', text: st.label })),
           U.el('td', { style: 'font-weight:600;', text: m.approved ? ils(m.approved) : '—' }),
-          U.el('td', { style: m.used ? 'color:#16a34a;' : '', text: m.used ? ils(m.used) : '—' }),
+          U.el('td', { style: m.used ? (m.approved && m.used > m.approved ? 'color:#b91c1c;font-weight:600;' : 'color:#16a34a;') : '',
+                       text: m.used ? ils(m.used) : '—' }),
           U.el('td', { style: m.planned ? 'color:#2563eb;' : '', text: m.planned ? ils(m.planned) : '—' }),
-          U.el('td', { style: isFunded(r) ? (m.unplanned > 0 ? 'color:#b91c1c;font-weight:600;' : 'color:#16a34a;') : '',
-                       text: isFunded(r) ? ils(m.unplanned) : '—' }),
+          U.el('td', { style: isFunded(r) ? (m.unplanned !== 0 ? 'color:#b91c1c;font-weight:600;' : 'color:#16a34a;') : '',
+                       title: m.unplanned < 0 ? 'חריגה — נוצל ומתוכנן עולים על ההקצבה' : '',
+                       text: isFunded(r) ? (m.unplanned < 0 ? '⚠️ ' + ils(m.unplanned) : ils(m.unplanned)) : '—' }),
           U.el('td', { style: dlStyle, text: r.deadline ? U.gregLabel(r.deadline) + '/' + r.deadline.slice(2, 4) : '—' }),
           U.el('td', { text: r.owner || '' })
         ]);
@@ -390,7 +395,7 @@
         U.el('td', { text: ils(tot.approved) }),
         U.el('td', { text: ils(tot.used) }),
         U.el('td', { text: ils(tot.planned) }),
-        U.el('td', { style: tot.balance > 0 ? 'color:#b91c1c;' : '', text: ils(tot.balance) }),
+        U.el('td', { style: tot.balance !== 0 ? 'color:#b91c1c;' : '', text: ils(tot.balance) }),
         U.el('td'), U.el('td')
       ]));
       return U.el('div', { class: 'tbl-scroll' }, [U.el('table', { class: 'grid' }, [
