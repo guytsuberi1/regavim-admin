@@ -724,7 +724,11 @@
   }
   function deleteKk(id) {
     var arr = data.kk.records;
-    for (var i = 0; i < arr.length; i++) if (arr[i].id === id) { arr[i] = { id: id, deleted: true, updatedAt: nowISO() }; break; }
+    for (var i = 0; i < arr.length; i++) if (arr[i].id === id) {
+      // budgetSub נשמר גם במחיקה — אחרת הסנכרון מהתקציב היה יוצר את הרשומה מחדש
+      arr[i] = { id: id, budgetSub: arr[i].budgetSub || '', deleted: true, updatedAt: nowISO() };
+      break;
+    }
     save('kk');
   }
   // הכרעות על חשבוניות שהגיעו מאפליקציית התקציב
@@ -734,6 +738,28 @@
     map[txId] = Object.assign({}, map[txId] || {}, patch, { at: nowISO() });
     save('kk');
     return map[txId];
+  }
+
+  // סנכרון אוטומטי: כל קטגוריית "קולות קוראים" בתקציב מקבלת רשומה כאן.
+  // אידמפוטנטי — מזוהה לפי budgetSub, כך שריצה חוזרת לא יוצרת כפילויות.
+  function syncKkFromBudget() {
+    var subs = budgetKkSubs();
+    if (!subs.length) return 0;
+    var linked = {};
+    // כולל רשומות שנמחקו — מחיקה מכוונת לא צריכה לחזור בסנכרון הבא
+    (data.kk.records || []).forEach(function (r) { if (r && r.budgetSub) linked[r.budgetSub] = true; });
+    var added = 0;
+    subs.forEach(function (c) {
+      if (linked[c.sub]) return;
+      upsertKk({
+        name: c.sub, budgetSub: c.sub,
+        amountFunder: c.annualBudget || '', amountSelf: '',
+        status: c.annualBudget ? 'approved' : 'published',
+        planned: [], docs: [], fromBudget: true
+      });
+      added++;
+    });
+    return added;
   }
 
   // ---------- גשר לאפליקציית ניהול התקציב (אותו פרויקט Supabase, טבלת app_state) ----------
@@ -1343,6 +1369,7 @@
     updateSubmission: updateSubmission,
     // קולות קוראים
     kkAll: kkAll,
+    syncKkFromBudget: syncKkFromBudget,
     kkById: kkById,
     upsertKk: upsertKk,
     deleteKk: deleteKk,
