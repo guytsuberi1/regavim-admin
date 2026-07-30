@@ -18,6 +18,7 @@
     cand: global.CandView,
     pos: global.PosView,
     events: global.EventsView,
+    kk: global.KkView,
     base: global.BaseView,
     settings: global.SettingsView
   };
@@ -47,6 +48,9 @@
     { id: 'events', label: '🗓️ תכנון אירועים וטיולים', subs: [
       { id: 'events', label: '🗓️ אירועים' }
     ] },
+    { id: 'kk', label: '📣 קולות קוראים', subs: [
+      { id: 'kk', label: '📣 קולות קוראים' }
+    ] },
     { id: 'base', label: '🗂️ נתוני בסיס', subs: [
       { id: 'base', label: '🗂️ נתוני בסיס' }
     ] }
@@ -62,7 +66,7 @@
 
   // הרשאות: admin רואה הכל; secretary רק מרכז למידה
   var ROLE_VIEWS = {
-    admin: ['status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'base', 'settings'],
+    admin: ['status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'kk', 'base', 'settings'],
     secretary: ['lc']
   };
   function roleKey() { return Store.currentRole(); }
@@ -264,6 +268,10 @@
       var allowed = allowedViews();
       current = roleKey() === 'admin' ? 'status' : allowed[0];
       render();
+      // נתוני אפליקציית התקציב (חשבוניות קולות קוראים) — ברקע, לא חוסמים את המסך
+      if (roleKey() === 'admin' && Store.budgetLoad) {
+        Store.budgetLoad().then(function (st) { if (st) render(); });
+      }
     });
   }
 
