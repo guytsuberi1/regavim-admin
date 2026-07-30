@@ -8,11 +8,16 @@
     { key: 'published', label: '📢 פורסם', color: '#64748b' },
     { key: 'prep', label: '✍️ בהכנה', color: '#d97706' },
     { key: 'submitted', label: '📤 הוגש', color: '#2563eb' },
-    { key: 'approved', label: '✅ אושר', color: '#16a34a' },
+    { key: 'approved', label: '✅ התקבל הקצבה', color: '#16a34a' },
     { key: 'spending', label: '💰 מימוש', color: '#0d9488' },
     { key: 'closed', label: '🏁 דווח ונסגר', color: '#475569' },
-    { key: 'rejected', label: '❌ נדחה / לא הגשנו', color: '#b91c1c' }
+    { key: 'rejected', label: '❌ לא אושר / לא רלוונטי', color: '#b91c1c' }
   ];
+  // התחומים כפי שמופיעים בעמודת "באחריות" באקסל ("בינוי- גיא צוברי")
+  var DOMAINS = ['בינוי', 'ביטחון', 'פנימיה', 'בית ספר', 'הכנה לצה"ל', 'הסעות',
+                 'הצטיידות', 'חקלאות', 'מטבח', 'בוגרים', 'אחר'];
+  // סטטוס שורת תכנון — במילים של האקסל
+  var PLAN_STATUS = ['תכנון', 'בביצוע'];
   function stDef(k) { return STATUSES.filter(function (s) { return s.key === k; })[0] || STATUSES[0]; }
   // שלבים שבהם הכסף כבר אושר — רק להם יש משמעות לתמונת הניצול
   function isFunded(rec) { return ['approved', 'spending', 'closed'].indexOf(rec.status) !== -1; }
@@ -53,6 +58,9 @@
 
     var name = U.el('input', { value: rec.name || '', placeholder: 'שם הקול הקורא' });
     var funder = U.el('input', { value: rec.funder || '', placeholder: 'משרד החינוך / מפעל הפיס / הרשות…' });
+    var domain = U.el('select', null, [U.el('option', { value: '', text: '— ללא תחום —' })].concat(
+      DOMAINS.map(function (d) { return U.el('option', { value: d, text: d }); })));
+    domain.value = rec.domain || '';
     var status = U.el('select', null, STATUSES.map(function (s) { return U.el('option', { value: s.key, text: s.label }); }));
     status.value = rec.status || 'published';
     var year = U.el('input', { value: rec.year || fyLabel(), placeholder: 'שנת כספים' });
@@ -79,7 +87,8 @@
 
     Modal.open(isNew ? '➕ קול קורא חדש' : '✏️ עריכת קול קורא', U.el('div', null, [
       fld('שם הקול הקורא', name),
-      U.el('div', { class: 'row' }, [fld('גוף מממן', funder), fld('אחראי', owner)]),
+      U.el('div', { class: 'row' }, [fld('תחום', domain), fld('אחראי', owner)]),
+      fld('גוף מממן', funder),
       U.el('div', { class: 'row' }, [fld('סטטוס', status), fld('שנת כספים', year)]),
       fld('קטגוריה באפליקציית התקציב (מקור החשבוניות)', budgetSub),
       U.el('div', { class: 'row' }, [fld('תאריך פרסום', publishedAt), fld('תאריך הגשה אחרון', deadline)]),
@@ -94,6 +103,7 @@
         if (!name.value.trim()) { err.textContent = 'נדרש שם'; name.focus(); return; }
         rec.name = name.value.trim();
         rec.funder = funder.value.trim();
+        rec.domain = domain.value;
         rec.status = status.value;
         rec.year = year.value.trim();
         rec.budgetSub = budgetSub.value;
@@ -148,6 +158,13 @@
         box('נותר ללא תכנון', m.unplanned, m.unplanned > 0 ? '#b91c1c' : '#6b7884')
       ]),
       moneyBar(m),
+      // כמו באקסל: סה"כ מחויב (נוצל + מתוכנן) מול התקציב, והמאזן ביניהם
+      U.el('div', { style: 'display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:13px;' }, [
+        U.el('span', null, [U.el('span', { class: 'muted', text: 'סה"כ מחויב: ' }),
+          U.el('strong', { text: ils(m.used + m.planned) })]),
+        U.el('span', null, [U.el('span', { class: 'muted', text: 'מאזן: ' }),
+          U.el('strong', { style: 'color:' + (m.unplanned < 0 ? '#b91c1c' : '#16a34a') + ';', text: ils(m.unplanned) })])
+      ]),
       m.funder || m.self
         ? U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:6px;',
             text: 'מתוכם: ' + ils(m.funder) + ' מהגורם המממן · ' + ils(m.self) + ' מצ׳ינג של הישיבה' })
@@ -186,10 +203,15 @@
         });
         return el;
       }
+      var stSel = U.el('select', { class: 'transp', style: 'max-width:110px;' },
+        PLAN_STATUS.map(function (x) { return U.el('option', { value: x, text: x }); }));
+      stSel.value = p.status || 'תכנון';
+      stSel.addEventListener('change', function () { p.status = stSel.value; saveRec(); });
       return U.el('tr', null, [
-        U.el('td', null, inp('desc', { placeholder: 'מה מתכננים לקנות' })),
-        U.el('td', null, inp('supplier', { placeholder: 'ספק משוער' })),
+        U.el('td', null, inp('desc', { placeholder: 'מה מתכננים' })),
+        U.el('td', null, inp('supplier', { placeholder: 'מבצע' })),
         U.el('td', null, inp('amount', { type: 'number', min: '0', step: '1', style: 'max-width:110px;' })),
+        U.el('td', null, stSel),
         U.el('td', null, inp('date', { type: 'date' })),
         U.el('td', null, U.el('button', { class: 'btn secondary small', text: '🗑', title: 'מחיקה', onclick: function () {
           rec.planned = rec.planned.filter(function (x) { return x.id !== p.id; });
@@ -200,14 +222,14 @@
     var addDesc = U.el('input', { placeholder: '➕ הוצאה מתוכננת — תיאור ואנטר' });
     addDesc.addEventListener('keydown', function (e) {
       if (e.key !== 'Enter' || !addDesc.value.trim()) return;
-      rec.planned.push({ id: 'pl' + Date.now().toString(36), desc: addDesc.value.trim(), supplier: '', amount: 0, date: '' });
+      rec.planned.push({ id: 'pl' + Date.now().toString(36), desc: addDesc.value.trim(), supplier: '', amount: 0, status: 'תכנון', date: '' });
       addDesc.value = '';
       saveRec();
     });
     return U.el('div', null, [
       U.el('div', { class: 'tbl-scroll' }, [U.el('table', { class: 'grid' }, [
-        U.el('thead', null, U.el('tr', null, ['מה מתכננים', 'ספק', 'סכום', 'מתי', ''].map(function (h) { return U.el('th', { text: h }); }))),
-        U.el('tbody', null, rows.length ? rows : [U.el('tr', null, U.el('td', { colspan: '5', class: 'muted', text: 'עוד לא תוכננה הוצאה — כאן מתכננים קדימה' }))])
+        U.el('thead', null, U.el('tr', null, ['מה מתכננים', 'מבצע', 'עלות', 'סטטוס', 'מתי', ''].map(function (h) { return U.el('th', { text: h }); }))),
+        U.el('tbody', null, rows.length ? rows : [U.el('tr', null, U.el('td', { colspan: '6', class: 'muted', text: 'עוד לא תוכננה הוצאה — כאן מתכננים קדימה' }))])
       ])]),
       U.el('div', { style: 'margin-top:8px;' }, [addDesc])
     ]);
@@ -230,7 +252,8 @@
       U.el('span', { style: 'font-size:16px;', text: collapsed ? '▶' : '▼' }),
       U.el('strong', { style: 'font-size:16px;', text: rec.name || '(ללא שם)' }),
       U.el('span', { class: 'tag', style: 'background:' + st.color + '22;border-color:' + st.color + ';color:' + st.color + ';', text: st.label }),
-      rec.funder ? U.el('span', { class: 'muted', style: 'font-size:13px;', text: rec.funder }) : null,
+      rec.domain ? U.el('span', { class: 'tag', style: 'font-size:12px;', text: rec.domain }) : null,
+      rec.owner ? U.el('span', { class: 'muted', style: 'font-size:13px;', text: rec.owner }) : null,
       U.el('span', { class: 'spacer' }),
       // צ'יפ התאריך הרלוונטי לשלב: לפני הגשה — הדדליין; אחרי אישור — הניצול
       isFunded(rec) ? deadlineChip(rec.spendDeadline, 'ניצול עד') : deadlineChip(rec.deadline, 'הגשה עד')
@@ -329,10 +352,11 @@
       return !isFunded(r) && n !== null && n >= 0 && n <= 14;
     });
     var waiting = open.filter(function (r) { return r.status === 'submitted'; });
-    var unplanned = 0;
-    open.filter(isFunded).forEach(function (r) {
+    var unplanned = 0, totalApproved = 0;
+    recs.filter(isFunded).forEach(function (r) {
       var m = Store.kkMoney(r);
-      if (m.unplanned > 0) unplanned += m.unplanned;
+      totalApproved += m.approved;
+      if (m.unplanned > 0 && r.status !== 'closed') unplanned += m.unplanned;
     });
 
     function kpi(icon, val, label, color) {
@@ -347,7 +371,8 @@
     view.appendChild(U.el('div', { class: 'kpi-row' }, [
       kpi('⏰', soon.length, 'הגשות שנסגרות תוך 14 יום', soon.length ? '#b91c1c' : ''),
       kpi('📤', waiting.length, 'ממתינים לתשובה'),
-      kpi('💰', ils(unplanned), 'כסף מאושר שעוד לא תוכנן', unplanned > 0 ? '#b91c1c' : '#16a34a')
+      kpi('💰', ils(unplanned), 'כסף מאושר שעוד לא תוכנן', unplanned > 0 ? '#b91c1c' : '#16a34a'),
+      kpi('🏦', ils(totalApproved), 'סה"כ הקצבות השנה')
     ]));
 
     if (!recs.length) {
