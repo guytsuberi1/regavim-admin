@@ -745,12 +745,20 @@
   function syncKkFromBudget() {
     var subs = budgetKkSubs();
     if (!subs.length) return 0;
-    var linked = {};
+    var bySub = {};
     // כולל רשומות שנמחקו — מחיקה מכוונת לא צריכה לחזור בסנכרון הבא
-    (data.kk.records || []).forEach(function (r) { if (r && r.budgetSub) linked[r.budgetSub] = true; });
+    (data.kk.records || []).forEach(function (r) { if (r && r.budgetSub) bySub[r.budgetSub] = r; });
     var added = 0;
     subs.forEach(function (c) {
-      if (linked[c.sub]) return;
+      var existing = bySub[c.sub];
+      if (existing) {
+        // התקציב התמלא בינתיים — משלימים סכום חסר, בלי לדרוס סכום שהוזן ידנית
+        if (c.annualBudget && (existing.amountFunder === '' || existing.amountFunder == null) && !existing.deleted) {
+          existing.amountFunder = c.annualBudget;
+          upsertKk(existing);
+        }
+        return;
+      }
       upsertKk({
         name: c.sub, budgetSub: c.sub,
         amountFunder: c.annualBudget || '', amountSelf: '',
