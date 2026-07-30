@@ -22,7 +22,8 @@
   // שלבים שבהם הכסף כבר אושר — רק להם יש משמעות לתמונת הניצול
   function isFunded(rec) { return ['approved', 'spending', 'closed'].indexOf(rec.status) !== -1; }
 
-  var subTab = 'list';      // 'list' | 'inbox'
+  var subTab = 'list';      // 'list' (מבט על) | 'inbox'
+  var selectedId = null;    // קול קורא פתוח בפירוט
   var showClosed = false;
 
   function ils(n) {
@@ -213,6 +214,7 @@
         U.el('td', null, inp('amount', { type: 'number', min: '0', step: '1', style: 'max-width:110px;' })),
         U.el('td', null, stSel),
         U.el('td', null, inp('date', { type: 'date' })),
+        U.el('td', null, inp('note', { placeholder: 'צורך / הערה' })),
         U.el('td', null, U.el('button', { class: 'btn secondary small', text: '🗑', title: 'מחיקה', onclick: function () {
           rec.planned = rec.planned.filter(function (x) { return x.id !== p.id; });
           saveRec();
@@ -222,66 +224,168 @@
     var addDesc = U.el('input', { placeholder: '➕ הוצאה מתוכננת — תיאור ואנטר' });
     addDesc.addEventListener('keydown', function (e) {
       if (e.key !== 'Enter' || !addDesc.value.trim()) return;
-      rec.planned.push({ id: 'pl' + Date.now().toString(36), desc: addDesc.value.trim(), supplier: '', amount: 0, status: 'תכנון', date: '' });
+      rec.planned.push({ id: 'pl' + Date.now().toString(36), desc: addDesc.value.trim(), supplier: '', amount: 0, status: 'תכנון', date: '', note: '' });
       addDesc.value = '';
       saveRec();
     });
     return U.el('div', null, [
       U.el('div', { class: 'tbl-scroll' }, [U.el('table', { class: 'grid' }, [
-        U.el('thead', null, U.el('tr', null, ['מה מתכננים', 'מבצע', 'עלות', 'סטטוס', 'מתי', ''].map(function (h) { return U.el('th', { text: h }); }))),
-        U.el('tbody', null, rows.length ? rows : [U.el('tr', null, U.el('td', { colspan: '6', class: 'muted', text: 'עוד לא תוכננה הוצאה — כאן מתכננים קדימה' }))])
+        U.el('thead', null, U.el('tr', null, ['מה מתכננים', 'מבצע', 'עלות', 'סטטוס', 'מתי', 'צורך / הערה', ''].map(function (h) { return U.el('th', { text: h }); }))),
+        U.el('tbody', null, rows.length ? rows : [U.el('tr', null, U.el('td', { colspan: '7', class: 'muted', text: 'עוד לא תוכננה הוצאה — כאן מתכננים קדימה' }))])
       ])]),
       U.el('div', { style: 'margin-top:8px;' }, [addDesc])
     ]);
   }
 
-  // ---------- כרטיס קול קורא ----------
-  function collapsedKey() { return 'admin_kk_collapsed'; }
-  function collapsedMap() {
-    try { return JSON.parse(localStorage.getItem(collapsedKey()) || '{}'); } catch (e) { return {}; }
-  }
-  function setCollapsed(id, val) {
-    var m = collapsedMap(); m[id] = val;
-    try { localStorage.setItem(collapsedKey(), JSON.stringify(m)); } catch (e) {}
-  }
-
-  function card(rec) {
+  // ---------- מסך פירוט של קול קורא בודד ----------
+  function detail(view, rec) {
     var st = stDef(rec.status);
-    var collapsed = collapsedMap()[rec.id] !== false;   // ברירת מחדל: מכווץ
-    var head = U.el('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;cursor:pointer;' }, [
-      U.el('span', { style: 'font-size:16px;', text: collapsed ? '▶' : '▼' }),
-      U.el('strong', { style: 'font-size:16px;', text: rec.name || '(ללא שם)' }),
-      U.el('span', { class: 'tag', style: 'background:' + st.color + '22;border-color:' + st.color + ';color:' + st.color + ';', text: st.label }),
-      rec.domain ? U.el('span', { class: 'tag', style: 'font-size:12px;', text: rec.domain }) : null,
-      rec.owner ? U.el('span', { class: 'muted', style: 'font-size:13px;', text: rec.owner }) : null,
-      U.el('span', { class: 'spacer' }),
-      // צ'יפ התאריך הרלוונטי לשלב: לפני הגשה — הדדליין; אחרי אישור — הניצול
-      isFunded(rec) ? deadlineChip(rec.spendDeadline, 'ניצול עד') : deadlineChip(rec.deadline, 'הגשה עד')
-    ].filter(Boolean));
-    head.addEventListener('click', function () { setCollapsed(rec.id, !collapsed); App.render(); });
 
-    var body = null;
-    if (!collapsed) {
-      body = U.el('div', { style: 'margin-top:12px;' }, [
-        isFunded(rec) ? moneyCard(rec) : U.el('div', { class: 'muted', style: 'font-size:13px;' },
-          'תמונת הכסף תוצג אחרי שהקול הקורא יסומן כ"אושר" ויוזן סכום ההקצבה.'),
-        isFunded(rec) ? U.el('h4', { style: 'margin:16px 0 6px;', text: '🧾 חשבוניות שאושרו (מאפליקציית התקציב)' }) : null,
-        isFunded(rec) ? invoicesTable(rec) : null,
-        isFunded(rec) ? U.el('h4', { style: 'margin:16px 0 6px;', text: '📅 תכנון קדימה' }) : null,
-        isFunded(rec) ? plannedTable(rec) : null,
-        U.el('div', { style: 'display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;' }, [
-          U.el('button', { class: 'btn secondary small', text: '✏️ עריכה', onclick: function () { openModal(rec); } }),
-          U.el('button', { class: 'btn secondary small', text: '🗑 מחיקה', onclick: function () {
-            Modal.confirm({ title: 'מחיקה', text: 'למחוק את "' + rec.name + '"?', okLabel: 'מחיקה', danger: true }, function () {
-              Store.deleteKk(rec.id); App.render();
-            });
-          } })
-        ]),
-        rec.note ? U.el('div', { class: 'muted', style: 'font-size:13px;margin-top:8px;', text: rec.note }) : null
-      ].filter(Boolean));
+    view.appendChild(U.el('div', { class: 'page-head' }, [
+      U.el('button', { class: 'btn secondary', text: '→ חזרה למבט על',
+        onclick: function () { selectedId = null; App.render(); } }),
+      U.el('h2', { text: rec.name || '(ללא שם)', style: 'margin-inline-start:8px;' }),
+      U.el('span', { class: 'tag', style: 'background:' + st.color + '22;border-color:' + st.color + ';color:' + st.color + ';', text: st.label }),
+      rec.domain ? U.el('span', { class: 'tag', text: rec.domain }) : null,
+      U.el('span', { class: 'spacer' }),
+      isFunded(rec) ? deadlineChip(rec.spendDeadline, 'ניצול עד') : deadlineChip(rec.deadline, 'הגשה עד'),
+      U.el('button', { class: 'btn', text: '✏️ עריכה', onclick: function () { openModal(rec); } })
+    ].filter(Boolean)));
+
+    var meta = [
+      rec.funder ? 'גוף מממן: ' + rec.funder : '',
+      rec.owner ? 'באחריות: ' + rec.owner : '',
+      rec.submittedAt ? 'הוגש: ' + U.gregLabel(rec.submittedAt) + '/' + rec.submittedAt.slice(2, 4) : '',
+      rec.approvedAt ? 'אושר: ' + U.gregLabel(rec.approvedAt) + '/' + rec.approvedAt.slice(2, 4) : '',
+      rec.year ? 'שנה: ' + rec.year : ''
+    ].filter(Boolean).join(' · ');
+    if (meta) view.appendChild(U.el('div', { class: 'muted', style: 'margin:-8px 0 12px;font-size:13px;', text: meta }));
+
+    if (!isFunded(rec)) {
+      view.appendChild(U.el('div', { class: 'card' }, [
+        U.el('div', { class: 'muted' }, 'תמונת הכסף תיפתח אחרי שהקול הקורא יסומן "התקבל הקצבה" ויוזן סכום ההקצבה.')
+      ]));
+    } else {
+      view.appendChild(U.el('div', { class: 'card', style: 'margin-bottom:12px;' }, [moneyCard(rec)]));
+      view.appendChild(U.el('div', { class: 'card', style: 'margin-bottom:12px;' }, [
+        U.el('h3', { style: 'margin-top:0;', text: '🧾 חשבוניות שאושרו (מאפליקציית התקציב)' }),
+        invoicesTable(rec)
+      ]));
+      view.appendChild(U.el('div', { class: 'card', style: 'margin-bottom:12px;' }, [
+        U.el('h3', { style: 'margin-top:0;', text: '📅 תכנון קדימה' }),
+        plannedTable(rec)
+      ]));
     }
-    return U.el('div', { class: 'card', style: 'margin-bottom:10px;border-top:4px solid ' + st.color + ';' },
-      [head].concat(body ? [body] : []));
+
+    if (rec.note) view.appendChild(U.el('div', { class: 'card' }, [U.el('div', { class: 'muted', text: rec.note })]));
+
+    view.appendChild(U.el('div', { style: 'margin-top:14px;' }, [
+      U.el('button', { class: 'btn secondary small', text: '🗑 מחיקת הקול הקורא', onclick: function () {
+        Modal.confirm({ title: 'מחיקה', text: 'למחוק את "' + rec.name + '"?', okLabel: 'מחיקה', danger: true }, function () {
+          Store.deleteKk(rec.id); selectedId = null; App.render();
+        });
+      } })
+    ]));
+  }
+
+  // ---------- מבט על — שורה לכל קול קורא ----------
+  function overview(view) {
+    var recs = Store.kkAll();
+    var openRecs = recs.filter(function (r) { return r.status !== 'closed' && r.status !== 'rejected'; });
+    var doneRecs = recs.filter(function (r) { return r.status === 'closed' || r.status === 'rejected'; });
+
+    var soon = openRecs.filter(function (r) {
+      var n = daysTo(r.deadline);
+      return !isFunded(r) && n !== null && n >= 0 && n <= 14;
+    });
+    var waiting = openRecs.filter(function (r) { return r.status === 'submitted'; });
+    var unplanned = 0, totalApproved = 0;
+    recs.filter(isFunded).forEach(function (r) {
+      var m = Store.kkMoney(r);
+      totalApproved += m.approved;
+      if (m.unplanned > 0 && r.status !== 'closed') unplanned += m.unplanned;
+    });
+
+    function kpi(icon, val, label, color) {
+      return U.el('div', { class: 'kpi' }, [
+        U.el('div', { class: 'kpi-ic', text: icon }),
+        U.el('div', null, [
+          U.el('div', { class: 'kpi-val', style: color ? 'color:' + color + ';' : '', text: String(val) }),
+          U.el('div', { class: 'kpi-lbl', text: label })
+        ])
+      ]);
+    }
+    view.appendChild(U.el('div', { class: 'kpi-row' }, [
+      kpi('⏰', soon.length, 'הגשות שנסגרות תוך 14 יום', soon.length ? '#b91c1c' : ''),
+      kpi('📤', waiting.length, 'ממתינים לתשובה'),
+      kpi('💰', ils(unplanned), 'כסף מאושר שעוד לא תוכנן', unplanned > 0 ? '#b91c1c' : '#16a34a'),
+      kpi('🏦', ils(totalApproved), 'סה"כ הקצבות השנה')
+    ]));
+
+    if (!recs.length) {
+      view.appendChild(U.el('div', { class: 'empty' }, 'אין עדיין קולות קוראים — הוסיפו את הראשון בכפתור למעלה'));
+      return;
+    }
+
+    function table(list) {
+      // מיון לפי תחום ואז שם — כמו סדר האקסל (עמודת "באחריות")
+      list = list.slice().sort(function (a, b) {
+        var d = String(a.domain || 'תתת').localeCompare(String(b.domain || 'תתת'), 'he');
+        return d || String(a.name || '').localeCompare(String(b.name || ''), 'he');
+      });
+      var tot = { approved: 0, used: 0, planned: 0, balance: 0 };
+      var body = list.map(function (r) {
+        var m = Store.kkMoney(r), st = stDef(r.status);
+        tot.approved += m.approved; tot.used += m.used; tot.planned += m.planned; tot.balance += m.unplanned;
+        var dl = daysTo(r.deadline);
+        var dlStyle = '';
+        if (!isFunded(r) && dl !== null && dl >= 0 && dl <= 14) dlStyle = 'color:#b91c1c;font-weight:600;';
+        var tr = U.el('tr', { style: 'cursor:pointer;' }, [
+          U.el('td', null, [
+            U.el('strong', { text: r.name || '(ללא שם)' }),
+            r.funder ? U.el('div', { class: 'muted', style: 'font-size:12px;', text: r.funder }) : null
+          ].filter(Boolean)),
+          U.el('td', null, r.domain ? U.el('span', { class: 'tag', text: r.domain }) : U.el('span', { class: 'muted', text: '—' })),
+          U.el('td', null, U.el('span', { class: 'tag', style: 'background:' + st.color + '22;border-color:' + st.color + ';color:' + st.color + ';', text: st.label })),
+          U.el('td', { style: 'font-weight:600;', text: m.approved ? ils(m.approved) : '—' }),
+          U.el('td', { style: m.used ? 'color:#16a34a;' : '', text: m.used ? ils(m.used) : '—' }),
+          U.el('td', { style: m.planned ? 'color:#2563eb;' : '', text: m.planned ? ils(m.planned) : '—' }),
+          U.el('td', { style: isFunded(r) ? (m.unplanned > 0 ? 'color:#b91c1c;font-weight:600;' : 'color:#16a34a;') : '',
+                       text: isFunded(r) ? ils(m.unplanned) : '—' }),
+          U.el('td', { style: dlStyle, text: r.deadline ? U.gregLabel(r.deadline) + '/' + r.deadline.slice(2, 4) : '—' }),
+          U.el('td', { text: r.owner || '' })
+        ]);
+        tr.addEventListener('click', function () { selectedId = r.id; App.render(); });
+        return tr;
+      });
+      // שורת סיכום — כמו "סה"כ כסף" בסוף האקסל
+      body.push(U.el('tr', { style: 'background:var(--brand-light);font-weight:700;' }, [
+        U.el('td', { text: 'סה"כ' }), U.el('td'), U.el('td'),
+        U.el('td', { text: ils(tot.approved) }),
+        U.el('td', { text: ils(tot.used) }),
+        U.el('td', { text: ils(tot.planned) }),
+        U.el('td', { style: tot.balance > 0 ? 'color:#b91c1c;' : '', text: ils(tot.balance) }),
+        U.el('td'), U.el('td')
+      ]));
+      return U.el('div', { class: 'tbl-scroll' }, [U.el('table', { class: 'grid' }, [
+        U.el('thead', null, U.el('tr', null,
+          ['שם הקול הקורא', 'תחום', 'סטטוס', 'הקצבה', 'נוצל', 'מתוכנן', 'נותר ללא תכנון', 'הגשה עד', 'באחריות']
+            .map(function (h) { return U.el('th', { text: h }); }))),
+        U.el('tbody', null, body)
+      ])]);
+    }
+
+    view.appendChild(table(openRecs));
+    view.appendChild(U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:6px;', text: 'לחיצה על שורה פותחת את הפירוט המלא של הקול הקורא' }));
+
+    if (doneRecs.length) {
+      view.appendChild(U.el('button', {
+        class: 'btn secondary', style: 'margin-top:14px;',
+        text: (showClosed ? '▾ ' : '▸ ') + 'סגורים ולא רלוונטיים (' + doneRecs.length + ')',
+        onclick: function () { showClosed = !showClosed; App.render(); }
+      }));
+      if (showClosed) view.appendChild(table(doneRecs));
+    }
   }
 
   // ---------- תור אישור החשבוניות ----------
@@ -393,6 +497,11 @@
 
   // ---------- רינדור ראשי ----------
   function render(view) {
+    if (selectedId) {
+      var rec = Store.kkById(selectedId);
+      if (rec && !rec.deleted) { detail(view, rec); return; }
+      selectedId = null;
+    }
     var pendingCount = Store.kkPendingInvoices().length;
 
     view.appendChild(U.el('div', { class: 'page-head' }, [
@@ -405,7 +514,7 @@
     ]));
 
     view.appendChild(U.el('div', { class: 'subtabs', style: 'margin-bottom:14px;' }, [
-      U.el('button', { class: subTab === 'list' ? 'active' : '', text: '📣 קולות קוראים',
+      U.el('button', { class: subTab === 'list' ? 'active' : '', text: '📊 מבט על',
         onclick: function () { subTab = 'list'; App.render(); } }),
       U.el('button', { class: subTab === 'inbox' ? 'active' : '',
         html: '📥 אישור חשבוניות' + (pendingCount ? ' <span class="tab-badge">' + pendingCount + '</span>' : ''),
@@ -423,7 +532,7 @@
     }
 
     if (subTab === 'inbox') inbox(view);
-    else list(view);
+    else overview(view);
   }
 
   global.KkView = { render: render };
