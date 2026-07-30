@@ -270,7 +270,11 @@
       render();
       // נתוני אפליקציית התקציב (חשבוניות קולות קוראים) — ברקע, לא חוסמים את המסך
       if (roleKey() === 'admin' && Store.budgetLoad) {
-        Store.budgetLoad().then(function (st) { if (st) render(); });
+        Store.budgetLoad().then(function (st) {
+          if (!st) return;
+          Store.syncKkFromBudget();   // רשימת הקולות הקוראים מגיעה מהתקציב — בלי הזנה ידנית
+          render();
+        });
       }
     });
   }

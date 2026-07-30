@@ -288,6 +288,32 @@
     ]));
   }
 
+  // קטגוריות "קולות קוראים" שקיימות בתקציב ועדיין לא מנוהלות כאן.
+  // הסנכרון אוטומטי בטעינה — הכרטיס הזה הוא רשת ביטחון למקרה שמשהו לא נמשך.
+  function missingFromBudget() {
+    var linked = {};
+    Store.kkAll().forEach(function (r) { if (r.budgetSub) linked[r.budgetSub] = true; });
+    return Store.budgetKkSubs().filter(function (c) { return !linked[c.sub]; });
+  }
+  function syncCard() {
+    var missing = missingFromBudget();
+    if (!missing.length) return null;
+    return U.el('div', { class: 'card', style: 'margin-bottom:12px;border-inline-start:4px solid var(--brand);' }, [
+      U.el('div', { style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;' }, [
+        U.el('div', { style: 'flex:1;min-width:220px;' }, [
+          U.el('div', { style: 'font-weight:600;', text: '⬇️ ' + missing.length + ' קולות קוראים קיימים בתקציב ועדיין לא כאן' }),
+          U.el('div', { class: 'muted', style: 'font-size:13px;margin-top:2px;',
+            text: missing.map(function (c) { return c.sub; }).join(' · ') })
+        ]),
+        U.el('button', { class: 'btn', text: 'הוספת כולם', onclick: function () {
+          var n = Store.syncKkFromBudget();
+          U.toast(n + ' קולות קוראים נוספו מהתקציב');
+          App.render();
+        } })
+      ])
+    ]);
+  }
+
   // ---------- מבט על — שורה לכל קול קורא ----------
   function overview(view) {
     var recs = Store.kkAll();
@@ -322,8 +348,12 @@
       kpi('🏦', ils(totalApproved), 'סה"כ הקצבות השנה')
     ]));
 
+    var sync = syncCard();
+    if (sync) view.appendChild(sync);
+
     if (!recs.length) {
-      view.appendChild(U.el('div', { class: 'empty' }, 'אין עדיין קולות קוראים — הוסיפו את הראשון בכפתור למעלה'));
+      view.appendChild(U.el('div', { class: 'empty' },
+        'הרשימה נמשכת מאפליקציית ניהול התקציב. אם היא ריקה — נסו "רענון מהתקציב".'));
       return;
     }
 
@@ -508,9 +538,15 @@
       U.el('h2', { text: '📣 קולות קוראים' }),
       U.el('span', { class: 'spacer' }),
       U.el('button', { class: 'btn secondary', text: '🔄 רענון מהתקציב', onclick: function () {
-        Store.budgetLoad(true).then(function () { U.toast('הנתונים רועננו'); App.render(); });
+        Store.budgetLoad(true).then(function () {
+          var added = Store.syncKkFromBudget();
+          U.toast(added ? ('הנתונים רועננו · ' + added + ' קולות קוראים חדשים נוספו') : 'הנתונים רועננו');
+          App.render();
+        });
       } }),
-      U.el('button', { class: 'btn', text: '➕ קול קורא חדש', onclick: function () { openModal(null); } })
+      U.el('button', { class: 'btn', text: '➕ קול קורא חדש',
+        title: 'לקול קורא שעדיין לא קיים באפליקציית התקציב',
+        onclick: function () { openModal(null); } })
     ]));
 
     view.appendChild(U.el('div', { class: 'subtabs', style: 'margin-bottom:14px;' }, [
