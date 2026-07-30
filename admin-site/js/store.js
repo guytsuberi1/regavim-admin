@@ -127,6 +127,13 @@
       //          status:'פתוח'|'בתהליך'|'הושלם', due (ISO|''), notes,
       //          kind:'חד פעמי'|'קבוע', freq:'weekly'|'monthly'|'quarterly'|'yearly'|'',
       //          lastDoneAt, createdAt, updatedAt, deleted }
+      // קולות קוראים. רשומה: { id, num:'KK-001', name, funder, category, budgetSub (תת-קטגוריה
+      //   באפליקציית התקציב — מפתח החיבור), status, year, publishedAt, deadline, submittedAt,
+      //   approvedAt, amountFunder, amountSelf, spendDeadline, reportDate, reportStatus, owner,
+      //   planned:[{id,desc,supplier,amount,date,note}], docs:[{name,path,at}], note, createdAt, updatedAt, deleted }
+      // invoices — הכרעות על חשבוניות שהגיעו מאפליקציית התקציב:
+      //   { txId: { status:'approved'|'rejected', kkId, at, note } }
+      kk: { records: [], seq: 0, invoices: {}, meta: newMeta() },
       tasks: { records: [], seq: 0, meta: newMeta() },
       // פרויקטים. רשומה: { id, num, name, domain, owner, status:'תכנון'|'בביצוע'|'הושלם',
       //   budget (number), notes, items:[{ id, desc, contractor, cost (number|''),
@@ -199,6 +206,7 @@
     if (rowId === 'projects') return data.projects;
     if (rowId === 'recruit') return data.recruit;
     if (rowId === 'events') return data.events;
+    if (rowId === 'kk') return data.kk;
     var p = rowId.split(':');
     if (MONTH_KINDS[p[0]] && p[1]) return data[p[0]][p[1]] || null;
     return null;
@@ -209,11 +217,12 @@
     if (rowId === 'projects') { data.projects = obj; return; }
     if (rowId === 'recruit') { data.recruit = obj; return; }
     if (rowId === 'events') { data.events = obj; return; }
+    if (rowId === 'kk') { data.kk = obj; return; }
     var p = rowId.split(':');
     if (MONTH_KINDS[p[0]] && p[1]) data[p[0]][p[1]] = obj;
   }
   function allRowIds() {
-    var ids = ['core', 'tasks', 'projects', 'recruit', 'events'];
+    var ids = ['core', 'tasks', 'projects', 'recruit', 'events', 'kk'];
     Object.keys(MONTH_KINDS).forEach(function (kind) {
       Object.keys(data[kind] || {}).forEach(function (m) { ids.push(kind + ':' + m); });
     });
@@ -367,12 +376,13 @@
     var local = rowGet(rowId);
     var p = rowId.split(':');
 
-    if (rowId === 'tasks' || rowId === 'projects' || rowId === 'events') {
+    if (rowId === 'tasks' || rowId === 'projects' || rowId === 'events' || rowId === 'kk') {
       var mt = {
         records: mergeRecords(local && local.records, incoming.records),
         seq: Math.max((local && local.seq) || 0, incoming.seq || 0),
         meta: metaTs(local) >= metaTs(incoming) ? (local && local.meta) || incoming.meta : incoming.meta
       };
+      if (rowId === 'kk') mt.invoices = mergeKeyed(local && local.invoices, incoming.invoices);
       if (jsonEq(mt, local)) return false;
       rowSet(rowId, mt);
       if (!jsonEq(mt, incoming)) scheduleCloudSave(rowId);
@@ -689,6 +699,122 @@
     for (var i = 0; i < arr.length; i++) if (arr[i].id === id) { arr[i] = { id: id, deleted: true, updatedAt: nowISO() }; break; }
     save('projects');
   }
+  // ---------- קולות קוראים ----------
+  function knum(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+  function kkAll() {
+    return (data.kk.records || []).filter(function (r) { return !r.deleted; });
+  }
+  function kkById(id) {
+    return (data.kk.records || []).filter(function (r) { return r.id === id; })[0] || null;
+  }
+  function nextKkNum() {
+    data.kk.seq = (data.kk.seq || 0) + 1;
+    return 'KK-' + String(data.kk.seq).padStart(3, '0');
+  }
+  function upsertKk(rec) {
+    if (!rec.id) { rec.id = uid(); rec.num = rec.num || nextKkNum(); rec.createdAt = nowISO(); }
+    if (!rec.planned) rec.planned = [];
+    if (!rec.docs) rec.docs = [];
+    rec.updatedAt = nowISO();
+    var arr = data.kk.records, found = false;
+    for (var i = 0; i < arr.length; i++) if (arr[i].id === rec.id) { arr[i] = rec; found = true; break; }
+    if (!found) arr.push(rec);
+    save('kk');
+    return rec;
+  }
+  function deleteKk(id) {
+    var arr = data.kk.records;
+    for (var i = 0; i < arr.length; i++) if (arr[i].id === id) { arr[i] = { id: id, deleted: true, updatedAt: nowISO() }; break; }
+    save('kk');
+  }
+  // הכרעות על חשבוניות שהגיעו מאפליקציית התקציב
+  function kkInvoiceDecisions() { return data.kk.invoices || (data.kk.invoices = {}); }
+  function setKkInvoiceDecision(txId, patch) {
+    var map = kkInvoiceDecisions();
+    map[txId] = Object.assign({}, map[txId] || {}, patch, { at: nowISO() });
+    save('kk');
+    return map[txId];
+  }
+
+  // ---------- גשר לאפליקציית ניהול התקציב (אותו פרויקט Supabase, טבלת app_state) ----------
+  var BUDGET_TABLE = 'app_state';
+  var KK_MAIN = 'קולות קוראים';   // הקטגוריה הראשית באפליקציית התקציב
+  var budgetCache = null;         // { at, state }
+  var budgetError = '';
+
+  function budgetLoad(force) {
+    if (!sb) return Promise.resolve(null);
+    if (!force && budgetCache && (Date.now() - budgetCache.at) < 60000) return Promise.resolve(budgetCache.state);
+    return sb.from(BUDGET_TABLE).select('data').eq('id', 'main').maybeSingle().then(function (res) {
+      if (res.error) { budgetError = res.error.message; return null; }
+      budgetError = '';
+      var st = res.data && res.data.data;
+      budgetCache = { at: Date.now(), state: st || null };
+      return budgetCache.state;
+    }, function (e) { budgetError = (e && e.message) || 'שגיאת רשת'; return null; });
+  }
+  function budgetLoadError() { return budgetError; }
+  function budgetState() { return budgetCache && budgetCache.state; }
+  // תתי-הקטגוריות תחת "קולות קוראים" — מפתח החיבור בין שתי האפליקציות
+  function budgetKkSubs() {
+    var st = budgetState();
+    if (!st || !st.categories) return [];
+    return st.categories.filter(function (c) { return c.main === KK_MAIN; })
+      .map(function (c) { return { sub: c.sub, annualBudget: knum(c.annualBudget) }; });
+  }
+  // כל החשבוניות שסווגו לקול קורא כלשהו
+  function budgetKkInvoices() {
+    var st = budgetState();
+    if (!st || !st.transactions) return [];
+    return st.transactions.filter(function (t) { return t && t.main === KK_MAIN; })
+      .map(function (t) {
+        return {
+          id: t.id, date: t.date || '', sub: t.sub || '', amount: knum(t.amount),
+          supplier: t.supplier || t.employee || '', invoiceNo: t.invoiceNo || '',
+          description: t.description || t.purpose || '', kind: t.kind || 'invoice'
+        };
+      })
+      .sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
+  }
+  // שנת הכספים של הישיבה (1/9–31/8) כפי שמוגדרת באפליקציית התקציב
+  function budgetFiscalYear() {
+    var st = budgetState();
+    return (st && st.fiscalYear) || { start: '', end: '' };
+  }
+
+  // חשבוניות ששויכו לקול קורא מסוים — לפי ההכרעה שלי, ואם אין — לפי הסיווג של המזכירה
+  function kkInvoicesFor(rec) {
+    var dec = kkInvoiceDecisions();
+    return budgetKkInvoices().filter(function (inv) {
+      var d = dec[inv.id];
+      if (d) return d.status === 'approved' && d.kkId === rec.id;
+      return false;   // ללא אישור מפורש — לא נספר כ"נוצל"
+    });
+  }
+  // חשבוניות שממתינות להכרעה שלי
+  function kkPendingInvoices() {
+    var dec = kkInvoiceDecisions();
+    return budgetKkInvoices().filter(function (inv) { return !dec[inv.id]; });
+  }
+  // תמונת הכסף של קול קורא: אושר · נוצל (מאושר) · מתוכנן · נותר ללא תכנון
+  function kkMoney(rec) {
+    var funder = knum(rec.amountFunder), self = knum(rec.amountSelf);
+    var approved = funder + self;
+    var used = 0;
+    kkInvoicesFor(rec).forEach(function (inv) { used += inv.amount; });
+    var planned = 0;
+    (rec.planned || []).forEach(function (p) { planned += knum(p.amount); });
+    var unplanned = approved - used - planned;
+    return {
+      funder: funder, self: self, approved: approved,
+      used: used, planned: planned,
+      unplanned: unplanned,                     // הכסף שאושר ואף אחד עוד לא חשב עליו
+      usedPct: approved ? Math.min(100, used / approved * 100) : 0,
+      plannedPct: approved ? Math.min(100, planned / approved * 100) : 0,
+      over: used + planned > approved           // חריגה
+    };
+  }
+
   // תקציב מול ניצול: נוצל = סכום עלויות תת-המשימות; מאזן = תקציב − נוצל
   function projectBudget(proj) {
     var budget = parseFloat(proj.budget) || 0;
@@ -1215,6 +1341,23 @@
     submissions: submissions,
     pendingCount: pendingCount,
     updateSubmission: updateSubmission,
+    // קולות קוראים
+    kkAll: kkAll,
+    kkById: kkById,
+    upsertKk: upsertKk,
+    deleteKk: deleteKk,
+    kkMoney: kkMoney,
+    kkInvoicesFor: kkInvoicesFor,
+    kkPendingInvoices: kkPendingInvoices,
+    kkInvoiceDecisions: kkInvoiceDecisions,
+    setKkInvoiceDecision: setKkInvoiceDecision,
+    // גשר לאפליקציית התקציב
+    budgetLoad: budgetLoad,
+    budgetState: budgetState,
+    budgetKkSubs: budgetKkSubs,
+    budgetKkInvoices: budgetKkInvoices,
+    budgetFiscalYear: budgetFiscalYear,
+    budgetLoadError: budgetLoadError,
     approvalFileUrl: approvalFileUrl,
     uploadApproval: uploadApproval,
     onSubmissions: onSubmissions,
