@@ -558,7 +558,12 @@
     var arr = row ? (row.records || []) : [];
     arr = arr.filter(function (r) { return !r.deleted; });
     if (filter) arr = arr.filter(filter);
-    return arr;
+    // סדר כרונולוגי — התאריך המוקדם ראשון. בלי זה השורות מוצגות לפי סדר ההזנה,
+    // ורשומה שנוספה מקומית קופצת לסוף גם אם התאריך שלה מוקדם.
+    // (המיון יציב, כך שרשומות בלי תאריך שומרות על סדרן.)
+    return arr.slice().sort(function (a, b) {
+      return String(a.date || a.fromDate || '').localeCompare(String(b.date || b.fromDate || ''));
+    });
   }
 
   // ---------- משימות (רשימה מתמשכת) ----------
