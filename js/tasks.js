@@ -45,21 +45,41 @@
   }
 
   // ---------- צבעי תגיות (תחום/אחראי) — צבע קבוע ועקבי לפי הטקסט ----------
+  // גוונים מרווחים על גלגל הצבעים (בהשראת פלטת Monday) — בלי ארבעה גוונים חמים דומים
   var CHIP_COLORS = [
-    ['#fee2e2', '#991b1b'], ['#ffedd5', '#9a3412'], ['#fef3c7', '#92400e'],
-    ['#ecfccb', '#3f6212'], ['#dcfce7', '#166534'], ['#cffafe', '#155e75'],
-    ['#dbeafe', '#1e40af'], ['#ede9fe', '#5b21b6'], ['#fce7f3', '#9d174d'],
-    ['#e2e8f0', '#334155']
+    ['#dbeafe', '#1e40af'],  // כחול
+    ['#dcfce7', '#166534'],  // ירוק
+    ['#ede9fe', '#5b21b6'],  // סגול
+    ['#ffedd5', '#9a3412'],  // כתום
+    ['#cffafe', '#155e75'],  // תכלת
+    ['#fce7f3', '#9d174d'],  // ורוד
+    ['#fef9c3', '#854d0e'],  // צהוב
+    ['#e0e7ff', '#3730a3'],  // אינדיגו
+    ['#d1fae5', '#065f46'],  // ירוק־ים
+    ['#fee2e2', '#991b1b'],  // אדום
+    ['#f3e8ff', '#6b21a8'],  // סגול בהיר
+    ['#e2e8f0', '#334155']   // אפור
   ];
-  function chipColor(str) {
-    var h = 0;
+  function hashOf(str) {
+    var h = 5381;
     str = String(str || '');
-    for (var i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 997;
-    return CHIP_COLORS[h % CHIP_COLORS.length];
+    for (var i = 0; i < str.length; i++) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0;
+    return h;
   }
-  function colorChip(text, prefix, extra) {
+  function chipColor(str) {
+    return CHIP_COLORS[hashOf(str) % CHIP_COLORS.length];
+  }
+  // צבע לאדם: לפי מיקומו ברשימת האחראים המוגדרת — כך שכל אחראי מקבל גוון שונה
+  // בוודאות, ולא לפי גיבוב שעלול לתת לשניים את אותו צבע.
+  function personColor(name) {
+    var list = (Store.settings().taskOwners || []);
+    var i = list.indexOf(name);
+    if (i === -1) return chipColor(name);
+    return CHIP_COLORS[i % CHIP_COLORS.length];
+  }
+  function colorChip(text, prefix, extra, isPerson) {
     if (!text) return null;
-    var c = chipColor(text);
+    var c = isPerson ? personColor(text) : chipColor(text);
     return U.el('span', {
       class: 'tag',
       style: 'font-size:12px;font-weight:600;background:' + c[0] + ';color:' + c[1] + ';border-color:' + c[1] + '44;' + (extra || ''),
@@ -318,7 +338,7 @@
       U.clear(wrap);
       var name = t.owner;
       if (name) {
-        var c = chipColor(name);
+        var c = personColor(name);
         wrap.appendChild(U.el('span', { class: 'm-owner', title: 'לחיצה לשינוי האחראי', onclick: edit }, [
           U.el('span', { class: 'm-avatar', style: 'background:' + c[1] + ';', text: initialsOf(name) }),
           U.el('span', { class: 'm-oname', text: name })
@@ -774,7 +794,7 @@
         card.appendChild(U.el('div', { style: 'font-weight:600;font-size:14px;margin-bottom:4px;', text: t.desc || '' }));
         var meta = U.el('div', { style: 'display:flex;flex-wrap:wrap;gap:4px;align-items:center;' }, [
           plainChip(t.domain),
-          colorChip(t.owner, '👤 '),
+          colorChip(t.owner, '👤 ', '', true),
           daysBadge(t),
           t.kind === 'קבוע' ? U.el('span', { title: 'קבועה · ' + freqLabel(t.freq), text: '🔁', style: 'font-size:12px;' }) : null
         ].filter(Boolean));
@@ -871,7 +891,7 @@
       var row = U.el('div', { style: 'display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer;border-bottom:1px solid var(--border,#eef1f4);' }, [
         priorityDot(t.priority),
         U.el('span', { style: 'font-weight:500;flex:1;min-width:0;', text: t.desc || '' }),
-        t.owner ? colorChip(t.owner, '👤 ') : null,
+        t.owner ? colorChip(t.owner, '👤 ', '', true) : null,
         daysBadge(t)
       ].filter(Boolean));
       row.addEventListener('click', function () { openModal(JSON.parse(JSON.stringify(t))); });
@@ -895,7 +915,7 @@
     grid.appendChild(dashCard('👥 עומס לפי אחראי', order.length ? order.map(function (o) {
       var d = byOwner[o];
       return U.el('div', { style: 'display:flex;align-items:center;gap:8px;padding:5px 0;' }, [
-        colorChip(o, '👤 ') || plainChip(o),
+        colorChip(o, '👤 ', '', true) || plainChip(o),
         U.el('span', { class: 'spacer' }),
         U.el('span', { class: 'tag', style: 'font-size:12px;', text: d.open + ' פתוחות' }),
         d.overdue ? U.el('span', { class: 'tag', style: 'font-size:12px;background:#fee2e2;color:#991b1b;', text: d.overdue + ' באיחור' }) : null
