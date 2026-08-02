@@ -10,7 +10,7 @@
       name.addEventListener('change', function () { st.name = name.value.trim(); Store.saveClasses(); });
       var note = U.el('input', { value: st.note || '', placeholder: 'רגישות / מידע רלוונטי', style: 'width:100%;padding:4px 6px;font-size:13px;color:var(--muted,#6b7884);' });
       note.addEventListener('change', function () { st.note = note.value.trim(); Store.saveClasses(); });
-      var del = U.el('button', { class: 'btn secondary', text: '🗑', title: 'הסרת תלמיד/ה', onclick: function () { c.students.splice(si, 1); Store.saveClasses(); App.render(); } });
+      var del = U.el('button', { class: 'btn secondary', html: U.ICO.trash, title: 'הסרת תלמיד/ה', onclick: function () { c.students.splice(si, 1); Store.saveClasses(); App.render(); } });
       return U.el('tr', null, [U.el('td', { style: 'min-width:150px;' }, [name]), U.el('td', { style: 'min-width:180px;' }, [note]), U.el('td', null, [del])]);
     }));
     var tbl = U.el('table', { class: 'grid', style: 'margin-top:4px;' }, [
@@ -48,7 +48,7 @@
       var name = U.el('input', { value: c.name || '', style: 'font-weight:700;font-size:17px;min-width:120px;padding:4px 6px;' });
       name.addEventListener('change', function () { c.name = name.value.trim(); Store.saveClasses(); });
       var count = U.el('span', { class: 'muted', style: 'font-size:12px;', text: ((c.students || []).length) + ' תלמידים' });
-      var del = U.el('button', { class: 'btn secondary ico', text: '🗑', title: 'מחיקת כיתה', onclick: function () {
+      var del = U.el('button', { class: 'btn secondary ico', html: U.ICO.trash, title: 'מחיקת כיתה', onclick: function () {
         Modal.confirm({ title: 'מחיקת כיתה', text: 'למחוק את הכיתה "' + (c.name || '') + '" וכל התלמידים בה?', okLabel: 'מחיקה', danger: true }, function () { s.classes.splice(idx, 1); Store.saveClasses(); App.render(); });
       } });
       view.appendChild(U.el('div', { class: 'card', style: 'max-width:760px;margin-bottom:14px;border-top:3px solid var(--primary,#2e7d32);' }, [

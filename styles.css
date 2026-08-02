@@ -154,6 +154,9 @@ main { padding: 18px; max-width: 1400px; margin: 0 auto; }
 .btn.small { padding: 0 10px; min-height: 26px; font-size: 13px; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 .btn.ico { gap: 0; }
+/* כפתור שמכיל אייקון בלבד — ריפוד מרובע במקום רוחב של כפתור טקסט */
+.btn:has(> svg:only-child) { padding: 0 8px; }
+.btn.small:has(> svg:only-child) { padding: 0 6px; }
 .btn.ico .wa-ico, .wa-ico { width: 17px; height: 17px; display: inline-block; vertical-align: -3px; }
 .xls-ico { width: 17px; height: 17px; display: inline-block; vertical-align: -3px; }
 
@@ -170,6 +173,30 @@ input:focus, select:focus, textarea:focus {
   outline: none; border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand);
 }
 label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 4px; }
+
+/* בוררי זמן/תאריך — האייקון המובנה של הדפדפן מוחלף באייקון קו בסגנון האפליקציה */
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator {
+  width: 16px; height: 16px; padding: 0; margin-inline-start: 4px;
+  background-repeat: no-repeat; background-size: 16px 16px; background-position: center;
+  opacity: .6; cursor: pointer; transition: opacity .12s ease;
+}
+input[type="time"]::-webkit-calendar-picker-indicator:hover,
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+input[type="month"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+input[type="time"]::-webkit-calendar-picker-indicator { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23676879%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%2F%3E%3Cpath%20d%3D%22M12%207.5V12l3%201.8%22%2F%3E%3C%2Fsvg%3E"); }
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23676879%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223%22%20y%3D%225%22%20width%3D%2218%22%20height%3D%2216%22%20rx%3D%222%22%2F%3E%3Cpath%20d%3D%22M3%2010h18M8%203v4M16%203v4%22%2F%3E%3C%2Fsvg%3E"); }
+
+body.dark input[type="time"]::-webkit-calendar-picker-indicator { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239aa6b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%2F%3E%3Cpath%20d%3D%22M12%207.5V12l3%201.8%22%2F%3E%3C%2Fsvg%3E"); }
+body.dark input[type="date"]::-webkit-calendar-picker-indicator,
+body.dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+body.dark input[type="month"]::-webkit-calendar-picker-indicator { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239aa6b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223%22%20y%3D%225%22%20width%3D%2218%22%20height%3D%2216%22%20rx%3D%222%22%2F%3E%3Cpath%20d%3D%22M3%2010h18M8%203v4M16%203v4%22%2F%3E%3C%2Fsvg%3E"); }
+
 .field { margin-bottom: 10px; }
 .row { display: flex; gap: 12px; flex-wrap: wrap; }
 .row > .field { flex: 1; min-width: 140px; }

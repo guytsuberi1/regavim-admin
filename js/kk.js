@@ -210,7 +210,7 @@
         U.el('td', null, stSel),
         U.el('td', null, inp('date', { type: 'date' })),
         U.el('td', null, inp('note', { placeholder: 'צורך / הערה' })),
-        U.el('td', null, U.el('button', { class: 'btn secondary small', text: '🗑', title: 'מחיקה', onclick: function () {
+        U.el('td', null, U.el('button', { class: 'btn secondary small', html: U.ICO.trash, title: 'מחיקה', onclick: function () {
           rec.planned = rec.planned.filter(function (x) { return x.id !== p.id; });
           saveRec();
         } }))
@@ -274,7 +274,7 @@
     if (rec.note) view.appendChild(U.el('div', { class: 'card' }, [U.el('div', { class: 'muted', text: rec.note })]));
 
     view.appendChild(U.el('div', { style: 'margin-top:14px;' }, [
-      U.el('button', { class: 'btn secondary small', text: '🗑 מחיקת הקול הקורא', onclick: function () {
+      U.el('button', { class: 'btn secondary small', html: U.ICO.trash + ' מחיקת הקול הקורא', onclick: function () {
         Modal.confirm({ title: 'מחיקה', text: 'למחוק את "' + rec.name + '"?', okLabel: 'מחיקה', danger: true }, function () {
           Store.deleteKk(rec.id); selectedId = null; App.render();
         });

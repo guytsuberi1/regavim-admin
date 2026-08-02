@@ -275,9 +275,22 @@
     });
   }
 
+  // אייקוני קו משותפים (בסגנון Monday) — מחליפים אימוג'י בכפתורי פעולה
+  function icoSvg(inner) {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" '
+      + 'stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;display:block;">'
+      + inner + '</svg>';
+  }
+  var ICO = {
+    trash: icoSvg('<path d="M3 6h18"/><path d="M8 6V4.5A1.5 1.5 0 0 1 9.5 3h5A1.5 1.5 0 0 1 16 4.5V6"/>'
+      + '<path d="M18.5 6l-.9 13a2 2 0 0 1-2 1.9H8.4a2 2 0 0 1-2-1.9L5.5 6"/>'
+      + '<path d="M10 10.5v6M14 10.5v6"/>'),
+    edit: icoSvg('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>')
+  };
+
   global.U = {
     el: el, clear: clear, $: $, $all: $all,
-    dataListInput: dataListInput, shrinkImage: shrinkImage,
+    dataListInput: dataListInput, shrinkImage: shrinkImage, ICO: ICO,
     todayISO: todayISO, toISO: toISO, fromISO: fromISO, addDays: addDays,
     weekdayName: weekdayName, WEEKDAYS: WEEKDAYS,
     hebrewDate: hebrewDate, gregLabel: gregLabel,

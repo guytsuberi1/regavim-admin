@@ -276,7 +276,7 @@
           U.el('td', { class: 'center' }, inpCheck(c, 'hasGrapho', saveCand)),
           U.el('td', null, inpText(c, 'impression', saveCand, 'התרשמות…')),
           U.el('td', null, inpText(c, 'familyStatus', saveCand, 'רווק/נשוי…', 'max-width:90px;')),
-          U.el('td', null, U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקה', onclick: function () {
+          U.el('td', null, U.el('button', { class: 'btn secondary', html: U.ICO.trash, title: 'מחיקה', onclick: function () {
             Modal.confirm({ title: 'מחיקת מועמד', text: 'למחוק את "' + (c.name || '') + '"?', okLabel: 'מחיקה', danger: true },
               function () { Store.deleteCandidate(c.id); App.render(); });
           } }))
@@ -471,7 +471,7 @@
           U.el('td', null, filledBySelect(p)),
           U.el('td', null, [flyerSel]),
           candCell,
-          U.el('td', null, U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקה', onclick: function () {
+          U.el('td', null, U.el('button', { class: 'btn secondary', html: U.ICO.trash, title: 'מחיקה', onclick: function () {
             Modal.confirm({ title: 'מחיקת משרה', text: 'למחוק את המשרה "' + (p.title || '') + '"?', okLabel: 'מחיקה', danger: true },
               function () { Store.deletePosition(p.id); App.render(); });
           } }))
