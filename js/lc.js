@@ -116,6 +116,13 @@
             U.el('td', null, [
               U.el('button', { class: 'btn secondary', text: '✏️', title: 'עריכה', onclick: function () { openRecModal(month, selectedEmpId, JSON.parse(JSON.stringify(r))); } }),
               ' ',
+              U.el('button', { class: 'btn secondary', text: '⧉', title: 'שכפול השורה', onclick: function () {
+                // עותק בלי id — נשמר כשורה חדשה. נפתח לעריכה כדי לשנות תאריך.
+                var copy = JSON.parse(JSON.stringify(r));
+                delete copy.id; delete copy.updatedAt; delete copy.by;
+                openRecModal(month, selectedEmpId, copy);
+              } }),
+              ' ',
               U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקה', onclick: function () {
                 Modal.confirm({ title: 'מחיקת שורה', text: 'למחוק את שורת התגבור?', okLabel: 'מחיקה', danger: true }, function () {
                   Store.deleteRecord('lc', month, r.id);
