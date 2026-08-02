@@ -37,11 +37,14 @@
     });
     return w;
   }
+  // בורר סטטוס כגלולה צבעונית מלאה — אותה קומפוננטה כמו בגיליון המשימות (Monday)
   function pSelect(obj, field, opts, onSave) {
-    var sel = U.el('select', { style: 'padding:4px 6px;border-color:' + stColor(opts, obj[field]) + ';' },
+    var sel = U.el('select', { class: 'm-status' },
       opts.map(function (o) { return U.el('option', { value: o.key, text: o.key }); }));
     sel.value = obj[field] || opts[0].key;
-    sel.addEventListener('change', function () { obj[field] = sel.value; onSave(); });
+    function paint() { sel.style.background = stColor(opts, sel.value); }
+    paint();
+    sel.addEventListener('change', function () { obj[field] = sel.value; paint(); onSave(); });
     return sel;
   }
   function pNumber(p, obj, field, ph, onChange) {
@@ -221,7 +224,7 @@
   function projectCard(p) {
     var owners = Store.settings().taskOwners || [];
     var cardCollapsed = !!collapsedMap[p.id];
-    var card = U.el('div', { class: 'card', style: 'margin-bottom:16px;border-top:4px solid ' + stColor(PSTATUS, p.status) + ';' });
+    var card = U.el('div', { class: 'card m-card', style: 'margin-bottom:12px;' });
 
     // כפתור כיווץ/פתיחה של כל הכרטיס (לכל פרויקט בנפרד)
     var chevron = U.el('button', { class: 'btn secondary ico', title: cardCollapsed ? 'פתיחת הפרויקט' : 'כיווץ הפרויקט',
@@ -232,15 +235,15 @@
     var nameInp = transp(U.el('input', { value: p.name || '', placeholder: 'שם הפרויקט', style: 'font-size:19px;font-weight:700;min-width:160px;flex:1;' }));
     nameInp.addEventListener('change', function () { p.name = nameInp.value.trim(); saveProj(p); });
     var statusSel = pSelect(p, 'status', PSTATUS, function () { if (p.status === 'הושלם') p.archived = true; saveProj(p); App.render(); });
-    statusSel.style.cssText += 'border-radius:16px;font-weight:600;';
     var actionBtns = [];
     if (p.archived) {
       actionBtns.push(U.el('button', { class: 'btn secondary ico', text: '↩️', title: 'שחזור מהארכיון', onclick: function () { p.archived = false; saveProj(p); App.render(); } }));
     } else {
       actionBtns.push(U.el('button', { class: 'btn secondary ico', text: '📦', title: 'העברה לארכיון', onclick: function () { p.archived = true; saveProj(p); App.render(); } }));
     }
+    var statusDot = U.el('span', { class: 'm-cdot', style: 'background:' + stColor(PSTATUS, p.status) + ';', title: p.status || '' });
     card.appendChild(U.el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;' },
-      [chevron, numPill, nameInp, U.el('span', { class: 'spacer' }), statusSel].concat(actionBtns)));
+      [chevron, statusDot, numPill, nameInp, U.el('span', { class: 'spacer' }), statusSel].concat(actionBtns)));
 
     // כשמכווץ — תקציר בשורה אחת בלבד
     if (cardCollapsed) {

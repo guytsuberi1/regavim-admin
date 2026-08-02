@@ -66,11 +66,14 @@
     i.addEventListener('change', function () { obj[field] = i.value.trim(); saveEv(ev); });
     return i;
   }
+  // בורר סטטוס כגלולה צבעונית מלאה — אותה קומפוננטה כמו בגיליון המשימות (Monday)
   function eSelect(obj, field, opts, onSave) {
-    var sel = U.el('select', { style: 'padding:4px 6px;border-color:' + stColor(opts, obj[field]) + ';' },
+    var sel = U.el('select', { class: 'm-status' },
       opts.map(function (o) { return U.el('option', { value: o.key, text: o.key }); }));
     sel.value = obj[field] || opts[0].key;
-    sel.addEventListener('change', function () { obj[field] = sel.value; sel.style.borderColor = stColor(opts, sel.value); onSave(); });
+    function paint() { sel.style.background = stColor(opts, sel.value); }
+    paint();
+    sel.addEventListener('change', function () { obj[field] = sel.value; paint(); onSave(); });
     return sel;
   }
   // ---------- לו"ז (ציר זמן, גרירה לסידור) ----------
@@ -604,7 +607,7 @@
   // ---------- כרטיס אירוע ----------
   function eventCard(ev) {
     var cardCollapsed = !!collapsedMap['card:' + ev.id];
-    var card = U.el('div', { class: 'card', style: 'margin-bottom:16px;border-top:4px solid ' + stColor(ESTATUS, ev.status) + ';' });
+    var card = U.el('div', { class: 'card m-card', style: 'margin-bottom:12px;' });
 
     // כפתור כיווץ/פתיחה של כל האירוע (לכל אירוע בנפרד)
     var chevron = U.el('button', { class: 'btn secondary ico', title: cardCollapsed ? 'פתיחת האירוע' : 'כיווץ האירוע',
@@ -614,7 +617,6 @@
     var nameInp = transp(U.el('input', { value: ev.title || '', placeholder: 'שם האירוע', style: 'font-size:19px;font-weight:700;min-width:160px;flex:1;' }));
     nameInp.addEventListener('change', function () { ev.title = nameInp.value.trim(); saveEv(ev); });
     var statusSel = eSelect(ev, 'status', ESTATUS, function () { saveEv(ev); App.render(); });
-    statusSel.style.cssText += 'border-radius:16px;font-weight:600;';
     var actionBtns = [];
     if (ev.archived) {
       actionBtns.push(U.el('button', { class: 'btn secondary ico', text: '↩️', title: 'שחזור מהארכיון', onclick: function () { ev.archived = false; saveEv(ev); App.render(); } }));
@@ -625,7 +627,10 @@
       actionBtns.push(U.el('button', { class: 'btn secondary ico', text: '📦', title: 'העברה לארכיון', onclick: function () { ev.archived = true; saveEv(ev); App.render(); } }));
     }
     card.appendChild(U.el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;' },
-      [chevron, numPill, U.el('span', { class: 'tag', text: typeLabel(ev.type) }), nameInp, U.el('span', { class: 'spacer' }), statusSel].concat(actionBtns)));
+      [chevron,
+       U.el('span', { class: 'm-cdot', style: 'background:' + stColor(ESTATUS, ev.status) + ';', title: ev.status || '' }),
+       numPill, U.el('span', { class: 'tag', text: typeLabel(ev.type) }), nameInp,
+       U.el('span', { class: 'spacer' }), statusSel].concat(actionBtns)));
 
     // כשמכווץ — תקציר בשורה אחת בלבד
     if (cardCollapsed) {
