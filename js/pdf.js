@@ -21,6 +21,15 @@
   }
 
   // ---------- מקטעים ----------
+  // בלוק חתימה — שם המנהלן + חתימה סרוקה (SIGN_IMG מוגדר ב-sign.js)
+  function signBlock() {
+    var s = Store.settings();
+    var img = global.SIGN_IMG
+      ? '<img class="sign-img" src="' + global.SIGN_IMG + '" alt="חתימה">'
+      : '<span class="sign-line">____________</span>';
+    return '<div class="sign">חתימת המנהל: <b>' + esc(s.managerName) + '</b>' + img + '</div>';
+  }
+
   function lcSection(month) {
     var s = Store.settings();
     var recs = Store.records('lc', month);
@@ -44,7 +53,7 @@
       if (travelPay) h += ' · נסיעות: ' + t.km + ' ק"מ × ' + t.days + ' ימים × ' + s.kmRate + ' ₪ = <b>' + money(travelPay) + '</b>';
       h += ' · סה"כ לתשלום: <b class="grand">' + money(hours * s.hourlyRate + travelPay) + '</b></div></div>';
     });
-    h += '<div class="sign">חתימת המנהל: ' + esc(s.managerName) + ' ____________</div></section>';
+    h += signBlock() + '</section>';
     return h;
   }
 
@@ -65,7 +74,7 @@
       }));
       h += '<div class="tot">סה"כ שעות מילוי מקום: <b>' + hours + '</b></div></div>';
     });
-    h += '<div class="sign">חתימת המנהל: ' + esc(s.managerName) + ' ____________</div></section>';
+    h += signBlock() + '</section>';
     return h;
   }
 
@@ -107,11 +116,11 @@
     }
     if (!parts.length) return '';
     return '<section class="page"><h2>🪖 סיכום היעדרויות וגמולים — ' + esc(U.monthLabel(month)) + '</h2>'
-      + parts.join('') + '<div class="sign">חתימת המנהל: ' + esc(s.managerName) + ' ____________</div></section>';
+      + parts.join('') + signBlock() + '</section>';
   }
 
   // עמוד שער: סיכום פר עובד — מה יש עליו בחבילה
-  function coverSection(month, included) {
+  function coverSection(month, included, summaryOnly) {
     var s = Store.settings();
     var perEmp = {}; // name → {lc, sub, absence, work, travel, trip, pay}
     function entry(name) { return perEmp[name] = perEmp[name] || { parts: [], pay: 0 }; }
@@ -149,13 +158,16 @@
     }
 
     var names = Object.keys(perEmp).sort(function (a, b) { return a.localeCompare(b, 'he'); });
-    var h = '<section class="page cover"><div class="cover-head">'
-      + '<h1>חבילת דוחות שכר</h1>'
-      + '<div class="cover-sub">' + esc(s.orgName) + ' · ' + esc(U.monthLabel(month)) + '</div>'
-      + '<div class="cover-meta">הופק: ' + new Date().toLocaleDateString('he-IL') + ' · מגיש: ' + esc(s.managerName) + '</div>'
-      + '</div>';
+    // עמוד השער נשאר ראשון; הסיכום לפי עובד עובר לסוף החבילה (summaryOnly)
+    var h = summaryOnly ? '<section class="page">'
+      : ('<section class="page cover"><div class="cover-head">'
+        + '<h1>חבילת דוחות שכר</h1>'
+        + '<div class="cover-sub">' + esc(s.orgName) + ' · ' + esc(U.monthLabel(month)) + '</div>'
+        + '<div class="cover-meta">הופק: ' + new Date().toLocaleDateString('he-IL') + ' · מגיש: ' + esc(s.managerName) + '</div>'
+        + '</div>');
+    if (!summaryOnly) return h + '</section>';
     if (names.length) {
-      h += '<h3>סיכום לפי עובד</h3>' + table(['עובד', 'רכיבים בחבילה', 'תשלום מחושב'], names.map(function (n) {
+      h += '<h2>סיכום לפי עובד</h2>' + table(['עובד', 'רכיבים בחבילה', 'תשלום מחושב'], names.map(function (n) {
         var e = perEmp[n];
         return [esc(n), e.parts.map(esc).join('<br>'), e.pay ? money(e.pay) : '—'];
       }));
@@ -163,14 +175,15 @@
     } else {
       h += '<p>אין נתונים לחודש זה.</p>';
     }
-    return h + '</section>';
+    return h + signBlock() + '</section>';
   }
 
   function buildHtml(month, included) {
-    var body = coverSection(month, included);
+    var body = coverSection(month, included);          // עמוד שער
     if (included.lc) body += lcSection(month);
     if (included.sub) body += subSection(month);
     if (included.abs) body += absSection(month);
+    body += coverSection(month, included, true);        // סיכום לפי עובד — בסוף
     return '<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="utf-8">'
       + '<title>דוחות שכר ' + esc(month) + ' — ' + esc(Store.settings().orgName) + '</title>'
       + '<style>'
@@ -187,7 +200,9 @@
       + 'th,td{border:1px solid #cbd5e1;padding:5px 8px;text-align:right;vertical-align:top;}'
       + 'th{background:#f1f5f9;font-weight:600;} tr:nth-child(even) td{background:#fafafa;}'
       + '.tot{margin:6px 0 2px;font-size:14px;} .grand{font-size:15px;}'
-      + '.sign{margin-top:26px;font-size:14px;} .muted{color:#666;font-size:12px;}'
+      + '.sign{margin-top:26px;font-size:14px;display:flex;align-items:center;gap:10px;}'
+      + '.sign-img{height:56px;width:auto;mix-blend-mode:multiply;}'
+      + '.muted{color:#666;font-size:12px;}'
       + '@media print{body{background:#fff;} .bar{display:none;} section.page{box-shadow:none;margin:0;max-width:none;page-break-after:always;padding:12mm 10mm;}}'
       + '</style></head><body>'
       + '<div class="bar"><button onclick="window.print()">🖨️ הדפסה / שמירה כ-PDF</button>'
