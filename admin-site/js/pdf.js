@@ -158,14 +158,15 @@
     }
 
     var names = Object.keys(perEmp).sort(function (a, b) { return a.localeCompare(b, 'he'); });
-    // עמוד השער נשאר ראשון; הסיכום לפי עובד עובר לסוף החבילה (summaryOnly)
-    var h = summaryOnly ? '<section class="page">'
-      : ('<section class="page cover"><div class="cover-head">'
+    // הכותרת אינה עמוד נפרד — היא נכנסת לראש העמוד של הדוח הראשון (ראו buildHtml)
+    if (!summaryOnly) {
+      return '<div class="cover-head">'
         + '<h1>חבילת דוחות שכר</h1>'
         + '<div class="cover-sub">' + esc(s.orgName) + ' · ' + esc(U.monthLabel(month)) + '</div>'
         + '<div class="cover-meta">הופק: ' + new Date().toLocaleDateString('he-IL') + ' · מגיש: ' + esc(s.managerName) + '</div>'
-        + '</div>');
-    if (!summaryOnly) return h + '</section>';
+        + '</div>';
+    }
+    var h = '<section class="page">';
     if (names.length) {
       h += '<h2>סיכום לפי עובד</h2>' + table(['עובד', 'רכיבים בחבילה', 'תשלום מחושב'], names.map(function (n) {
         var e = perEmp[n];
@@ -179,11 +180,13 @@
   }
 
   function buildHtml(month, included) {
-    var body = coverSection(month, included);          // עמוד שער
+    var body = '';
     if (included.lc) body += lcSection(month);
     if (included.sub) body += subSection(month);
     if (included.abs) body += absSection(month);
     body += coverSection(month, included, true);        // סיכום לפי עובד — בסוף
+    // הכותרת נכנסת לתוך העמוד הראשון ולא תופסת דף משלה
+    body = body.replace('<section class="page">', '<section class="page">' + coverSection(month, included));
     return '<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="utf-8">'
       + '<title>דוחות שכר ' + esc(month) + ' — ' + esc(Store.settings().orgName) + '</title>'
       + '<style>'
@@ -194,7 +197,8 @@
       + 'section.page{background:#fff;max-width:900px;margin:16px auto;padding:28px 32px;box-shadow:0 1px 4px rgba(0,0,0,.15);}'
       + 'h1{margin:0;font-size:30px;} h2{font-size:22px;border-bottom:2px solid #0f172a;padding-bottom:6px;margin-top:0;}'
       + 'h3{font-size:16px;margin:18px 0 6px;} .block{margin-bottom:18px;page-break-inside:avoid;}'
-      + '.cover-head{text-align:center;margin-bottom:24px;} .cover-sub{font-size:18px;margin-top:6px;}'
+      + '.cover-head{text-align:center;margin:0 0 18px;padding-bottom:12px;border-bottom:3px double #0f172a;}'
+      + '.cover-head h1{font-size:26px;} .cover-sub{font-size:17px;margin-top:4px;}'
       + '.cover-meta{color:#555;font-size:13px;margin-top:4px;}'
       + 'table{width:100%;border-collapse:collapse;font-size:13px;margin:6px 0;}'
       + 'th,td{border:1px solid #cbd5e1;padding:5px 8px;text-align:right;vertical-align:top;}'
