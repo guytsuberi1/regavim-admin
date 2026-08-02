@@ -300,14 +300,16 @@
         if (c && c.status !== st.key) setStatus(c, st.key);
       });
       items.forEach(function (c) {
-        var card = U.el('div', { class: 'kb-card', draggable: 'true', style: 'border-inline-start:4px solid ' + stColor(c.status) + ';' });
+        // כרטיס Monday: לבן ונקי, הסטטוס בנקודה קטנה — כמו בקנבן המשימות
+        var card = U.el('div', { class: 'kb-card', draggable: 'true' });
         card.addEventListener('dragstart', function (e) { e.dataTransfer.setData('text/plain', c.id); card.classList.add('kb-drag'); });
         card.addEventListener('dragend', function () { card.classList.remove('kb-drag'); });
-        card.appendChild(U.el('div', { style: 'display:flex;align-items:center;gap:6px;' }, [
-          U.el('span', { style: 'font-weight:600;font-size:14px;', text: c.name || '' }),
+        card.appendChild(U.el('div', { class: 'kb-title' }, [
+          U.el('span', { class: 'kb-dot', style: 'background:' + stColor(c.status) + ';', title: c.status || '' }),
+          U.el('span', { text: c.name || '' }),
           convertedBadge(c)
         ].filter(Boolean)));
-        card.appendChild(U.el('div', { style: 'display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:4px;' }, [
+        card.appendChild(U.el('div', { style: 'display:flex;flex-wrap:wrap;gap:4px;align-items:center;' }, [
           c.target ? U.el('span', { class: 'tag', text: c.target }) : null,
           c.interviewer ? U.el('span', { class: 'muted', style: 'font-size:12px;', text: '🎤 ' + c.interviewer }) : null,
           c.hasCv ? U.el('span', { title: 'קורות חיים התקבלו', text: '📄', style: 'font-size:12px;' }) : null
@@ -317,8 +319,9 @@
       });
       if (!items.length) body.appendChild(U.el('div', { class: 'muted', style: 'text-align:center;padding:16px 0;font-size:13px;', text: 'ריק' }));
       return U.el('div', { class: 'kb-col' }, [
-        U.el('div', { class: 'kb-head', style: 'border-top:3px solid ' + st.color + ';' }, [
-          U.el('span', { text: st.key }),
+        U.el('div', { class: 'kb-head' }, [
+          U.el('span', { class: 'kb-hdot', style: 'background:' + st.color + ';' }),
+          U.el('span', { class: 'kb-hname', text: st.key }),
           U.el('span', { class: 'kb-count', text: String(items.length) })
         ]),
         body
