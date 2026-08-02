@@ -137,28 +137,39 @@ main { padding: 18px; max-width: 1400px; margin: 0 auto; }
 .spacer { flex: 1; }
 
 /* ---------- כפתורים ---------- */
+/* כפתור בסגנון Monday: גובה קבוע 32px, radius 4, בלי צל, מעבר עדין */
 .btn {
-  background: var(--brand); color: #fff; border: 0; padding: 8px 14px;
-  border-radius: 8px; cursor: pointer; font-size: 14px; font-family: inherit;
-  display: inline-flex; align-items: center; gap: 6px; transition: filter .15s;
+  background: var(--brand); color: #fff; border: 1px solid var(--brand);
+  padding: 0 16px; min-height: 32px; border-radius: var(--r-s, 4px);
+  cursor: pointer; font-size: 14px; font-weight: 500; font-family: inherit;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  transition: background .12s ease, border-color .12s ease, color .12s ease;
 }
-.btn:hover { filter: brightness(1.08); }
-.btn.secondary { background: #fff; color: var(--brand-dark); border: 1px solid var(--border); }
-.btn.accent { background: var(--accent); color: #fff; }
-.btn.danger { background: #fff; color: var(--danger); border: 1px solid var(--danger); }
-.btn.small { padding: 4px 9px; font-size: 13px; }
+.btn:hover { background: var(--brand-dark); border-color: var(--brand-dark); filter: none; }
+.btn.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+.btn.secondary:hover { background: transparent; border-color: var(--brand); color: var(--brand); }
+.btn.accent { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+.btn.danger:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn.small { padding: 0 10px; min-height: 26px; font-size: 13px; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 .btn.ico { gap: 0; }
 .btn.ico .wa-ico, .wa-ico { width: 17px; height: 17px; display: inline-block; vertical-align: -3px; }
 .xls-ico { width: 17px; height: 17px; display: inline-block; vertical-align: -3px; }
 
 /* ---------- טפסים ---------- */
+/* שדות בסגנון Monday: radius 4, מסגרת דקה, פוקוס במסגרת כחולה בלי הילה עבה */
 input, select, textarea {
-  font-family: inherit; font-size: 14px; padding: 7px 9px;
-  border: 1px solid var(--border); border-radius: 7px; background: #fff; color: var(--text);
+  font-family: inherit; font-size: 14px; padding: 7px 10px;
+  border: 1px solid var(--border); border-radius: var(--r-s, 4px);
+  background: #fff; color: var(--text);
+  transition: border-color .12s ease, box-shadow .12s ease;
 }
-input:focus, select:focus, textarea:focus { outline: 2px solid var(--brand-light); border-color: var(--brand); }
-label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 3px; }
+input:hover, select:hover, textarea:hover { border-color: #c3c6d4; }
+input:focus, select:focus, textarea:focus {
+  outline: none; border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand);
+}
+label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 4px; }
 .field { margin-bottom: 10px; }
 .row { display: flex; gap: 12px; flex-wrap: wrap; }
 .row > .field { flex: 1; min-width: 140px; }
@@ -211,12 +222,19 @@ table.grid td.actions { white-space: nowrap; text-align: left; }
 .m-cdot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
 
 /* ---------- תת-טאבים ---------- */
-.subtabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
-.subtabs button { background: #fff; border: 1px solid var(--border); padding: 7px 14px; border-radius: 20px; cursor: pointer; font-family: inherit; font-size: 14px; color: var(--text); }
-.subtabs button.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+/* תת-טאבים בסגנון Monday: טקסט נקי עם קו תחתון לפעיל, בלי גלולות */
+.subtabs { display: flex; gap: 4px; margin-bottom: 14px; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
+.subtabs button {
+  background: transparent; border: 0; border-bottom: 2px solid transparent;
+  padding: 8px 12px; margin-bottom: -1px; cursor: pointer; font-family: inherit;
+  font-size: 14px; font-weight: 500; color: var(--muted); border-radius: 0;
+  transition: color .12s ease, border-color .12s ease;
+}
+.subtabs button:hover { color: var(--text); }
+.subtabs button.active { background: transparent; color: var(--brand); border-bottom-color: var(--brand); font-weight: 600; }
 
 /* ---------- תגים וצ'יפים ---------- */
-.tag { display: inline-block; background: var(--brand-light); color: var(--brand-dark); border-radius: 10px; padding: 1px 8px; font-size: 12px; }
+.tag { display: inline-block; background: var(--brand-light); color: var(--brand-dark); border-radius: var(--r-s, 4px); padding: 2px 8px; font-size: 12px; font-weight: 500; }
 .grade-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 21px; padding: 0 6px; border-radius: 6px; font-size: 12px; font-weight: 800; color: #fff; flex: 0 0 auto; }
 .grade-badge.gb0 { background: #2563eb; }
 .grade-badge.gb1 { background: #16a34a; }
@@ -301,9 +319,9 @@ table.grid td.actions { white-space: nowrap; text-align: left; }
 
 /* ---------- מודאל ---------- */
 .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 100; }
-.modal { background: #fff; border-radius: var(--radius); box-shadow: 0 10px 40px rgba(0,0,0,.3); width: min(560px, 92vw); max-height: 88vh; overflow-y: auto; }
-.modal-head { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; }
-.modal-head h3 { margin: 0; font-size: 18px; color: var(--brand-dark); }
+.modal { background: #fff; border-radius: var(--r-b, 16px); box-shadow: 0 15px 50px rgba(0,0,0,.25); width: min(560px, 92vw); max-height: 88vh; overflow-y: auto; }
+.modal-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; }
+.modal-head h3 { margin: 0; font-size: 18px; font-weight: 600; color: var(--text); }
 .modal-head .x { margin-right: auto; cursor: pointer; font-size: 22px; color: var(--muted); background: none; border: 0; }
 .modal-body { padding: 18px; }
 .modal-foot { padding: 14px 18px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-start; }
@@ -558,9 +576,12 @@ body.dark {
 }
 /* רכיבים עם רקע לבן קבוע — עוברים לרקע כרטיס כהה */
 body.dark input, body.dark select, body.dark textarea,
-body.dark .btn.secondary, body.dark .btn.danger,
-body.dark .subtabs button, body.dark .fbtn, body.dark .frbtn,
+body.dark .fbtn, body.dark .frbtn,
 body.dark .fadd-item, body.dark .modal, body.dark .login-box { background: var(--card); }
+/* כפתורים משניים ותת-טאבים שקופים גם במצב חשוך — הרקע מגיע מהעמוד */
+body.dark .btn.secondary { color: var(--text); }
+body.dark .btn.secondary:hover { color: var(--brand); }
+body.dark input:hover, body.dark select:hover, body.dark textarea:hover { border-color: #46536a; }
 body.dark table.grid tr:hover td { background: #1f2a36; }
 body.dark table.grid th.sortable:hover, body.dark table.grid th.sorted-col { background: #26323f; color: var(--text); }
 body.dark table.grid td.sorted-col { background: #1c2733; }
