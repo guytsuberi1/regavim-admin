@@ -49,7 +49,7 @@
         var sel = U.el('select', { style: 'min-width:160px;' }, empOptions(r.empId));
         sel.value = r.empId || '';
         sel.addEventListener('change', function () { r.empId = sel.value; Store.saveSettings(); });
-        var del = U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקת תפקיד', onclick: function () { s.eventRoles.splice(idx, 1); Store.saveSettings(); draw(); } });
+        var del = U.el('button', { class: 'btn secondary', html: U.ICO.trash, title: 'מחיקת תפקיד', onclick: function () { s.eventRoles.splice(idx, 1); Store.saveSettings(); draw(); } });
         list.appendChild(U.el('div', { style: 'display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;' }, [name, U.el('span', { class: 'muted', text: '→' }), sel, del]));
       });
     }
@@ -76,7 +76,7 @@
         var roleW = U.dataListInput(c.defaultRole || '', roleNames, 'תפקיד ברירת מחדל');
         roleW._input.style.minWidth = '140px';
         roleW._input.addEventListener('change', function () { c.defaultRole = roleW.get(); Store.saveSettings(); });
-        var del = U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקת משימה', onclick: function () { s.taskCatalog.splice(idx, 1); Store.saveSettings(); draw(); } });
+        var del = U.el('button', { class: 'btn secondary', html: U.ICO.trash, title: 'מחיקת משימה', onclick: function () { s.taskCatalog.splice(idx, 1); Store.saveSettings(); draw(); } });
         list.appendChild(U.el('div', { style: 'display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;' }, [title, roleW, del]));
       });
     }
@@ -106,7 +106,7 @@
       if (!t) return;
       var label = U.el('input', { value: t.label || '', style: 'font-weight:600;min-width:170px;' });
       label.addEventListener('change', function () { t.label = label.value.trim(); Store.saveSettings(); var v = t.id; fillSel(); sel.value = v; });
-      var del = U.el('button', { class: 'btn secondary', text: '🗑 מחיקת סוג', onclick: function () {
+      var del = U.el('button', { class: 'btn secondary', html: U.ICO.trash + ' מחיקת סוג', onclick: function () {
         var i = s.eventTypes.map(function (x) { return x.id; }).indexOf(t.id); if (i >= 0) s.eventTypes.splice(i, 1);
         Store.saveSettings(); sel.value = ''; fillSel(); drawEditor();
       } });
@@ -153,7 +153,7 @@
       (s.classes || []).forEach(function (c, idx) {
         var name = U.el('input', { value: c.name || '', style: 'font-weight:600;flex:1;min-width:120px;' });
         name.addEventListener('change', function () { c.name = name.value.trim(); Store.saveClasses(); });
-        var del = U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקת כיתה', onclick: function () { s.classes.splice(idx, 1); Store.saveClasses(); draw(); } });
+        var del = U.el('button', { class: 'btn secondary', html: U.ICO.trash, title: 'מחיקת כיתה', onclick: function () { s.classes.splice(idx, 1); Store.saveClasses(); draw(); } });
         if (!c.students) c.students = [];
         var count = U.el('span', { class: 'muted', style: 'font-size:12px;', text: c.students.length + ' תלמידים' });
         var studWrap = U.el('div', { style: 'display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;' });
@@ -205,7 +205,7 @@
       U.clear(wrap);
       if (s.flyerLogo) {
         wrap.appendChild(U.el('img', { src: s.flyerLogo, style: 'max-width:180px;max-height:130px;border:1px solid var(--border,#d6dce1);border-radius:8px;background:#fff;padding:6px;display:block;margin-bottom:8px;' }));
-        wrap.appendChild(U.el('button', { class: 'btn secondary', text: '🗑 הסר לוגו', onclick: function () { delete s.flyerLogo; Store.saveSettings(); draw(); } }));
+        wrap.appendChild(U.el('button', { class: 'btn secondary', html: U.ICO.trash + ' הסר לוגו', onclick: function () { delete s.flyerLogo; Store.saveSettings(); draw(); } }));
       } else {
         wrap.appendChild(U.el('div', { class: 'muted', style: 'font-size:12px;margin-bottom:8px;', text: 'לא הוגדר לוגו — הפלייר ישתמש בלוגו משוער של ה-AI.' }));
       }

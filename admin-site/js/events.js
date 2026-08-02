@@ -97,7 +97,7 @@
         U.el('td', { style: 'width:120px;' }, eTime(ev, row, 'time')),
         U.el('td', { style: 'min-width:180px;' }, eText(ev, row, 'activity', 'פעילות', 'width:100%;')),
         U.el('td', { style: 'min-width:140px;' }, eText(ev, row, 'note', 'הערה', 'width:100%;')),
-        U.el('td', null, U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקת שורה', onclick: function () {
+        U.el('td', null, U.el('button', { class: 'btn secondary', html: U.ICO.trash, title: 'מחיקת שורה', onclick: function () {
           ev.schedule = ev.schedule.filter(function (x) { return x.id !== row.id; }); saveEv(ev); App.render();
         } }))
       ]);
@@ -156,7 +156,7 @@
         roleCell,
         U.el('td', { style: 'min-width:130px;' }, eText(ev, t, 'note', 'הערה', 'width:100%;')),
         U.el('td', null, eSelect(t, 'status', TSTATUS, function () { saveEv(ev); App.render(); })),
-        U.el('td', null, U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקה', onclick: function () {
+        U.el('td', null, U.el('button', { class: 'btn secondary', html: U.ICO.trash, title: 'מחיקה', onclick: function () {
           ev.tasks = ev.tasks.filter(function (x) { return x.id !== t.id; }); saveEv(ev); App.render();
         } }))
       ]);
@@ -621,7 +621,7 @@
     var actionBtns = [];
     if (ev.archived) {
       actionBtns.push(U.el('button', { class: 'btn secondary ico', text: '↩️', title: 'שחזור מהארכיון', onclick: function () { ev.archived = false; saveEv(ev); App.render(); } }));
-      actionBtns.push(U.el('button', { class: 'btn secondary ico', text: '🗑', title: 'מחיקה לצמיתות', onclick: function () {
+      actionBtns.push(U.el('button', { class: 'btn secondary ico', html: U.ICO.trash, title: 'מחיקה לצמיתות', onclick: function () {
         Modal.confirm({ title: 'מחיקה לצמיתות', text: 'למחוק לצמיתות את "' + (ev.title || '') + '"? לא ניתן לשחזר.', okLabel: 'מחיקה', danger: true }, function () { Store.deleteEvent(ev.id); App.render(); });
       } }));
     } else {

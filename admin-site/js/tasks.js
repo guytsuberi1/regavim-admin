@@ -413,7 +413,7 @@
       var due = U.el('input', { type: 'date', value: s.due || '', style: 'border:1px solid transparent;background:transparent;padding:5px 7px;font-size:12px;' });
       due.addEventListener('change', function () { s.due = due.value; Store.upsertTask(t); App.render(); });
 
-      var del = U.el('button', { class: 'm-iconbtn', text: '🗑', title: 'מחיקת תת-משימה', onclick: function () {
+      var del = U.el('button', { class: 'm-iconbtn', html: U.ICO.trash, title: 'מחיקת תת-משימה', onclick: function () {
         t.subs.splice(idx, 1); Store.upsertTask(t); App.render();
       } });
       return U.el('tr', null, [
@@ -583,7 +583,7 @@
         var v = U.el('input', { value: o.value || '', placeholder: 'ערך', style: 'flex:1;' });
         v.addEventListener('change', function () { o.value = v.value.trim(); });
         var sw = U.el('span', { style: 'width:22px;height:22px;border-radius:5px;flex:0 0 auto;background:' + (o.color || '#e2e8f0') + ';border:1px solid #0002;' });
-        var del = U.el('button', { class: 'btn secondary', text: '🗑', onclick: function () { col.options.splice(i, 1); drawOpts(); } });
+        var del = U.el('button', { class: 'btn secondary', html: U.ICO.trash, onclick: function () { col.options.splice(i, 1); drawOpts(); } });
         optWrap.appendChild(U.el('div', { style: 'display:flex;gap:6px;align-items:center;margin-bottom:6px;' }, [sw, v, del]));
       });
       var addv = U.el('input', { placeholder: '➕ ערך חדש ולחץ Enter', style: 'flex:1;' });
@@ -748,12 +748,12 @@
         var acts = [];
         if (t.archived) {
           acts.push(U.el('button', { class: 'm-iconbtn', text: '↩️', title: 'שחזור מהארכיון', onclick: function () { saveField(t, 'archived', false); App.render(); } }));
-          acts.push(U.el('button', { class: 'm-iconbtn', text: '🗑', title: 'מחיקה לצמיתות', onclick: function () {
+          acts.push(U.el('button', { class: 'm-iconbtn', html: U.ICO.trash, title: 'מחיקה לצמיתות', onclick: function () {
             Modal.confirm({ title: 'מחיקה לצמיתות', text: 'למחוק לצמיתות את "' + (t.desc || '') + '"?', okLabel: 'מחיקה', danger: true }, function () { Store.deleteTask(t.id); App.render(); });
           } }));
         } else {
           acts.push(U.el('button', { class: 'm-iconbtn', text: '📦', title: 'העברה לארכיון', onclick: function () { saveField(t, 'archived', true); App.render(); } }));
-          acts.push(U.el('button', { class: 'm-iconbtn', text: '🗑', title: 'מחיקה', onclick: function () {
+          acts.push(U.el('button', { class: 'm-iconbtn', html: U.ICO.trash, title: 'מחיקה', onclick: function () {
             Modal.confirm({ title: 'מחיקת משימה', text: 'למחוק את "' + (t.desc || '') + '"?', okLabel: 'מחיקה', danger: true }, function () { Store.deleteTask(t.id); App.render(); });
           } }));
         }

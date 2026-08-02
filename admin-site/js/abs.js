@@ -285,7 +285,7 @@
               U.el('td', null, [
                 U.el('button', { class: 'btn secondary', text: '✏️', title: 'עריכה', onclick: function () { openModal(month, def.kind, JSON.parse(JSON.stringify(r))); } }),
                 ' ',
-                U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקה', onclick: function () {
+                U.el('button', { class: 'btn secondary', html: U.ICO.trash, title: 'מחיקה', onclick: function () {
                   Modal.confirm({ title: 'מחיקה', text: 'למחוק את הרשומה של ' + r.name + '?', okLabel: 'מחיקה', danger: true }, function () {
                     Store.deleteRecord('abs', month, r.id);
                     App.render();

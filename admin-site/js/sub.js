@@ -139,7 +139,7 @@
               openRecModal(month, selectedEmpId, copy);
             } }),
             ' ',
-            U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקה', onclick: function () {
+            U.el('button', { class: 'btn secondary', html: U.ICO.trash, title: 'מחיקה', onclick: function () {
               Modal.confirm({ title: 'מחיקת שורה', text: 'למחוק את השורה?', okLabel: 'מחיקה', danger: true }, function () {
                 Store.deleteRecord('sub', month, r.id);
                 App.render();

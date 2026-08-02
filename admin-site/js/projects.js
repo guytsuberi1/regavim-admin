@@ -184,7 +184,7 @@
         U.el('td', null, timelineCell(p, it)),
         U.el('td', null, docsCell(p, it)),
         U.el('td', { style: 'min-width:140px;' }, pText(p, it, 'notes', 'הערות', 'width:100%;')),
-        U.el('td', null, U.el('button', { class: 'btn secondary', text: '🗑', title: 'מחיקת שורה', onclick: function () {
+        U.el('td', null, U.el('button', { class: 'btn secondary', html: U.ICO.trash, title: 'מחיקת שורה', onclick: function () {
           p.items = p.items.filter(function (x) { return x.id !== it.id; });
           saveProj(p); App.render();
         } }))
