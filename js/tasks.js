@@ -788,10 +788,14 @@
       });
       items.forEach(function (t) {
         var overdue = (Store.daysToDue(t.due) != null && Store.daysToDue(t.due) < 0 && t.status !== 'הושלם');
-        var card = U.el('div', { class: 'kb-card', draggable: 'true', style: 'border-inline-start:4px solid ' + prColor(t.priority) + ';' + (overdue ? 'background:#fef2f2;' : '') });
+        // כרטיס Monday: לבן ונקי. העדיפות מסומנת בנקודה קטנה, האיחור בצ'יפ — לא ברקע צבעוני.
+        var card = U.el('div', { class: 'kb-card' + (overdue ? ' kb-late' : ''), draggable: 'true' });
         card.addEventListener('dragstart', function (e) { e.dataTransfer.setData('text/plain', t.id); card.classList.add('kb-drag'); });
         card.addEventListener('dragend', function () { card.classList.remove('kb-drag'); });
-        card.appendChild(U.el('div', { style: 'font-weight:600;font-size:14px;margin-bottom:4px;', text: t.desc || '' }));
+        card.appendChild(U.el('div', { class: 'kb-title' }, [
+          U.el('span', { class: 'kb-dot', style: 'background:' + prColor(t.priority) + ';', title: 'עדיפות ' + (t.priority || 'בינוני') }),
+          U.el('span', { text: t.desc || '' })
+        ]));
         var meta = U.el('div', { style: 'display:flex;flex-wrap:wrap;gap:4px;align-items:center;' }, [
           plainChip(t.domain),
           colorChip(t.owner, '👤 ', '', true),
@@ -804,8 +808,9 @@
       });
       if (!items.length) body.appendChild(U.el('div', { class: 'muted', style: 'text-align:center;padding:16px 0;font-size:13px;', text: 'ריק' }));
       return U.el('div', { class: 'kb-col' }, [
-        U.el('div', { class: 'kb-head', style: 'border-top:3px solid ' + st.color + ';' }, [
-          U.el('span', { text: st.key }),
+        U.el('div', { class: 'kb-head' }, [
+          U.el('span', { class: 'kb-hdot', style: 'background:' + st.color + ';' }),
+          U.el('span', { class: 'kb-hname', text: st.key }),
           U.el('span', { class: 'kb-count', text: String(items.length) })
         ]),
         body
