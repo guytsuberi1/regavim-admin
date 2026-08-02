@@ -166,17 +166,31 @@ input.invalid, select.invalid, textarea.invalid { border-color: var(--danger) !i
 .field-err { color: var(--danger); font-size: 12px; margin-top: 2px; min-height: 0; }
 
 /* ---------- טבלאות ---------- */
-table.grid { width: 100%; border-collapse: collapse; background: var(--card); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
-table.grid th, table.grid td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: right; }
-table.grid td { font-variant-numeric: tabular-nums; }
-table.grid th { background: var(--brand-light); color: var(--brand-dark); font-weight: 600; font-size: 13px; }
+/* טבלה בסגנון Monday — כותרת אפורה עדינה, שורות גבוהות, קווי הפרדה דקים.
+   זהו סגנון הבסיס לכל הטבלאות באפליקציה (המחלקה m-grid נשמרת לתאימות). */
+table.grid {
+  width: 100%; border-collapse: collapse; background: var(--card);
+  border: 1px solid var(--border); border-radius: var(--r-m, 8px);
+  overflow: hidden; box-shadow: none;
+}
+table.grid th, table.grid td { text-align: right; }
+table.grid td {
+  font-variant-numeric: tabular-nums; padding: 6px 14px;
+  height: var(--row-h, 48px); border-bottom: 1px solid #eef1f4;
+}
+table.grid th {
+  background: #fbfcfd; color: var(--muted); font-weight: 600; font-size: 12px;
+  letter-spacing: .2px; padding: 10px 14px; border-bottom: 1px solid var(--border);
+}
 table.grid th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
-table.grid th.sortable:hover { background: #d2e3f5; }
-table.grid tr:hover td { background: #fafcfe; }
+table.grid th.sortable:hover { background: #f1f4f8; color: var(--text); }
+table.grid tbody tr { transition: background .12s ease; }
+table.grid tbody tr:hover td { background: #f7f9fc; }
+table.grid tbody tr:last-child td { border-bottom: 0; }
 table.grid thead th { position: sticky; top: 0; z-index: 3; box-shadow: 0 1px 0 var(--border); }
 @media (min-width: 861px) { .tbl-scroll { overflow-x: visible; } }
-table.grid td.sorted-col { background: rgba(29, 78, 137, .05); }
-table.grid th.sorted-col { background: #d2e3f5; }
+table.grid td.sorted-col { background: #fafbfd; }
+table.grid th.sorted-col { background: #f1f4f8; color: var(--text); }
 table.grid td.actions { white-space: nowrap; text-align: left; }
 .muted { color: var(--muted); }
 .center { text-align: center; }
@@ -548,8 +562,8 @@ body.dark .btn.secondary, body.dark .btn.danger,
 body.dark .subtabs button, body.dark .fbtn, body.dark .frbtn,
 body.dark .fadd-item, body.dark .modal, body.dark .login-box { background: var(--card); }
 body.dark table.grid tr:hover td { background: #1f2a36; }
-body.dark table.grid th.sortable:hover, body.dark table.grid th.sorted-col { background: #203a57; }
-body.dark table.grid td.sorted-col { background: rgba(77, 130, 196, .10); }
+body.dark table.grid th.sortable:hover, body.dark table.grid th.sorted-col { background: #26323f; color: var(--text); }
+body.dark table.grid td.sorted-col { background: #1c2733; }
 body.dark .cls-track, body.dark .sk-line, body.dark .sk-card { background: #232e3a; }
 body.dark .field-student.done { background: #17281c; }
 body.dark .field-student.absent { background: #35211f; }
@@ -588,16 +602,7 @@ body.dark .wd-mini { color: #9ec5f0; }
    שדרוג "מודרני" בסגנון Monday — טבלאות, סטטוסים, אווטארים
    ============================================================ */
 
-/* --- טבלה מרווחת יותר, שורות גבוהות, כותרת דביקה נקייה --- */
-table.grid.m-grid { border-radius: var(--r-m); box-shadow: var(--sh-xs); border: 1px solid var(--border); }
-table.grid.m-grid th {
-  background: #fbfcfd; color: var(--muted); font-weight: 600; font-size: 12px;
-  letter-spacing: .2px; padding: 10px 14px; border-bottom: 1px solid var(--border);
-}
-table.grid.m-grid td { padding: 6px 14px; height: var(--row-h); border-bottom: 1px solid #eef1f4; }
-table.grid.m-grid tbody tr { transition: background .12s ease; }
-table.grid.m-grid tbody tr:hover td { background: #f7f9fc; }
-table.grid.m-grid tbody tr:last-child td { border-bottom: 0; }
+/* m-grid — הסגנון עבר לבסיס table.grid; המחלקה נשמרת לתאימות בקוד קיים */
 
 /* --- תא סטטוס בסגנון Monday: כל התא צבוע, טקסט לבן מודגש --- */
 .m-status {
@@ -768,18 +773,18 @@ table.m-subgrid td { height: 40px; padding: 4px 10px; }
   .m-quickadd input:first-child { flex: 1 1 100%; }
 
   /* טבלה — שורות נמוכות מעט וריפוד קטן יותר */
-  table.grid.m-grid td { padding: 6px 10px; height: 44px; }
-  table.grid.m-grid th { padding: 8px 10px; }
+  table.grid td { padding: 6px 10px; height: 44px; }
+  table.grid th { padding: 8px 10px; }
   .m-addinput { max-width: none; }
 }
 
 /* ============================================================
    מצב חושך — תיקון הרכיבים החדשים (m-*) שהיו בצבעים בהירים קשיחים
    ============================================================ */
-body.dark table.grid.m-grid { border-color: var(--border); }
-body.dark table.grid.m-grid th { background: #1f2a36; color: var(--muted); border-bottom-color: var(--border); }
-body.dark table.grid.m-grid td { border-bottom-color: #222d3a; }
-body.dark table.grid.m-grid tbody tr:hover td { background: #1f2a36; }
+body.dark table.grid { border-color: var(--border); }
+body.dark table.grid th { background: #1f2a36; color: var(--muted); border-bottom-color: var(--border); }
+body.dark table.grid td { border-bottom-color: #222d3a; }
+body.dark table.grid tbody tr:hover td { background: #1f2a36; }
 body.dark .m-iconbtn:hover { background: #26323f; border-color: var(--border); }
 body.dark .m-group .m-gcount { background: #26323f; color: var(--muted); }
 body.dark .m-chev { color: #64748b; }
@@ -799,14 +804,14 @@ body.dark .m-popitem:hover { background: #26323f; }
 body.dark .m-clearall { color: var(--muted); }
 
 /* מצבי שורה (איחור / הושלם) — כמחלקות, כדי שיתהפכו נכון בחושך */
-table.grid.m-grid tbody tr.row-over > td { background: #fef2f2; }
-table.grid.m-grid tbody tr.row-done > td { background: var(--brand-light); }
-table.grid.m-grid tbody tr.row-over:hover > td { background: #fde8e8; }
-table.grid.m-grid tbody tr.row-done:hover > td { background: var(--brand-light); }
-body.dark table.grid.m-grid tbody tr.row-over > td { background: #3a2126; }
-body.dark table.grid.m-grid tbody tr.row-over:hover > td { background: #46272c; }
-body.dark table.grid.m-grid tbody tr.row-done > td { background: #17281c; }
-body.dark table.grid.m-grid tbody tr.row-done:hover > td { background: #1c3123; }
+table.grid tbody tr.row-over > td { background: #fef2f2; }
+table.grid tbody tr.row-done > td { background: var(--brand-light); }
+table.grid tbody tr.row-over:hover > td { background: #fde8e8; }
+table.grid tbody tr.row-done:hover > td { background: var(--brand-light); }
+body.dark table.grid tbody tr.row-over > td { background: #3a2126; }
+body.dark table.grid tbody tr.row-over:hover > td { background: #46272c; }
+body.dark table.grid tbody tr.row-done > td { background: #17281c; }
+body.dark table.grid tbody tr.row-done:hover > td { background: #1c3123; }
 
 /* --- מצב חושך: כרטיסי סיכום (KPI) — הרקעים הפסטליים היו בהירים קבועים,
        מה שיצר אייקון בהיר על רקע בהיר (בלתי קריא). --- */
