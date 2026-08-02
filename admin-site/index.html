@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Noto+Sans+Hebrew:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=84" />
+  <link rel="stylesheet" href="styles.css?v=85" />
   <style>
     /* תג "ממתינים לאישור" על טאב בתפריט */
     .tab-badge {
@@ -18,17 +18,30 @@
       font-size: 11px; font-weight: 700; line-height: 18px; text-align: center;
     }
     /* קנבן */
+    /* קנבן בסגנון Monday: עמודה שקופה, כרטיס לבן נקי, בלי פסי צבע ורקעים צבעוניים */
     .kb-board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; align-items: flex-start; }
-    .kb-col { flex: 1 1 0; min-width: 240px; background: var(--bg, #f4f6f8); border: 1px solid var(--border, #d6dce1); border-radius: 10px; }
-    .kb-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; font-weight: 600; border-radius: 10px 10px 0 0; }
-    .kb-count { background: rgba(0,0,0,.08); border-radius: 9px; padding: 0 8px; font-size: 12px; }
-    .kb-body { min-height: 60px; padding: 8px; display: flex; flex-direction: column; gap: 8px; }
-    .kb-body.kb-over { background: rgba(37,99,235,.08); border-radius: 8px; }
-    .kb-card { background: var(--card, #fff); border: 1px solid var(--border, #d6dce1); border-radius: 8px; padding: 10px; cursor: grab; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+    .kb-col { flex: 1 1 0; min-width: 250px; background: transparent; border: 0; }
+    .kb-head { display: flex; align-items: center; gap: 8px; padding: 6px 4px 10px; font-size: 14px; }
+    .kb-hdot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+    .kb-hname { font-weight: 600; color: var(--text); }
+    .kb-count { background: var(--bg); color: var(--muted); border-radius: 999px;
+                padding: 1px 8px; font-size: 12px; font-weight: 500; margin-inline-start: auto; }
+    .kb-body { min-height: 60px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+    .kb-body.kb-over { background: rgba(37,99,235,.06); border-radius: 8px; outline: 2px dashed var(--brand); }
+    .kb-card {
+      background: var(--card, #fff); border: 1px solid var(--border, #d6dce1); border-radius: 8px;
+      padding: 12px; cursor: pointer; box-shadow: none; transition: border-color .12s ease, box-shadow .12s ease;
+    }
+    .kb-card:hover { border-color: var(--brand); box-shadow: 0 4px 6px -4px rgba(0,0,0,.12); }
     .kb-card:active { cursor: grabbing; }
+    .kb-title { display: flex; align-items: flex-start; gap: 8px; font-weight: 500; font-size: 14px;
+                line-height: 1.4; margin-bottom: 8px; color: var(--text); }
+    .kb-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; margin-top: 6px; }
+    /* איחור — מסגרת אדומה עדינה בלבד; החיווי המילולי כבר מופיע בצ'יפ */
+    .kb-card.kb-late { border-color: #f0a3a3; }
+    .kb-card.kb-late:hover { border-color: #dc2626; }
     .kb-drag { opacity: .5; }
-    body.dark .kb-col { background: #1a2230; }
-    body.dark .kb-count { background: rgba(255,255,255,.12); }
+    body.dark .kb-count { background: #26323f; }
   </style>
 </head>
 <body>
@@ -81,25 +94,25 @@
   <!-- ספריות ומודולים (סקריפטים קלאסיים — עובד גם מ-file://) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="vendor/xlsx.full.min.js"></script>
-  <script src="js/util.js?v=84"></script>
-  <script src="js/store.js?v=84"></script>
-  <script src="js/emp.js?v=84"></script>
-  <script src="js/week.js?v=84"></script>
-  <script src="js/recruit.js?v=84"></script>
-  <script src="js/queue.js?v=84"></script>
-  <script src="js/status.js?v=84"></script>
-  <script src="js/lc.js?v=84"></script>
-  <script src="js/sub.js?v=84"></script>
-  <script src="js/abs.js?v=84"></script>
-  <script src="js/sign.js?v=84"></script>
-  <script src="js/pdf.js?v=84"></script>
-  <script src="js/tasks.js?v=84"></script>
-  <script src="js/projects.js?v=84"></script>
-  <script src="js/events.js?v=84"></script>
-  <script src="js/kk.js?v=84"></script>
-  <script src="js/base.js?v=84"></script>
-  <script src="js/settings.js?v=84"></script>
-  <script src="js/app.js?v=84"></script>
+  <script src="js/util.js?v=85"></script>
+  <script src="js/store.js?v=85"></script>
+  <script src="js/emp.js?v=85"></script>
+  <script src="js/week.js?v=85"></script>
+  <script src="js/recruit.js?v=85"></script>
+  <script src="js/queue.js?v=85"></script>
+  <script src="js/status.js?v=85"></script>
+  <script src="js/lc.js?v=85"></script>
+  <script src="js/sub.js?v=85"></script>
+  <script src="js/abs.js?v=85"></script>
+  <script src="js/sign.js?v=85"></script>
+  <script src="js/pdf.js?v=85"></script>
+  <script src="js/tasks.js?v=85"></script>
+  <script src="js/projects.js?v=85"></script>
+  <script src="js/events.js?v=85"></script>
+  <script src="js/kk.js?v=85"></script>
+  <script src="js/base.js?v=85"></script>
+  <script src="js/settings.js?v=85"></script>
+  <script src="js/app.js?v=85"></script>
   <script>
     (function () {
       var sb = document.getElementById('sidebar'), tg = document.getElementById('sbToggle');
