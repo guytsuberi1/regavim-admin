@@ -235,6 +235,7 @@
     var nameInp = transp(U.el('input', { value: p.name || '', placeholder: 'שם הפרויקט', style: 'font-size:19px;font-weight:700;min-width:160px;flex:1;' }));
     nameInp.addEventListener('change', function () { p.name = nameInp.value.trim(); saveProj(p); });
     var statusSel = pSelect(p, 'status', PSTATUS, function () { if (p.status === 'הושלם') p.archived = true; saveProj(p); App.render(); });
+    statusSel.classList.add('m-status-auto');
     var actionBtns = [];
     if (p.archived) {
       actionBtns.push(U.el('button', { class: 'btn secondary ico', text: '↩️', title: 'שחזור מהארכיון', onclick: function () { p.archived = false; saveProj(p); App.render(); } }));

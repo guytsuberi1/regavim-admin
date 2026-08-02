@@ -617,6 +617,7 @@
     var nameInp = transp(U.el('input', { value: ev.title || '', placeholder: 'שם האירוע', style: 'font-size:19px;font-weight:700;min-width:160px;flex:1;' }));
     nameInp.addEventListener('change', function () { ev.title = nameInp.value.trim(); saveEv(ev); });
     var statusSel = eSelect(ev, 'status', ESTATUS, function () { saveEv(ev); App.render(); });
+    statusSel.classList.add('m-status-auto');
     var actionBtns = [];
     if (ev.archived) {
       actionBtns.push(U.el('button', { class: 'btn secondary ico', text: '↩️', title: 'שחזור מהארכיון', onclick: function () { ev.archived = false; saveEv(ev); App.render(); } }));
