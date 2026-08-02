@@ -297,26 +297,31 @@ table.grid td.actions { white-space: nowrap; text-align: left; }
 
 /* ---------- דשבורד מנהלים ---------- */
 .kpi-grid {
-  display: grid; gap: 14px; margin: 4px 0 22px;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  display: grid; gap: 12px; margin: 4px 0 20px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
 }
+/* כרטיס מדד בסגנון Monday: שטוח, מסגרת עדינה, מספר גדול ותווית אפורה.
+   בלי אימוג'י בקופסה פסטלית ובלי פס צבע — הצבע מסומן בנקודה קטנה בלבד. */
 .kpi {
-  position: relative; display: flex; align-items: center; gap: 14px;
-  background: var(--card); border: 1px solid var(--border); border-radius: 16px;
-  padding: 16px 16px; box-shadow: var(--shadow); overflow: hidden;
-  transition: transform .15s ease, box-shadow .15s ease;
+  position: relative; display: flex; align-items: flex-start; gap: 10px;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--r-m, 8px);
+  padding: 16px; box-shadow: none;
+  transition: border-color .12s ease, box-shadow .12s ease;
 }
-.kpi:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.10); }
-.kpi::before { content: ''; position: absolute; inset-inline-start: 0; top: 0; bottom: 0; width: 5px; background: var(--kpi-c, var(--brand)); }
+.kpi:hover { border-color: var(--brand); box-shadow: var(--sh-xs, 0 4px 6px -4px rgba(0,0,0,.12)); }
+/* נקודת צבע קטנה במקום אייקון — מסמנת מצב בלי להעמיס */
 .kpi-ic {
-  width: 46px; height: 46px; flex: 0 0 auto; border-radius: 13px; font-size: 23px;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--kpi-bg, var(--brand-light));
+  width: 8px; height: 8px; flex: 0 0 auto; margin-top: 8px; border-radius: 50%;
+  font-size: 0; color: transparent; overflow: hidden;
+  background: var(--kpi-c, var(--brand));
 }
 .kpi-body { min-width: 0; }
 .kpi-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.kpi-val { font-size: 26px; font-weight: 800; line-height: 1.1; color: var(--text); letter-spacing: -.5px; }
-.kpi-lbl { font-size: 13px; color: var(--muted); margin-top: 3px; font-weight: 600; }
+.kpi-val {
+  font-size: 28px; font-weight: 600; line-height: 1.15; color: var(--text);
+  letter-spacing: -.4px; font-variant-numeric: tabular-nums;
+}
+.kpi-lbl { font-size: 14px; color: var(--muted); margin-top: 4px; font-weight: 400; }
 .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 2px; opacity: .85; }
 .kpi-badge { font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
 .kpi-badge.up { background: #dcfce7; color: #16a34a; }
@@ -795,12 +800,12 @@ body.dark table.grid.m-grid tbody tr.row-done:hover > td { background: #1c3123; 
 
 /* --- מצב חושך: כרטיסי סיכום (KPI) — הרקעים הפסטליים היו בהירים קבועים,
        מה שיצר אייקון בהיר על רקע בהיר (בלתי קריא). --- */
-body.dark .kpi-good    { --kpi-bg: #16351f; }
-body.dark .kpi-bad     { --kpi-bg: #3a1f22; }
-body.dark .kpi-warn    { --kpi-bg: #3a2c14; }
-body.dark .kpi-info    { --kpi-bg: #16283f; }
-body.dark .kpi-purple  { --kpi-bg: #2a2140; }
-body.dark .kpi-neutral { --kpi-bg: #26323f; }
-body.dark .kpi-ic { color: var(--text); }
+/* הנקודה בהירה יותר במצב חשוך כדי לשמור על ניגודיות */
+body.dark .kpi-good    { --kpi-c: #4ade80; }
+body.dark .kpi-bad     { --kpi-c: #f87171; }
+body.dark .kpi-warn    { --kpi-c: #fbbf24; }
+body.dark .kpi-info    { --kpi-c: #60a5fa; }
+body.dark .kpi-purple  { --kpi-c: #a78bfa; }
+body.dark .kpi-neutral { --kpi-c: #94a3b8; }
 body.dark .kpi-badge.down { background: #3a1f22; color: #f08079; }
 body.dark .kpi-badge.flat { background: #26323f; color: var(--muted); }
