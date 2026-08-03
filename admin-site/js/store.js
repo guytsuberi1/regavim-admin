@@ -1197,7 +1197,7 @@
     var p1 = U.el('input', { type: 'password', placeholder: 'סיסמה חדשה (6 תווים לפחות)', autocomplete: 'new-password', style: 'width:100%;' });
     var p2 = U.el('input', { type: 'password', placeholder: 'אימות הסיסמה', autocomplete: 'new-password', style: 'width:100%;' });
     var err = U.el('div', { class: 'login-err', style: 'min-height:18px;' });
-    Modal.open('🔑 בחירת סיסמה חדשה', U.el('div', null, [
+    Modal.open('בחירת סיסמה חדשה', U.el('div', null, [
       U.el('p', { class: 'muted', style: 'margin-top:0;', text: 'נכנסתם דרך קישור איפוס הסיסמה. בחרו סיסמה חדשה לחשבון.' }),
       U.el('div', { class: 'field' }, [p1]),
       U.el('div', { class: 'field' }, [p2]),

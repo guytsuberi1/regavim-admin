@@ -125,7 +125,7 @@
       U.el('label', { style: 'display:flex;align-items:center;gap:6px;cursor:pointer;' }, [active, 'עובד פעיל']),
       err
     ]);
-    Modal.open(emp.id ? '✏️ עריכת עובד' : '➕ עובד חדש', body, [
+    Modal.open(emp.id ? 'עריכת עובד' : 'עובד חדש', body, [
       { label: 'ביטול', class: 'secondary' },
       { label: 'שמירה', onClick: function (close) {
         if (!first.value.trim()) { err.textContent = 'נדרש שם פרטי'; first.focus(); return; }
@@ -487,7 +487,7 @@
     var err = U.el('div', { class: 'field-err' });
     function fld(label, node) { return U.el('div', { class: 'field', style: 'margin-bottom:10px;' }, [U.el('label', { text: label }), node]); }
 
-    Modal.open('🚪 סיום העסקה — ' + Store.empName(emp), U.el('div', null, [
+    Modal.open('סיום העסקה —' + Store.empName(emp), U.el('div', null, [
       fld('תאריך סיום', date),
       fld('סיבת הסיום', reason),
       fld('הערות', note),
@@ -549,30 +549,30 @@
 
     body.appendChild(U.el('div', { class: 'cards-3' }, [
       U.el('div', { class: 'card' }, [
-        U.el('h3', { text: '🚪 פרטי סיום ההעסקה', style: 'margin-top:0;' }),
+        U.el('h3', { text: 'פרטי סיום ההעסקה', style: 'margin-top:0;' }),
         fld('תאריך סיום', date),
         fld('סיבה', reason),
         fld('הערות', note),
-        U.el('button', { class: 'btn secondary', text: '🖨️ מכתב סיום העסקה',
+        U.el('button', { class: 'btn secondary', html: U.ICO.print + ' מכתב סיום העסקה',
           onclick: function () {
             if (!emp.offboard.date) { U.toast('נדרש תאריך סיום לפני הפקת המכתב', 'error'); return; }
             openOffboardDoc(emp);
           } })
       ]),
       U.el('div', { class: 'card' }, [
-        U.el('h3', { text: '✅ צ׳קליסט עזיבה', style: 'margin-top:0;' }),
+        U.el('h3', { text: 'צ׳קליסט עזיבה', style: 'margin-top:0;' }),
         U.el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:6px;',
           text: done + ' מתוך ' + OFF_CHECKS.length + ' הושלמו (' + pct + '%)' }),
         U.el('div', null, checkRows)
       ]),
       U.el('div', { class: 'card' }, [
-        U.el('h3', { text: '↩️ החזרה לפעילות', style: 'margin-top:0;' }),
+        U.el('h3', { text: '↩ החזרה לפעילות', style: 'margin-top:0;' }),
         U.el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:10px;' },
           emp.active === false
             ? 'העובד מוסתר מבוררי העובדים בדוחות השכר. אם הוא חוזר לעבוד — אפשר להחזיר אותו.'
             : 'העובד עדיין מסומן כפעיל.'),
         isAdmin && emp.active === false
-          ? U.el('button', { class: 'btn secondary', text: '↩️ החזרה למצבת הפעילים', onclick: function () { reactivate(emp); } })
+          ? U.el('button', { class: 'btn secondary', html: U.ICO.restore + ' החזרה למצבת הפעילים', onclick: function () { reactivate(emp); } })
           : null
       ].filter(Boolean))
     ]));
@@ -592,26 +592,26 @@
       // עובד לא-פעיל שאין לו רישום עזיבה (למשל סומן "עזב" בייבוא מאקסל) —
       // עדיין צריך כפתור להשלמת הפרטים, אחרת אין דרך להגיע לתהליך.
       isAdmin && emp.active === false && emp.offboard.date
-        ? U.el('button', { class: 'btn secondary', text: '↩️ החזרה לפעילות', onclick: function () { reactivate(emp); } })
+        ? U.el('button', { class: 'btn secondary', html: U.ICO.restore + ' החזרה לפעילות', onclick: function () { reactivate(emp); } })
         : null,
       isAdmin && (emp.active !== false || !emp.offboard.date)
         ? U.el('button', { class: 'btn', text: emp.active === false ? '🚪 רישום פרטי עזיבה' : '🚪 סיום העסקה',
             onclick: function () { openOffboardModal(emp); } })
         : null,
-      isAdmin && U.el('button', { class: 'btn secondary', text: '🖨️ דף לעובד', onclick: function () { openEmpDoc(emp); } }),
-      isAdmin && U.el('button', { class: 'btn', text: '✏️ עריכת פרטים', onclick: function () { openEmpModal(emp); } })
+      isAdmin && U.el('button', { class: 'btn secondary', html: U.ICO.print + ' דף לעובד', onclick: function () { openEmpDoc(emp); } }),
+      isAdmin && U.el('button', { class: 'btn', html: U.ICO.edit + ' עריכת פרטים', onclick: function () { openEmpModal(emp); } })
     ].filter(Boolean));
     view.appendChild(head);
     if (emp.jobTitle) view.appendChild(U.el('div', { class: 'muted', style: 'margin:-8px 0 12px;font-size:15px;', text: emp.jobTitle }));
 
     // לשוניות הכרטיס — לשונית העזיבה מופיעה רק כשהיא רלוונטית
     var tabs = [
-      { id: 'info', label: '👤 פרטים' },
-      { id: 'roledef', label: '📄 תפקיד ומבנה שבועי' },
-      { id: 'onboard', label: '📥 קליטה' },
-      { id: 'activity', label: '📊 פעילות' }
+      { id: 'info', label: 'פרטים' },
+      { id: 'roledef', label: 'תפקיד ומבנה שבועי' },
+      { id: 'onboard', label: 'קליטה' },
+      { id: 'activity', label: 'פעילות' }
     ];
-    if (emp.active === false || emp.offboard.date) tabs.push({ id: 'offboard', label: '🚪 סיום העסקה' });
+    if (emp.active === false || emp.offboard.date) tabs.push({ id: 'offboard', label: 'סיום העסקה' });
     if (cardTab === 'offboard' && !(emp.active === false || emp.offboard.date)) cardTab = 'info';
     view.appendChild(U.el('div', { class: 'subtabs', style: 'margin-bottom:14px;' }, tabs.map(function (t) {
       return U.el('button', { class: cardTab === t.id ? 'active' : '', onclick: function () { cardTab = t.id; App.render(); } }, t.label);
@@ -725,7 +725,7 @@
           U.toast('הגדרת התפקיד נשמרה');
           App.render();
         } }),
-        U.el('button', { class: 'btn secondary', text: '🖨️ דף לעובד', onclick: function () { openEmpDoc(emp); } })
+        U.el('button', { class: 'btn secondary', html: U.ICO.print + ' דף לעובד', onclick: function () { openEmpDoc(emp); } })
       ])
     ].filter(Boolean));
     body.appendChild(card);
@@ -759,16 +759,16 @@
     function fld(label, node) { return U.el('div', { class: 'field', style: 'margin-bottom:10px;' }, [U.el('label', { text: label }), node]); }
     body.appendChild(U.el('div', { class: 'cards-3' }, [
       U.el('div', { class: 'card' }, [
-        U.el('h3', { text: '📥 תהליך קליטה', style: 'margin-top:0;' }),
+        U.el('h3', { text: 'תהליך קליטה', style: 'margin-top:0;' }),
         fld('סטטוס', obStatus),
         fld('פירוט', obNote)
       ]),
       U.el('div', { class: 'card' }, [
-        U.el('h3', { text: '✅ צ׳קליסט תפעולי', style: 'margin-top:0;' }),
+        U.el('h3', { text: 'צ׳קליסט תפעולי', style: 'margin-top:0;' }),
         U.el('div', null, checkRows)
       ]),
       U.el('div', { class: 'card' }, [
-        U.el('h3', { text: '🏦 פנסיה וגמול השתלמות', style: 'margin-top:0;' }),
+        U.el('h3', { text: 'פנסיה וגמול השתלמות', style: 'margin-top:0;' }),
         fld('סטטוס', pnStatus),
         fld('הערות', pnNote)
       ])
@@ -832,21 +832,21 @@
     var active = all.filter(function (e) { return e.active !== false; });
 
     var head = U.el('div', { class: 'page-head' }, [
-      U.el('h2', { text: '👤 עובדים' }),
+      U.el('h2', { text: 'עובדים' }),
       U.el('span', { class: 'spacer' }),
       isAdmin && U.actionMenu([
         { html: U.XLS_SVG, label: 'ייבוא מצבת מאקסל', onClick: pickExcelFile }
       ]),
-      isAdmin && U.el('button', { class: 'btn', text: '➕ עובד חדש', onclick: function () { openEmpModal(null); } })
+      isAdmin && U.el('button', { class: 'btn', html: U.ICO.plus + ' עובד חדש', onclick: function () { openEmpModal(null); } })
     ].filter(Boolean));
     view.appendChild(head);
 
     var left = all.filter(function (e) { return e.active === false; });
     view.appendChild(U.el('div', { class: 'kpi-row' }, [
-      kpi('👥', active.length, 'עובדים פעילים'),
-      kpi('🏢', active.filter(function (e) { return e.employment === 'amuta'; }).length, 'עובדי עמותה'),
-      kpi('🏫', active.filter(function (e) { return e.employment === 'moe'; }).length, 'משרד החינוך'),
-      kpi('🚪', left.length, 'סיימו העסקה')
+      kpi('', active.length, 'עובדים פעילים'),
+      kpi('', active.filter(function (e) { return e.employment === 'amuta'; }).length, 'עובדי עמותה'),
+      kpi('', active.filter(function (e) { return e.employment === 'moe'; }).length, 'משרד החינוך'),
+      kpi('', left.length, 'סיימו העסקה')
     ]));
 
     var search = U.el('input', { placeholder: '🔍 חיפוש עובד…', style: 'max-width:220px;' });

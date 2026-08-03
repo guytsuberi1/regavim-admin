@@ -42,7 +42,7 @@
       fld('תלמיד/ים', students),
       err
     ]);
-    Modal.open(rec.id ? '✏️ עריכת שורה' : '➕ שורת תגבור', body, [
+    Modal.open(rec.id ? 'עריכת שורה' : 'שורת תגבור', body, [
       { label: 'ביטול', class: 'secondary' },
       { label: 'שמירה', onClick: function (close) {
         if (!date.value) { err.textContent = 'נדרש תאריך'; return; }
@@ -61,7 +61,7 @@
 
   function render(view) {
     var month = App.currentMonth();
-    view.appendChild(App.monthHeader('📚 דוח מרכז למידה'));
+    view.appendChild(App.monthHeader('דוח מרכז למידה'));
 
     var list = tutors(month);
     if (!list.length) {
@@ -94,7 +94,7 @@
     card.appendChild(U.el('div', { class: 'page-head', style: 'margin-bottom:8px;' }, [
       U.el('h3', { text: Store.empName(emp) + (emp.phone ? ' · ' + emp.phone : '') }),
       U.el('span', { class: 'spacer' }),
-      U.el('button', { class: 'btn', text: '➕ שורת תגבור', onclick: function () { openRecModal(month, selectedEmpId, null); } })
+      U.el('button', { class: 'btn', html: U.ICO.plus + ' שורת תגבור', onclick: function () { openRecModal(month, selectedEmpId, null); } })
     ]));
     if (noKm && Store.isAdmin()) {
       card.appendChild(U.el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:6px;' },
@@ -114,7 +114,7 @@
             U.el('td', { text: r.students || '' }),
             U.el('td', { text: String(r.hours) }),
             U.el('td', null, [
-              U.el('button', { class: 'btn secondary', text: '✏️', title: 'עריכה', onclick: function () { openRecModal(month, selectedEmpId, JSON.parse(JSON.stringify(r))); } }),
+              U.el('button', { class: 'btn secondary', html: U.ICO.edit, title: 'עריכה', onclick: function () { openRecModal(month, selectedEmpId, JSON.parse(JSON.stringify(r))); } }),
               ' ',
               U.el('button', { class: 'btn secondary', text: '⧉', title: 'שכפול השורה', onclick: function () {
                 // עותק בלי id — נשמר כשורה חדשה. נפתח לעריכה כדי לשנות תאריך.

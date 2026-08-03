@@ -114,7 +114,7 @@
       tbody
     ]);
     var addTime = U.el('input', { type: 'time', style: 'max-width:110px;' });
-    var addAct = U.el('input', { placeholder: '➕ פעילות ולחץ Enter', style: 'flex:2;min-width:160px;' });
+    var addAct = U.el('input', { placeholder: '+ פעילות ולחץ Enter', style: 'flex:2;min-width:160px;' });
     function addRow() {
       if (!addAct.value.trim()) { addAct.focus(); return; }
       if (!ev.schedule) ev.schedule = [];
@@ -166,7 +166,7 @@
       tbody
     ]);
     // הוספה: מהקטלוג או משימה חופשית
-    var addTitle = U.el('input', { placeholder: '➕ משימה חופשית ולחץ Enter', style: 'flex:2;min-width:160px;' });
+    var addTitle = U.el('input', { placeholder: '+ משימה חופשית ולחץ Enter', style: 'flex:2;min-width:160px;' });
     function addFree() {
       if (!addTitle.value.trim()) { addTitle.focus(); return; }
       if (!ev.tasks) ev.tasks = [];
@@ -174,7 +174,7 @@
       saveEv(ev); App.render();
     }
     addTitle.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addFree(); } });
-    var fromCatBtn = U.el('button', { class: 'btn secondary', text: '📋 הוסף מהקטלוג', onclick: function () {
+    var fromCatBtn = U.el('button', { class: 'btn secondary', html: U.ICO.copy + ' הוסף מהקטלוג', onclick: function () {
       var have = (ev.tasks || []).map(function (t) { return t.title; });
       openTaskPicker([], have, function (ids) {
         ids.forEach(function (id) { var c = catById(id); if (c) ev.tasks.push(taskFromCatalog(c)); });
@@ -211,7 +211,7 @@
         U.toast('נבחרו המשימות המומלצות (בחירת AI מלאה תתחבר בשלב ההקלטה)', 'info');
       } })
     ].concat(rows));
-    Modal.open('📋 בחירת משימות לאירוע', body, [
+    Modal.open('בחירת משימות לאירוע', body, [
       { label: 'ביטול', class: 'secondary' },
       { label: 'אישור', onClick: function (close) {
         var ids = cat.filter(function (c) { return checks[c.id].checked; }).map(function (c) { return c.id; });
@@ -367,12 +367,12 @@
     var fname = 'flyer-' + String(ev.title || 'event').replace(/[^\w֐-׿]+/g, '_') + '.png';
     var actions = U.el('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;' }, [
       U.el('a', { class: 'btn', href: dataUrl, download: fname, text: '⬇️ הורדה' }),
-      U.el('button', { class: 'btn secondary', text: '🖨️ הדפסה', onclick: function () { printImage(dataUrl); } })
+      U.el('button', { class: 'btn secondary', html: U.ICO.print + ' הדפסה', onclick: function () { printImage(dataUrl); } })
     ]);
     if (navigator.canShare) actions.appendChild(U.el('button', { class: 'btn secondary', html: WA_GREEN + ' שיתוף', onclick: function () { shareImage(dataUrl, fname, ev); } }));
     var kids = [img, actions];
     if (model) kids.push(U.el('div', { class: 'muted', style: 'font-size:11px;margin-top:8px;', text: 'נוצר ע"י: ' + model }));
-    Modal.open('🎨 פלייר האירוע', U.el('div', null, kids), [{ label: 'סגירה', class: 'secondary' }]);
+    Modal.open('פלייר האירוע', U.el('div', null, kids), [{ label: 'סגירה', class: 'secondary' }]);
   }
   function openFlyer(ev) {
     var stop = openThinking(['מכין את הפלייר…', 'ה-AI מעצב את התמונה…', 'עוד רגע — מרנדר…']);
@@ -493,7 +493,7 @@
       chosen ? U.el('span', { class: 'tag', style: 'background:#fff3e0;border-color:#f9a825;color:#8a5a00;', text: '⏳ חסרים: ' + missing.length }) : null,
       U.el('span', { class: 'spacer' }),
       clsSel,
-      U.el('button', { class: 'btn secondary small', text: '🖨️ הדפס/ייצא', onclick: function () { printConsents(ev, rows, missing, chosen); } })
+      U.el('button', { class: 'btn secondary small', html: U.ICO.print + ' הדפס/ייצא', onclick: function () { printConsents(ev, rows, missing, chosen); } })
     ].filter(Boolean)));
 
     if (rows.length) {
@@ -601,7 +601,7 @@
           [right, U.el('span', { class: 'spacer' }), action]);
       })));
     }
-    Modal.open('📤 שליחה אישית' + (title ? ' — ' + title : ''), body, [{ label: 'סגירה', class: 'secondary' }]);
+    Modal.open('שליחה אישית' + (title ? ' — ' + title : ''), body, [{ label: 'סגירה', class: 'secondary' }]);
   }
 
   // ---------- כרטיס אירוע ----------
@@ -620,12 +620,12 @@
     statusSel.classList.add('m-status-auto');
     var actionBtns = [];
     if (ev.archived) {
-      actionBtns.push(U.el('button', { class: 'btn secondary ico', text: '↩️', title: 'שחזור מהארכיון', onclick: function () { ev.archived = false; saveEv(ev); App.render(); } }));
+      actionBtns.push(U.el('button', { class: 'btn secondary ico', html: U.ICO.restore, title: 'שחזור מהארכיון', onclick: function () { ev.archived = false; saveEv(ev); App.render(); } }));
       actionBtns.push(U.el('button', { class: 'btn secondary ico', html: U.ICO.trash, title: 'מחיקה לצמיתות', onclick: function () {
         Modal.confirm({ title: 'מחיקה לצמיתות', text: 'למחוק לצמיתות את "' + (ev.title || '') + '"? לא ניתן לשחזר.', okLabel: 'מחיקה', danger: true }, function () { Store.deleteEvent(ev.id); App.render(); });
       } }));
     } else {
-      actionBtns.push(U.el('button', { class: 'btn secondary ico', text: '📦', title: 'העברה לארכיון', onclick: function () { ev.archived = true; saveEv(ev); App.render(); } }));
+      actionBtns.push(U.el('button', { class: 'btn secondary ico', html: U.ICO.archive, title: 'העברה לארכיון', onclick: function () { ev.archived = true; saveEv(ev); App.render(); } }));
     }
     card.appendChild(U.el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;' },
       [chevron,
@@ -664,7 +664,7 @@
     var doneN = (ev.tasks || []).filter(function (t) { return t.status === 'בוצע'; }).length;
     function mkSec(open, icon, label, key, storeOpen, contentFn) {
       var anchor = 'sec_' + ev.id + '_' + key.replace(/[^a-z0-9]/gi, '');
-      var btn = U.el('button', { class: 'btn', style: 'background:var(--primary-light,#e8f5e9);color:var(--primary-dark,#1b5e20);border:1px solid var(--primary,#2e7d32);font-weight:700;', html: (open ? '▾' : '▸') + ' ' + icon + ' ' + esc(label), onclick: function () {
+      var btn = U.el('button', { class: 'btn', style: 'background:var(--primary-light,#e8f5e9);color:var(--primary-dark,#1b5e20);border:1px solid var(--primary,#2e7d32);font-weight:700;', html: (open ? '▾' : '▸') + ' ' + (icon ? icon + ' ' : '') + esc(label), onclick: function () {
         var willOpen = !open;
         collapsedMap[key] = storeOpen ? willOpen : !willOpen;
         saveCollapsed();
@@ -719,7 +719,7 @@
       fld('יעד/מקום', location),
       err
     ]);
-    Modal.open('➕ אירוע חדש', body, [
+    Modal.open('אירוע חדש', body, [
       { label: 'ביטול', class: 'secondary' },
       { label: 'המשך לבחירת משימות ›', onClick: function (close) {
         if (!title.value.trim()) { err.textContent = 'נדרש שם אירוע'; title.focus(); return; }
@@ -779,7 +779,7 @@
     var body = U.el('div', null, [
       U.el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:10px;', text: 'סמנו אילו אירועים ליצור. אפשר לערוך כל אחד אחרי היצירה בכרטיס.' })
     ].concat(rows.map(function (r) { return r.node; })));
-    Modal.open('📋 טיוטת אירועים (' + drafts.length + ')', body, [
+    Modal.open('טיוטת אירועים (' + drafts.length + ')', body, [
       { label: 'ביטול', class: 'secondary' },
       { label: 'צור נבחרים', onClick: function (close) {
         var chosen = rows.filter(function (r) { return r.cb.checked; });
@@ -796,7 +796,7 @@
     var line = U.el('div', { style: 'font-size:15px;font-weight:600;color:var(--primary-dark,#1b5e20);text-align:center;min-height:20px;', text: messages[0] });
     var sub = U.el('div', { class: 'muted', style: 'font-size:12px;text-align:center;', text: 'זה עשוי לקחת עד כדקה — אפשר להשאיר את החלון פתוח.' });
     var body = U.el('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:14px;padding:22px 8px;' }, [spinner, line, sub]);
-    var close = Modal.open('🤖 ה-AI חושב…', body, []);
+    var close = Modal.open('ה-AI חושב…', body, []);
     var i = 0;
     var iv = setInterval(function () { if (i < messages.length - 1) { i++; line.textContent = messages[i]; } }, 5500);
     return function () { clearInterval(iv); close(); };
@@ -821,7 +821,7 @@
       U.el('div', { class: 'subtabs', style: 'margin-bottom:10px;' }, [btnText, btnAudio]),
       textWrap, audioWrap, err
     ]);
-    Modal.open('🎙️ יצירת אירועים מפגישה (AI)', body, [
+    Modal.open('יצירת אירועים מפגישה (AI)', body, [
       { label: 'ביטול', class: 'secondary' },
       { label: 'נתח ובנה טיוטה', onClick: function (close) {
         err.textContent = '';
@@ -869,13 +869,13 @@
     var archived = all.filter(function (e) { return !!e.archived; });
     var list = showArchive ? archived : active;
 
-    var menuItems = [{ icon: '🎙️', label: 'יצירה מפגישה (AI)', onClick: openMeetingAI }];
+    var menuItems = [{ icon: '', label: 'יצירה מפגישה (AI)', onClick: openMeetingAI }];
     if (active.length) {
-      menuItems.push({ icon: '📋', label: 'סיכום שבועי לפי אחראי', onClick: function () { copyText(summaryByOwnerText(upcomingEvents(), 'השבוע', true), 'הסיכום השבועי הועתק — הדביקו בקבוצה'); } });
-      menuItems.push({ icon: '📤', label: 'שליחה שבועית אישית', onClick: function () { openDispatch(upcomingEvents(), 'השבוע', true); } });
+      menuItems.push({ icon: '', label: 'סיכום שבועי לפי אחראי', onClick: function () { copyText(summaryByOwnerText(upcomingEvents(), 'השבוע', true), 'הסיכום השבועי הועתק — הדביקו בקבוצה'); } });
+      menuItems.push({ icon: '', label: 'שליחה שבועית אישית', onClick: function () { openDispatch(upcomingEvents(), 'השבוע', true); } });
     }
-    var headKids = [U.el('h2', { text: '🗓️ תכנון אירועים וטיולים' }), U.el('span', { class: 'spacer' })];
-    if (!showArchive) headKids.push(U.el('button', { class: 'btn', text: '➕ אירוע חדש', onclick: openNewEvent }));
+    var headKids = [U.el('h2', { text: 'תכנון אירועים וטיולים' }), U.el('span', { class: 'spacer' })];
+    if (!showArchive) headKids.push(U.el('button', { class: 'btn', html: U.ICO.plus + ' אירוע חדש', onclick: openNewEvent }));
     headKids.push(U.actionMenu(menuItems));
     view.appendChild(U.el('div', { class: 'page-head' }, headKids));
 
@@ -892,9 +892,9 @@
         if (e.date && e.date >= today && e.status !== 'בוצע') upcoming++;
       });
       view.appendChild(U.el('div', { class: 'kpi-row', style: 'margin-bottom:16px;' }, [
-        kpi('🗓️', active.length, 'אירועים', 'kpi-neutral'),
-        kpi('📅', upcoming, 'קרובים', 'kpi-info'),
-        kpi('✅', openTasks, 'משימות פתוחות', openTasks ? 'kpi-warn' : 'kpi-neutral')
+        kpi('', active.length, 'אירועים', 'kpi-neutral'),
+        kpi('', upcoming, 'קרובים', 'kpi-info'),
+        kpi('', openTasks, 'משימות פתוחות', openTasks ? 'kpi-warn' : 'kpi-neutral')
       ]));
     }
 

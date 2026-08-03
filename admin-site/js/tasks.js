@@ -175,14 +175,14 @@
       } }
     ];
     if (!isNew) {
-      buttons.splice(1, 0, { label: '🗑 מחיקה', class: 'danger', onClick: function (close) {
+      buttons.splice(1, 0, { label: 'מחיקה', class: 'danger', onClick: function (close) {
         close();
         Modal.confirm({ title: 'מחיקת משימה', text: 'למחוק את המשימה?', okLabel: 'מחיקה', danger: true }, function () {
           Store.deleteTask(task.id); App.render();
         });
       } });
     }
-    Modal.open(isNew ? '➕ משימה חדשה' : '✏️ ' + (task.num || 'משימה'), body, buttons);
+    Modal.open(isNew ? 'משימה חדשה' : '' + (task.num || 'משימה'), body, buttons);
   }
 
   function rememberValue(key, val) {
@@ -428,7 +428,7 @@
       U.el('thead', null, U.el('tr', null, ['תת-משימה', 'אחראי', 'סטטוס', 'יעד', ''].map(function (h) { return U.el('th', { text: h }); }))),
       U.el('tbody', null, rows)
     ]);
-    var add = U.el('input', { placeholder: '➕ תת-משימה — כתוב ולחץ Enter', style: 'flex:1;min-width:200px;' });
+    var add = U.el('input', { placeholder: '+ תת-משימה — כתוב ולחץ Enter', style: 'flex:1;min-width:200px;' });
     function addSub() {
       var v = add.value.trim(); if (!v) return;
       t.subs.push({ id: Store.uid(), title: v, owner: '', status: 'פתוח', due: '' });
@@ -460,7 +460,7 @@
   function quickAddRow(host) {
     var s = Store.settings();
     var draft = { priority: 'בינוני', status: 'פתוח', kind: 'חד פעמי', freq: 'monthly' };
-    var desc = U.el('input', { placeholder: '➕ משימה חדשה — כתוב תיאור ולחץ Enter', style: 'flex:2;min-width:180px;font-size:15px;' });
+    var desc = U.el('input', { placeholder: '+ משימה חדשה — כתוב תיאור ולחץ Enter', style: 'flex:2;min-width:180px;font-size:15px;' });
     var domain = U.dataListInput('', s.taskDomains || [], 'תחום'); domain._input.style.flex = '1'; domain._input.style.minWidth = '90px';
     var owner = U.dataListInput('', s.taskOwners || [], 'אחראי'); owner._input.style.flex = '1'; owner._input.style.minWidth = '90px';
     var priority = U.el('select', null, PRIORITIES.map(function (p) { return U.el('option', { value: p.key, text: p.key }); })); priority.value = 'בינוני';
@@ -486,13 +486,13 @@
 
   // ---------- עמודות מותאמות (סגנון Monday) ----------
   var COL_TYPES = [
-    { key: 'text', label: '📝 טקסט' },
-    { key: 'number', label: '🔢 מספר' },
-    { key: 'date', label: '📅 תאריך' },
-    { key: 'label', label: '🏷️ תווית צבעונית' },
-    { key: 'check', label: '✔️ צ׳ק-בוקס' },
-    { key: 'link', label: '🔗 קישור' },
-    { key: 'file', label: '📎 קובץ / מסמך' }
+    { key: 'text', label: 'טקסט' },
+    { key: 'number', label: 'מספר' },
+    { key: 'date', label: 'תאריך' },
+    { key: 'label', label: 'תווית צבעונית' },
+    { key: 'check', label: 'צ׳ק-בוקס' },
+    { key: 'link', label: 'קישור' },
+    { key: 'file', label: 'קובץ / מסמך' }
   ];
   function taskColumns() { return Store.settings().taskColumns || []; }
   function customVal(t, colId) { return (t.custom && t.custom[colId] != null) ? t.custom[colId] : ''; }
@@ -539,7 +539,7 @@
         U.clear(fwrap);
         var v = customVal(t, col.id);
         if (v && v.path) {
-          var link = U.el('a', { href: '#', text: '📎 ' + (v.name || 'קובץ'), title: v.name || 'קובץ', style: 'cursor:pointer;font-size:13px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle;' });
+          var link = U.el('a', { href: '#', html: U.ICO.clip + ' ' + (v.name || 'קובץ'), title: v.name || 'קובץ', style: 'cursor:pointer;font-size:13px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle;' });
           link.addEventListener('click', function (e) { e.preventDefault(); Store.taskFileUrl(v.path).then(function (url) { if (url) global.open(url, '_blank'); else U.toast('הקישור אינו זמין', 'error'); }); });
           var rm = U.el('button', { class: 'btn secondary', text: '×', title: 'הסרת הקובץ', style: 'padding:0 7px;', onclick: function () { Store.deleteTaskFile(v.path); saveCustom(t, col.id, ''); drawFile(); } });
           fwrap.appendChild(link); fwrap.appendChild(rm);
@@ -551,7 +551,7 @@
             Store.uploadTaskFile(f).then(function (res) { saveCustom(t, col.id, res); drawFile(); U.toast('הקובץ הועלה'); })
               .catch(function (e) { U.toast('העלאה נכשלה: ' + e.message, 'error'); });
           });
-          fwrap.appendChild(U.el('button', { class: 'btn secondary', text: '📎 העלאה', style: 'font-size:12px;padding:2px 8px;', onclick: function () { finp.click(); } }));
+          fwrap.appendChild(U.el('button', { class: 'btn secondary', html: U.ICO.clip + ' העלאה', style: 'font-size:12px;padding:2px 8px;', onclick: function () { finp.click(); } }));
           fwrap.appendChild(finp);
         }
       };
@@ -586,7 +586,7 @@
         var del = U.el('button', { class: 'btn secondary', html: U.ICO.trash, onclick: function () { col.options.splice(i, 1); drawOpts(); } });
         optWrap.appendChild(U.el('div', { style: 'display:flex;gap:6px;align-items:center;margin-bottom:6px;' }, [sw, v, del]));
       });
-      var addv = U.el('input', { placeholder: '➕ ערך חדש ולחץ Enter', style: 'flex:1;' });
+      var addv = U.el('input', { placeholder: '+ ערך חדש ולחץ Enter', style: 'flex:1;' });
       function addOpt() { var x = addv.value.trim(); if (!x) return; if (!col.options) col.options = []; var c = CHIP_COLORS[col.options.length % CHIP_COLORS.length]; col.options.push({ value: x, color: c[0], textColor: c[1] }); addv.value = ''; drawOpts(); }
       addv.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addOpt(); } });
       optWrap.appendChild(U.el('div', { style: 'display:flex;gap:6px;' }, [addv, U.el('button', { class: 'btn secondary', text: 'הוסף', onclick: addOpt })]));
@@ -609,7 +609,7 @@
       } }
     ];
     if (!isNew) {
-      buttons.splice(1, 0, { label: '🗑 מחיקת עמודה', class: 'danger', onClick: function (close) {
+      buttons.splice(1, 0, { label: 'מחיקת עמודה', class: 'danger', onClick: function (close) {
         close();
         Modal.confirm({ title: 'מחיקת עמודה', text: 'למחוק את העמודה "' + (col.name || '') + '"? הנתונים בעמודה יוסרו מהתצוגה.', okLabel: 'מחיקה', danger: true }, function () {
           var s = Store.settings(); var idx = (s.taskColumns || []).map(function (x) { return x.id; }).indexOf(col.id);
@@ -617,7 +617,7 @@
         });
       } });
     }
-    Modal.open(isNew ? '➕ עמודה חדשה' : '✏️ עמודה: ' + (col.name || ''), body, buttons);
+    Modal.open(isNew ? 'עמודה חדשה' : 'עמודה:' + (col.name || ''), body, buttons);
   }
 
   function groupLabel(t) {
@@ -747,12 +747,12 @@
         rowCells.push(U.el('td', { text: '' })); // עמודת ה־＋
         var acts = [];
         if (t.archived) {
-          acts.push(U.el('button', { class: 'm-iconbtn', text: '↩️', title: 'שחזור מהארכיון', onclick: function () { saveField(t, 'archived', false); App.render(); } }));
+          acts.push(U.el('button', { class: 'm-iconbtn', html: U.ICO.restore, title: 'שחזור מהארכיון', onclick: function () { saveField(t, 'archived', false); App.render(); } }));
           acts.push(U.el('button', { class: 'm-iconbtn', html: U.ICO.trash, title: 'מחיקה לצמיתות', onclick: function () {
             Modal.confirm({ title: 'מחיקה לצמיתות', text: 'למחוק לצמיתות את "' + (t.desc || '') + '"?', okLabel: 'מחיקה', danger: true }, function () { Store.deleteTask(t.id); App.render(); });
           } }));
         } else {
-          acts.push(U.el('button', { class: 'm-iconbtn', text: '📦', title: 'העברה לארכיון', onclick: function () { saveField(t, 'archived', true); App.render(); } }));
+          acts.push(U.el('button', { class: 'm-iconbtn', html: U.ICO.archive, title: 'העברה לארכיון', onclick: function () { saveField(t, 'archived', true); App.render(); } }));
           acts.push(U.el('button', { class: 'm-iconbtn', html: U.ICO.trash, title: 'מחיקה', onclick: function () {
             Modal.confirm({ title: 'מחיקת משימה', text: 'למחוק את "' + (t.desc || '') + '"?', okLabel: 'מחיקה', danger: true }, function () { Store.deleteTask(t.id); App.render(); });
           } }));
@@ -961,14 +961,14 @@
     var s = Store.settings();
 
     // שתי דרכים להוסיף: שורת הוספה מהירה בטבלה + כפתור חלון (זמין תמיד)
-    var addBtn = U.el('button', { class: 'btn', text: '➕ משימה חדשה', onclick: function () { openModal(null); } });
+    var addBtn = U.el('button', { class: 'btn', html: U.ICO.plus + ' משימה חדשה', onclick: function () { openModal(null); } });
     // ציר הזמן והדשבורד הועברו לגיליון "דשבורד מנהלים" (ייבנה בהמשך)
     var toggle = U.el('div', { class: 'subtabs', style: 'display:inline-flex;margin:0;' }, [
       U.el('button', { class: viewMode === 'table' ? 'active' : '', text: '☰ טבלה', onclick: function () { viewMode = 'table'; App.render(); } }),
       U.el('button', { class: viewMode === 'kanban' ? 'active' : '', text: '▤ קנבן', onclick: function () { viewMode = 'kanban'; App.render(); } })
     ]);
     view.appendChild(U.el('div', { class: 'page-head' }, [
-      U.el('h2', { text: '✅ ניהול משימות' }),
+      U.el('h2', { text: 'ניהול משימות' }),
       U.el('span', { class: 'spacer' }),
       toggle, showArchive ? null : addBtn
     ].filter(Boolean)));
@@ -984,19 +984,19 @@
     var prog = all.filter(function (t) { return t.status === 'בתהליך'; }).length;
     var overdue = all.filter(function (t) { return t.status !== 'הושלם' && Store.daysToDue(t.due) != null && Store.daysToDue(t.due) < 0; }).length;
     view.appendChild(U.el('div', { class: 'kpi-row' }, [
-      kpi('📂', open, 'פתוחות', 'kpi-neutral'),
+      kpi('', open, 'פתוחות', 'kpi-neutral'),
       kpi('⏳', prog, 'בתהליך', 'kpi-info'),
-      kpi('⚠️', overdue, 'באיחור', overdue ? 'kpi-warn' : 'kpi-neutral')
+      kpi('', overdue, 'באיחור', overdue ? 'kpi-warn' : 'kpi-neutral')
     ]));
 
     // ---------- סרגל כלים קומפקטי: חיפוש + סינון אחד + מיון + קיבוץ ----------
     var isDash = viewMode === 'dashboard';
     var notDone = all.filter(function (t) { return t.status !== 'הושלם'; });
     var bucketDefs = [
-      { key: 'overdue', label: '⚠️ באיחור' },
-      { key: 'week', label: '📅 השבוע' },
-      { key: 'ahead', label: '⏭️ בהמשך' },
-      { key: 'none', label: '🚫 ללא יעד' }
+      { key: 'overdue', label: 'באיחור' },
+      { key: 'week', label: 'השבוע' },
+      { key: 'ahead', label: '⏭ בהמשך' },
+      { key: 'none', label: 'ללא יעד' }
     ];
     var DUE_LBL = {}; bucketDefs.forEach(function (b) { DUE_LBL[b.key] = b.label; });
     var SORT_LBL = { due: 'יעד', priority: 'עדיפות', domain: 'תחום', owner: 'אחראי' };
@@ -1127,7 +1127,7 @@
           ]);
         });
         view.appendChild(U.el('div', { class: 'card', style: 'margin-top:16px;border-top:4px solid var(--primary,#2e7d32);' }, [
-          U.el('h3', { style: 'margin-top:0;', text: '🗓️ המשימות שלי מאירועים (' + mine.length + ')' }),
+          U.el('h3', { style: 'margin-top:0;', text: 'המשימות שלי מאירועים (' + mine.length + ')' }),
           U.el('div', { class: 'muted', style: 'font-size:12px;margin-bottom:8px;', text: 'משימות שהוקצו לך בגיליון תכנון אירועים וטיולים. הניהול נעשה בכרטיס האירוע.' })
         ].concat(rows)));
       }

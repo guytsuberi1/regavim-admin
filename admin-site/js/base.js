@@ -17,7 +17,7 @@
       U.el('thead', null, U.el('tr', null, ['שם התלמיד/ה', 'הערה', ''].map(function (h) { return U.el('th', { text: h }); }))),
       tbody
     ]);
-    var addName = U.el('input', { placeholder: '➕ שם תלמיד/ה ולחצו Enter', style: 'flex:1;min-width:180px;' });
+    var addName = U.el('input', { placeholder: '+ שם תלמיד/ה ולחצו Enter', style: 'flex:1;min-width:180px;' });
     function add() { var v = addName.value.trim(); if (!v) return; c.students.push({ id: Store.uid(), name: v, note: '' }); Store.saveClasses(); App.render(); }
     addName.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); add(); } });
     var addRow = U.el('div', { style: 'display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;' }, [addName, U.el('button', { class: 'btn secondary', text: 'הוסף', onclick: add })]);
@@ -28,12 +28,12 @@
     if (!(Store.isAdmin && Store.isAdmin())) { view.appendChild(U.el('div', { class: 'empty' }, 'לנתוני הבסיס יש גישה למנהל בלבד.')); return; }
     var s = Store.settings();
 
-    view.appendChild(U.el('div', { class: 'page-head' }, [U.el('h2', { text: '🗂️ נתוני בסיס' })]));
+    view.appendChild(U.el('div', { class: 'page-head' }, [U.el('h2', { text: 'נתוני בסיס' })]));
 
     // אנשי צוות — מנוהלים בגיליון ניהול עובדים
     view.appendChild(U.el('div', { class: 'card', style: 'max-width:760px;margin-bottom:18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;' }, [
       U.el('div', null, [
-        U.el('div', { style: 'font-weight:600;', text: '👥 אנשי צוות' }),
+        U.el('div', { style: 'font-weight:600;', text: 'אנשי צוות' }),
         U.el('div', { class: 'muted', style: 'font-size:12px;', text: 'מצבת העובדים (שם · תפקיד · טלפון · תגיות) מנוהלת בגיליון "ניהול עובדים".' })
       ]),
       U.el('span', { class: 'spacer' }),
@@ -41,7 +41,7 @@
     ]));
 
     // תלמידים לפי כיתה
-    view.appendChild(U.el('div', { class: 'page-head', style: 'margin-top:8px;' }, [U.el('h3', { text: '🎓 תלמידים לפי כיתה', style: 'font-size:17px;color:var(--primary-dark,#1b5e20);' })]));
+    view.appendChild(U.el('div', { class: 'page-head', style: 'margin-top:8px;' }, [U.el('h3', { text: 'תלמידים לפי כיתה', style: 'font-size:17px;color:var(--primary-dark,#1b5e20);' })]));
     view.appendChild(U.el('p', { class: 'muted', style: 'font-size:13px;margin:0 0 10px;' }, 'רשימות התלמידים משמשות למעקב "מי חתם / מי חסר" באישורי הורים.'));
 
     (s.classes || []).forEach(function (c, idx) {

@@ -4,9 +4,9 @@
   var U = global.U;
 
   var TYPE = {
-    absence: { icon: '🪖', label: 'דיווח היעדרות' },
-    travel: { icon: '🚗', label: 'דיווח נסיעות' },
-    trip: { icon: '🏕️', label: 'דיווח טיול' }
+    absence: { icon: '', label: 'דיווח היעדרות' },
+    travel: { icon: '', label: 'דיווח נסיעות' },
+    trip: { icon: '', label: 'דיווח טיול' }
   };
 
   var showHandled = false;
@@ -69,20 +69,20 @@
       U.el('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 4px;' }, [
         U.el('a', { class: 'btn', href: 'https://wa.me/?text=' + encodeURIComponent(msgBox.value), target: '_blank', rel: 'noopener',
           html: WA_GREEN + ' שליחה לקבוצה', onclick: function (e) { e.currentTarget.href = 'https://wa.me/?text=' + encodeURIComponent(msgBox.value); } }),
-        U.el('button', { class: 'btn secondary', text: '📋 העתק הודעה', onclick: function () { copyText(msgBox.value, 'ההודעה הועתקה'); } }),
+        U.el('button', { class: 'btn secondary', html: U.ICO.copy + ' העתק הודעה', onclick: function () { copyText(msgBox.value, 'ההודעה הועתקה'); } }),
         // מוודא שרשימת השמות בפורטל מעודכנת (היא נגזרת מהמצבת ומתפרסמת בשמירה)
-        U.el('button', { class: 'btn secondary', text: '🔄 עדכן רשימת שמות בפורטל', onclick: function () {
+        U.el('button', { class: 'btn secondary', html: U.ICO.refresh + ' עדכן רשימת שמות בפורטל', onclick: function () {
           try { Store.publishPortal(); U.toast('רשימת השמות בפורטל עודכנה'); }
           catch (e) { U.toast('העדכון נכשל: ' + e.message, 'error'); }
         } })
       ]),
       U.el('div', { style: 'border-top:1px solid var(--border);margin-top:10px;padding-top:10px;' }, [
-        U.el('div', { style: 'font-weight:700;font-size:13.5px;margin-bottom:2px;', text: '📤 שליחה אישית (' + withPhone.length + ' מתוך ' + people.length + ')' }),
+        U.el('div', { style: 'font-weight:700;font-size:13.5px;margin-bottom:2px;', html: U.ICO.send + ' שליחה אישית (' + withPhone.length + ' מתוך ' + people.length + ')' }),
         U.el('div', { class: 'muted', style: 'font-size:12px;margin-bottom:6px;', text: 'לחיצה פותחת צ\'אט פרטי עם העובד כשההודעה מוכנה.' })
       ]),
       listWrap
     ]);
-    Modal.open('📤 שליחת קישור הדיווח לעובדים', body, [{ label: 'סגירה', class: 'secondary' }]);
+    Modal.open('שליחת קישור הדיווח לעובדים', body, [{ label: 'סגירה', class: 'secondary' }]);
   }
 
   function payloadSummary(s) {
@@ -118,7 +118,7 @@
 
   function approve(s) {
     var monthSel = U.el('input', { type: 'month', value: App.currentMonth() });
-    Modal.open('✅ אישור דיווח', U.el('div', null, [
+    Modal.open('אישור דיווח', U.el('div', null, [
       U.el('p', { style: 'margin-top:0;' }, [
         U.el('strong', { text: s.employee_name }), ' · ' + (TYPE[s.type] || {}).label
       ]),
@@ -157,7 +157,7 @@
 
   function fileBtn(s) {
     if (!s.file_path) return null;
-    var btn = U.el('button', { class: 'btn secondary', text: '📎 צפייה באישור' });
+    var btn = U.el('button', { class: 'btn secondary', html: U.ICO.clip + ' צפייה באישור' });
     btn.addEventListener('click', function () {
       btn.disabled = true;
       Store.approvalFileUrl(s.file_path).then(function (url) {
@@ -170,7 +170,7 @@
   }
 
   function card(s) {
-    var t = TYPE[s.type] || { icon: '📄', label: s.type };
+    var t = TYPE[s.type] || { icon: '', label: s.type };
     var when = new Date(s.created_at);
     var statusTag = s.status === 'pending' ? null
       : U.el('span', { class: 'tag', text: s.status === 'approved' ? '✓ אושר' : '✕ נדחה',
@@ -196,10 +196,10 @@
 
   function render(view) {
     view.appendChild(U.el('div', { class: 'page-head' }, [
-      U.el('h2', { text: '📥 תור אישורים' }),
+      U.el('h2', { text: 'תור אישורים' }),
       U.el('span', { class: 'spacer' }),
       U.el('button', { class: 'btn', html: WA_GREEN + ' שלח קישור לעובדים', onclick: openSharePortal }),
-      U.el('button', { class: 'btn secondary', text: '🔄 רענון', onclick: function () {
+      U.el('button', { class: 'btn secondary', html: U.ICO.refresh + ' רענון', onclick: function () {
         Store.loadSubmissions().then(function () { App.render(); });
       } })
     ]));
