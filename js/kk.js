@@ -326,20 +326,21 @@
       if (m.unplanned > 0 && r.status !== 'closed') unplanned += m.unplanned;
     });
 
-    function kpi(icon, val, label, color) {
-      return U.el('div', { class: 'kpi' }, [
-        U.el('div', { class: 'kpi-ic', text: icon }),
-        U.el('div', null, [
-          U.el('div', { class: 'kpi-val', style: color ? 'color:' + color + ';' : '', text: String(val) }),
+    function kpi(cls, val, label, color) {
+      return U.el('div', { class: 'kpi ' + (cls || 'kpi-neutral') }, [
+        U.el('div', { class: 'kpi-ic' }),
+        U.el('div', { class: 'kpi-body' }, [
+          U.el('div', { class: 'kpi-row' },
+            U.el('div', { class: 'kpi-val', style: color ? 'color:' + color + ';' : '', text: String(val) })),
           U.el('div', { class: 'kpi-lbl', text: label })
         ])
       ]);
     }
-    view.appendChild(U.el('div', { class: 'kpi-row' }, [
-      kpi('⏰', soon.length, 'הגשות שנסגרות תוך 14 יום', soon.length ? '#b91c1c' : ''),
-      kpi('', waiting.length, 'ממתינים לתשובה'),
-      kpi('', ils(unplanned), 'כסף מאושר שעוד לא תוכנן', unplanned > 0 ? '#b91c1c' : '#16a34a'),
-      kpi('', ils(totalApproved), 'סה"כ הקצבות השנה')
+    view.appendChild(U.el('div', { class: 'kpi-grid' }, [
+      kpi(soon.length ? 'kpi-bad' : 'kpi-neutral', soon.length, 'הגשות שנסגרות תוך 14 יום', soon.length ? '#b91c1c' : ''),
+      kpi('kpi-info', waiting.length, 'ממתינים לתשובה'),
+      kpi(unplanned > 0 ? 'kpi-bad' : 'kpi-good', ils(unplanned), 'כסף מאושר שעוד לא תוכנן', unplanned > 0 ? '#b91c1c' : '#16a34a'),
+      kpi('kpi-neutral', ils(totalApproved), 'סה"כ הקצבות השנה')
     ]));
 
     var sync = syncCard();
@@ -494,20 +495,21 @@
       if (m.unplanned > 0 && r.status !== 'closed') unplanned += m.unplanned;
     });
 
-    function kpi(icon, val, label, color) {
-      return U.el('div', { class: 'kpi' }, [
-        U.el('div', { class: 'kpi-ic', text: icon }),
-        U.el('div', null, [
-          U.el('div', { class: 'kpi-val', style: color ? 'color:' + color + ';' : '', text: String(val) }),
+    function kpi(cls, val, label, color) {
+      return U.el('div', { class: 'kpi ' + (cls || 'kpi-neutral') }, [
+        U.el('div', { class: 'kpi-ic' }),
+        U.el('div', { class: 'kpi-body' }, [
+          U.el('div', { class: 'kpi-row' },
+            U.el('div', { class: 'kpi-val', style: color ? 'color:' + color + ';' : '', text: String(val) })),
           U.el('div', { class: 'kpi-lbl', text: label })
         ])
       ]);
     }
-    view.appendChild(U.el('div', { class: 'kpi-row' }, [
-      kpi('⏰', soon.length, 'הגשות שנסגרות תוך 14 יום', soon.length ? '#b91c1c' : ''),
-      kpi('', waiting.length, 'ממתינים לתשובה'),
-      kpi('', ils(unplanned), 'כסף מאושר שעוד לא תוכנן', unplanned > 0 ? '#b91c1c' : '#16a34a'),
-      kpi('', ils(totalApproved), 'סה"כ הקצבות השנה')
+    view.appendChild(U.el('div', { class: 'kpi-grid' }, [
+      kpi(soon.length ? 'kpi-bad' : 'kpi-neutral', soon.length, 'הגשות שנסגרות תוך 14 יום', soon.length ? '#b91c1c' : ''),
+      kpi('kpi-info', waiting.length, 'ממתינים לתשובה'),
+      kpi(unplanned > 0 ? 'kpi-bad' : 'kpi-good', ils(unplanned), 'כסף מאושר שעוד לא תוכנן', unplanned > 0 ? '#b91c1c' : '#16a34a'),
+      kpi('kpi-neutral', ils(totalApproved), 'סה"כ הקצבות השנה')
     ]));
 
     if (!recs.length) {
