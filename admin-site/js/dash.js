@@ -301,13 +301,15 @@
 
   function tasksCard(d) {
     var rows = [];
+    // תיאור המשימה נשמר בשדה desc (לא title) — כמו בגיליון המשימות
+    function taskLabel(t) { return String(t.desc || t.title || '').trim() || 'משימה ללא תיאור'; }
     d.overdue.slice(0, 5).forEach(function (t) {
       var n = Math.abs(Store.daysToDue(t.due));
-      rows.push(line([label(t.title || ''), chip('באיחור ' + n + ' י׳', RED)]));
+      rows.push(line([label(taskLabel(t)), chip('באיחור ' + n + ' י׳', RED)]));
     });
     d.dueSoon.slice(0, 5).forEach(function (t) {
       var n = Store.daysToDue(t.due);
-      rows.push(line([label(t.title || ''), chip(n === 0 ? 'להיום' : 'בעוד ' + n + ' י׳', n <= 2 ? ORANGE : '')]));
+      rows.push(line([label(taskLabel(t)), chip(n === 0 ? 'להיום' : 'בעוד ' + n + ' י׳', n <= 2 ? ORANGE : '')]));
     });
     if (!rows.length) rows.push(emptyLine('אין משימות באיחור או ליעד השבוע'));
     return card('המשימות שלי', 'tasks', rows);
