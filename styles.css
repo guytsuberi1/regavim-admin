@@ -269,6 +269,7 @@ table.grid td.actions { white-space: nowrap; text-align: left; }
 /* תת-טאבים בסגנון Monday: טקסט נקי עם קו תחתון לפעיל, בלי גלולות */
 .subtabs { display: flex; gap: 4px; margin-bottom: 14px; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
 .subtabs button {
+  display: inline-flex; align-items: center; gap: 6px;
   background: transparent; border: 0; border-bottom: 2px solid transparent;
   padding: 8px 12px; margin-bottom: -1px; cursor: pointer; font-family: inherit;
   font-size: 14px; font-weight: 500; color: var(--muted); border-radius: 0;
@@ -992,3 +993,34 @@ input[type="month"]::-webkit-calendar-picker-indicator { pointer-events: none; }
 .dash-chev { display: flex; color: var(--muted); }
 .dash-chev svg { width: 16px; height: 16px; }
 .dash-title:hover .dash-chev { color: var(--brand); }
+
+/* ===== תגיות עובד — צבע לכל תגית ===== */
+.tag.tg-a { --tgc: #2563eb; --tgbg: #dbeafe; }   /* מורה */
+.tag.tg-b { --tgc: #7c3aed; --tgbg: #ede9fe; }   /* פנימיה */
+.tag.tg-c { --tgc: #0d9488; --tgbg: #ccfbf1; }   /* מנהלה */
+.tag.tg-d { --tgc: #d97706; --tgbg: #fef3c7; }   /* מתגבר */
+.tag.tg-x { --tgc: #64748b; --tgbg: #eef2f6; }
+.tag[class*="tg-"] {
+  background: var(--tgbg); border-color: color-mix(in srgb, var(--tgc) 35%, transparent);
+  color: var(--tgc); font-weight: 600;
+}
+.tag[class*="tg-"].on { background: var(--tgc); color: #fff; border-color: var(--tgc); }
+body.dark .tag.tg-a { --tgbg: #17263f; --tgc: #7aa7f0; }
+body.dark .tag.tg-b { --tgbg: #241d3d; --tgc: #b9a2f5; }
+body.dark .tag.tg-c { --tgbg: #10302c; --tgc: #58c8bb; }
+body.dark .tag.tg-d { --tgbg: #35270f; --tgc: #e8ab4b; }
+body.dark .tag.tg-x { --tgbg: #26323f; --tgc: #9aa6b8; }
+body.dark .tag[class*="tg-"].on { color: #0f1620; }
+
+/* ===== ידית גרירה לשורות טבלה ===== */
+.row-grip {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 26px; color: var(--muted); cursor: grab; opacity: .55;
+}
+.row-grip:hover { opacity: 1; color: var(--brand); }
+tr.row-drag { opacity: .4; }
+tr.row-drop-before td { box-shadow: inset 0 2px 0 var(--brand); }
+
+/* ===== שדה עם סיומת קבועה (%, ₪) ===== */
+.suffix-field { display: inline-flex; align-items: center; gap: 2px; }
+.suffix-field > .sfx { color: var(--muted); font-size: 13px; font-weight: 600; }
