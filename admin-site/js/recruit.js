@@ -14,6 +14,68 @@
     return x ? x.color : '#64748b';
   }
   var FLYER = ['', 'בוצע', 'לא בוצע', 'לא צריך'];
+
+  // הודעה מוכנה לשליחה לכל שינוי סטטוס — נפתחת לעריכה לפני השליחה
+  function firstName(c) { return String(c.name || '').trim().split(/\s+/)[0] || ''; }
+  function roleOf(c) { return (c.target || '').trim() || 'המשרה'; }
+  var MSG = {
+    'התעניין': function (c) {
+      return 'שלום ' + firstName(c) + ',\n' +
+        'חוזר אליך בעקבות פנייתך למשרת ' + roleOf(c) + ' בישיבת רגבים בנימין.\n' +
+        'אשמח לתאם ראיון — נא ליצור קשר עם המזכירה לתיאום מועד.\n' +
+        'זמין לכל שאלה.';
+    },
+    'הגיע לראיון': function (c) {
+      return 'שלום ' + firstName(c) + ',\n' +
+        'תודה שהגעת לראיון למשרת ' + roleOf(c) + '.\n' +
+        'נעדכן אותך בהמשך התהליך בהקדם.\n' +
+        'תודה ובהצלחה.';
+    },
+    'התקבל': function (c) {
+      return 'שלום ' + firstName(c) + ',\n' +
+        'שמחים לבשר שהתקבלת למשרת ' + roleOf(c) + ' בישיבת רגבים בנימין!\n' +
+        'ניצור קשר לתיאום המשך תהליך הקליטה והחתמת מסמכים.\n' +
+        'ברוך הבא.';
+    },
+    'לא רלוונטי': function (c) {
+      return 'שלום ' + firstName(c) + ',\n' +
+        'תודה על התעניינותך במשרת ' + roleOf(c) + ' בישיבת רגבים בנימין.\n' +
+        'לאחר בחינת המועמדויות בחרנו להתקדם עם מועמד אחר.\n' +
+        'נשמח לשמור את פרטיך לפניות עתידיות. בהצלחה בהמשך הדרך.';
+    }
+  };
+  function offerMessage(c, status, done) {
+    var build = MSG[status];
+    if (!build) { done && done(); return; }
+    var phone = (c.phone || '').trim();
+    var ta = U.el('textarea', { rows: 8, style: 'width:100%;font-size:14px;line-height:1.6;' }, build(c));
+    var body = U.el('div', null, [
+      U.el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:8px;',
+        text: 'הסטטוס עודכן ל"' + status + '". אפשר לערוך את הנוסח ולשלוח ל' + (c.name || 'מועמד') +
+          (phone ? ' (' + phone + ')' : '') + ':' }),
+      ta,
+      phone ? null : U.el('div', { class: 'field-err', style: 'margin-top:6px;',
+        text: 'למועמד אין מספר טלפון — אפשר להעתיק את הנוסח ולשלוח ידנית.' })
+    ].filter(Boolean));
+
+    Modal.open('שליחת הודעה למועמד', body, [
+      { label: 'לא עכשיו', class: 'secondary', onClick: function (close) { close(); done && done(); } },
+      { label: 'העתקה', class: 'secondary', onClick: function () {
+        try { navigator.clipboard.writeText(ta.value); U.toast('הנוסח הועתק'); }
+        catch (e) { U.toast('ההעתקה נכשלה', 'error'); }
+      } },
+      { label: 'SMS', class: 'secondary', onClick: function (close) {
+        if (!phone) { U.toast('אין מספר טלפון למועמד', 'error'); return; }
+        window.open('sms:' + phone.replace(/[^0-9+]/g, '') + '?body=' + encodeURIComponent(ta.value), '_blank');
+        close(); done && done();
+      } },
+      { label: 'שליחה בוואטסאפ', onClick: function (close) {
+        if (!phone) { U.toast('אין מספר טלפון למועמד', 'error'); return; }
+        window.open('https://wa.me/' + U.waNumber(phone) + '?text=' + encodeURIComponent(ta.value), '_blank');
+        close(); done && done();
+      } }
+    ]);
+  }
   var DEFAULT_YEAR = 'תשפ"ז';
 
   var viewMode = 'kanban'; // 'kanban' | 'table'
@@ -80,8 +142,10 @@
   function setStatus(c, status) {
     c.status = status;
     Store.upsertCandidate(c);
-    if (status === 'התקבל') offerConversion(c);
     App.render();
+    offerMessage(c, status, function () {
+      if (status === 'התקבל') offerConversion(c);
+    });
   }
 
   // ---------- ייבוא מועמדים מאקסל (הקובץ של גיא: מועמדים + משרות זו לצד זו) ----------
@@ -232,9 +296,10 @@
   }
 
   function statusSel(c) {
-    var sel = U.el('select', { style: 'padding:4px 6px;color:' + stColor(c.status) + ';font-weight:600;' },
+    var sel = U.el('select', { class: 'm-status', style: 'min-width:112px;font-size:12px;padding:7px 8px;' },
       STATUSES.map(function (s) { return U.el('option', { value: s.key, text: s.key }); }));
     sel.value = c.status || 'התעניין';
+    sel.style.background = stColor(sel.value);
     sel.addEventListener('change', function () { setStatus(c, sel.value); });
     return sel;
   }
@@ -330,11 +395,11 @@
     host.appendChild(U.el('div', { class: 'kb-board' }, cols));
   }
 
-  function kpi(icon, val, label) {
-    return U.el('div', { class: 'kpi kpi-neutral' }, [
-      U.el('span', { class: 'kpi-ic', text: icon }),
+  function kpi(cls, val, label) {
+    return U.el('div', { class: 'kpi ' + (cls || 'kpi-neutral') }, [
+      U.el('div', { class: 'kpi-ic' }),
       U.el('div', { class: 'kpi-body' }, [
-        U.el('div', { class: 'kpi-val', text: String(val) }),
+        U.el('div', { class: 'kpi-row' }, U.el('div', { class: 'kpi-val', text: String(val) })),
         U.el('div', { class: 'kpi-lbl', text: label })
       ])
     ]);
@@ -343,8 +408,10 @@
   function renderCands(view) {
     var isAdmin = Store.isAdmin();
     var toggle = U.el('div', { class: 'subtabs', style: 'display:inline-flex;margin:0;' }, [
-      U.el('button', { class: viewMode === 'kanban' ? 'active' : '', text: '▤ קנבן', onclick: function () { viewMode = 'kanban'; App.render(); } }),
-      U.el('button', { class: viewMode === 'table' ? 'active' : '', text: 'טבלה', onclick: function () { viewMode = 'table'; App.render(); } })
+      U.el('button', { class: viewMode === 'kanban' ? 'active' : '', html: U.ICO.board + ' קנבן',
+        title: 'תצוגת קנבן', onclick: function () { viewMode = 'kanban'; App.render(); } }),
+      U.el('button', { class: viewMode === 'table' ? 'active' : '', html: U.ICO.table + ' טבלה',
+        title: 'תצוגת טבלה', onclick: function () { viewMode = 'table'; App.render(); } })
     ]);
     view.appendChild(U.el('div', { class: 'page-head' }, [
       U.el('h2', { text: 'מועמדים' }),
@@ -357,10 +424,10 @@
 
     var list = filteredCands();
     var inProcess = list.filter(function (c) { return c.status === 'התעניין' || c.status === 'הגיע לראיון'; }).length;
-    view.appendChild(U.el('div', { class: 'kpi-row' }, [
-      kpi('', list.length, 'מועמדים'),
-      kpi('⏳', inProcess, 'בתהליך'),
-      kpi('', list.filter(function (c) { return c.status === 'התקבל'; }).length, 'התקבלו')
+    view.appendChild(U.el('div', { class: 'kpi-grid' }, [
+      kpi('kpi-neutral', list.length, 'מועמדים'),
+      kpi('kpi-info', inProcess, 'בתהליך'),
+      kpi('kpi-good', list.filter(function (c) { return c.status === 'התקבל'; }).length, 'התקבלו')
     ]));
 
     // סינונים: שנה + משרה
@@ -388,33 +455,154 @@
   // ---------- מסך משרות ----------
   function quickAddPos(host) {
     var title = U.el('input', { placeholder: '+ משרה חדשה — שם התפקיד ולחיצה על Enter', style: 'flex:2;min-width:200px;font-size:15px;' });
-    var scope = U.el('input', { placeholder: 'אחוז משרה', style: 'flex:0 0 110px;' });
+    var scope = U.el('input', { placeholder: 'אחוז משרה (%)', inputmode: 'numeric', style: 'flex:0 0 130px;' });
+    var salary = U.el('input', { placeholder: 'שכר מתוקצב (₪)', inputmode: 'numeric', style: 'flex:0 0 150px;' });
     function add() {
       if (!title.value.trim()) { title.focus(); return; }
-      Store.upsertPosition({ title: title.value.trim(), scope: scope.value.trim(), filledBy: '', flyer: '', notes: '' });
+      Store.upsertPosition({ title: title.value.trim(), scope: scope.value.trim().replace(/%/g, ''), scopePct: true,
+        salary: salary.value.trim(), filledBy: '', flyer: '', notes: '' });
       focusAdd = true;
       App.render();
     }
     title.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); add(); } });
     host.appendChild(U.el('div', { class: 'card', style: 'padding:10px;margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;' },
-      [title, scope, U.el('button', { class: 'btn', text: 'הוסף', onclick: add })]));
+      [title, scope, salary, U.el('button', { class: 'btn', text: 'הוסף', onclick: add })]));
     if (focusAdd) { focusAdd = false; setTimeout(function () { title.focus(); }, 0); }
   }
 
-  // "מאויש ע"י" — dropdown של המועמדים שהתקבלו למשרה זו
+  // "מאויש ע"י" — מועמדים שהתקבלו למשרה זו. מועמד שכבר אויש במשרה אחרת
+  // מוצג נעול עם שם המשרה, כדי שלא יאויש פעמיים בטעות.
   function filledBySelect(p) {
+    var takenElsewhere = {};
+    Store.positions().forEach(function (q) {
+      if (q.id === p.id) return;
+      var v = (q.filledBy || '').trim();
+      if (v) takenElsewhere[v] = q.title || 'משרה אחרת';
+    });
     var accepted = Store.candidates()
       .filter(function (c) { return c.status === 'התקבל' && (c.target || '') === p.title; })
       .map(function (c) { return c.name; });
     var cur = (p.filledBy || '').trim();
-    var opts = [''].concat(accepted);
-    if (cur && opts.indexOf(cur) === -1) opts.push(cur); // שמירת ערך קיים שאינו ברשימה (למשל מייבוא)
-    var sel = U.el('select', { style: 'padding:4px 6px;min-width:120px;' }, opts.map(function (v) {
-      return U.el('option', { value: v, text: v || 'טרם אויש' });
-    }));
+    if (cur && accepted.indexOf(cur) === -1) accepted.push(cur);   // ערך קיים שאינו ברשימה (מייבוא)
+
+    var sel = U.el('select', { style: 'padding:4px 6px;min-width:130px;' },
+      [U.el('option', { value: '', text: 'טרם אויש' })].concat(accepted.map(function (n) {
+        var taken = takenElsewhere[n];
+        return U.el('option', {
+          value: n, disabled: taken && n !== cur ? 'disabled' : null,
+          text: n + (taken && n !== cur ? '  — מאויש ב"' + taken + '"' : '')
+        });
+      })));
     sel.value = cur;
-    sel.addEventListener('change', function () { savePos(p, 'filledBy', sel.value); App.render(); });
+    sel.addEventListener('change', function () {
+      var v = sel.value.trim();
+      if (v && takenElsewhere[v]) {                                 // הגנה כפולה
+        U.toast('"' + v + '" כבר מאויש במשרת "' + takenElsewhere[v] + '"', 'error');
+        sel.value = cur; return;
+      }
+      savePos(p, 'filledBy', v);
+      App.render();
+    });
     return sel;
+  }
+
+  // ---------- פלייר: סטטוס + קובץ מצורף ----------
+  function flyerCell(p) {
+    var wrap = U.el('div', { style: 'display:flex;gap:4px;align-items:center;' });
+    var sel = U.el('select', { style: 'padding:4px 6px;' }, FLYER.map(function (f) {
+      return U.el('option', { value: f, text: f || '—' });
+    }));
+    sel.value = p.flyer || '';
+    sel.addEventListener('change', function () { savePos(p, 'flyer', sel.value); });
+    wrap.appendChild(sel);
+
+    if (p.flyerPath) {
+      var view = U.el('button', { class: 'btn secondary small', html: U.ICO.clip, title: p.flyerName || 'צפייה בפלייר' });
+      view.addEventListener('click', function () {
+        view.disabled = true;
+        Store.taskFileUrl(p.flyerPath).then(function (url) {
+          view.disabled = false;
+          if (url) window.open(url, '_blank');
+          else U.toast('לא הצלחתי לפתוח את הקובץ', 'error');
+        });
+      });
+      wrap.appendChild(view);
+    }
+    var inp = U.el('input', { type: 'file', accept: 'image/*,.pdf', style: 'display:none;' });
+    var up = U.el('button', { class: 'btn secondary small', html: U.ICO.upload,
+      title: p.flyerPath ? 'החלפת הפלייר' : 'העלאת פלייר' });
+    up.addEventListener('click', function () { inp.click(); });
+    inp.addEventListener('change', function () {
+      var f = inp.files[0];
+      if (!f) return;
+      up.disabled = true;
+      Store.uploadTaskFile(f).then(function (res) {
+        p.flyerPath = res.path; p.flyerName = res.name; p.flyer = 'בוצע';
+        Store.upsertPosition(p);
+        U.toast('הפלייר צורף');
+        App.render();
+      }).catch(function (e) {
+        up.disabled = false;
+        U.toast('העלאת הפלייר נכשלה: ' + (e && e.message ? e.message : ''), 'error');
+      });
+      inp.value = '';
+    });
+    wrap.appendChild(up);
+    wrap.appendChild(inp);
+    return wrap;
+  }
+
+  // ---------- שדה מספרי עם סיומת קבועה (% / ₪) ----------
+  function numField(p, field, suffix, ph, width) {
+    var i = U.el('input', { value: p[field] != null ? p[field] : '', placeholder: ph || '',
+      inputmode: 'numeric', style: 'width:' + (width || 56) + 'px;text-align:center;' });
+    bareStyle(i);
+    i.addEventListener('change', function () { savePos(p, field, i.value.trim()); });
+    return U.el('span', { class: 'suffix-field' }, [i, U.el('span', { class: 'sfx', text: suffix })]);
+  }
+
+  // אחוז משרה: הנתונים הישנים נשמרו כשבר (1 / 0.5) — ממירים פעם אחת לאחוזים
+  function migrateScopes() {
+    var changed = 0;
+    Store.positions().forEach(function (p) {
+      if (p.scopePct) return;
+      var raw = String(p.scope == null ? '' : p.scope).trim();
+      if (/^(0?\.\d+|1(\.0+)?)$/.test(raw)) p.scope = String(Math.round(parseFloat(raw) * 100));
+      else p.scope = raw.replace(/%/g, '').trim();
+      p.scopePct = true;
+      Store.upsertPosition(p);
+      changed++;
+    });
+    return changed;
+  }
+
+  // ---------- גרירה לסידור השורות ----------
+  var dragPosId = null;
+  function applyDrag(tr, p, list) {
+    tr.setAttribute('draggable', 'true');
+    tr.addEventListener('dragstart', function (e) {
+      dragPosId = p.id;
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', p.id); } catch (err) {}
+      tr.classList.add('row-drag');
+    });
+    tr.addEventListener('dragend', function () { dragPosId = null; tr.classList.remove('row-drag'); });
+    tr.addEventListener('dragover', function (e) {
+      if (!dragPosId || dragPosId === p.id) return;
+      e.preventDefault();
+      tr.classList.add('row-drop-before');
+    });
+    tr.addEventListener('dragleave', function () { tr.classList.remove('row-drop-before'); });
+    tr.addEventListener('drop', function (e) {
+      e.preventDefault();
+      tr.classList.remove('row-drop-before');
+      if (!dragPosId || dragPosId === p.id) return;
+      var ids = list.map(function (x) { return x.id; }).filter(function (id) { return id !== dragPosId; });
+      ids.splice(ids.indexOf(p.id), 0, dragPosId);
+      Store.reorderPositions(ids);
+      dragPosId = null;
+      App.render();
+    });
   }
 
   function renderPositions(view) {
@@ -423,12 +611,13 @@
       U.el('span', { class: 'spacer' })
     ]));
 
+    migrateScopes();
     var list = Store.positions();
     var open = list.filter(function (p) { return !(p.filledBy || '').trim(); });
-    view.appendChild(U.el('div', { class: 'kpi-row' }, [
-      kpi('', list.length, 'משרות'),
-      kpi('', open.length, 'טרם אוישו'),
-      kpi('', list.length - open.length, 'אוישו')
+    view.appendChild(U.el('div', { class: 'kpi-grid' }, [
+      kpi('kpi-neutral', list.length, 'משרות'),
+      kpi(open.length ? 'kpi-warn' : 'kpi-good', open.length, 'טרם אוישו'),
+      kpi('kpi-good', list.length - open.length, 'אוישו')
     ]));
 
     var host = U.el('div');
@@ -437,7 +626,7 @@
     if (!list.length) { host.appendChild(U.el('div', { class: 'empty' }, 'אין משרות — הוסיפו למעלה או ייבאו עם המועמדים מאקסל')); return; }
 
     var tbl = U.el('table', { class: 'grid' }, [
-      U.el('thead', null, U.el('tr', null, ['תפקיד', 'אחוז משרה', 'מאויש ע"י', 'פלייר', 'מועמדים', ''].map(function (h) {
+      U.el('thead', null, U.el('tr', null, ['', 'תפקיד', 'אחוז משרה', 'שכר מתוקצב', 'מאויש ע"י', 'פלייר', 'מועמדים', ''].map(function (h) {
         return U.el('th', { text: h });
       }))),
       U.el('tbody', null, list.map(function (p) {
@@ -455,27 +644,25 @@
           }, chips)
         ] : [U.el('span', { class: 'muted', text: '—' })]);
 
-        var flyerSel = U.el('select', { style: 'padding:4px 6px;' }, FLYER.map(function (f) {
-          return U.el('option', { value: f, text: f || '—' });
-        }));
-        flyerSel.value = p.flyer || '';
-        flyerSel.addEventListener('change', function () { savePos(p, 'flyer', flyerSel.value); });
-
         var filled = (p.filledBy || '').trim();
-        return U.el('tr', { style: filled ? 'opacity:.65;' : '' }, [
+        var tr = U.el('tr', { style: filled ? 'opacity:.65;' : '' }, [
+          U.el('td', { style: 'width:28px;' }, U.el('span', { class: 'row-grip', html: U.ICO.grip, title: 'גררו לסידור השורות' })),
           U.el('td', { style: 'min-width:160px;' }, [
             inpText(p, 'title', savePos, 'תפקיד', 'font-weight:600;width:100%;'),
             inpText(p, 'notes', savePos, 'הערות…', 'width:100%;font-size:12px;color:var(--muted,#6b7884);')
           ]),
-          U.el('td', null, inpText(p, 'scope', savePos, '1 / 0.5…', 'max-width:80px;')),
+          U.el('td', null, numField(p, 'scope', '%', '100', 52)),
+          U.el('td', null, numField(p, 'salary', '₪', 'שכר', 80)),
           U.el('td', null, filledBySelect(p)),
-          U.el('td', null, [flyerSel]),
+          U.el('td', null, flyerCell(p)),
           candCell,
           U.el('td', null, U.el('button', { class: 'btn secondary', html: U.ICO.trash, title: 'מחיקה', onclick: function () {
             Modal.confirm({ title: 'מחיקת משרה', text: 'למחוק את המשרה "' + (p.title || '') + '"?', okLabel: 'מחיקה', danger: true },
               function () { Store.deletePosition(p.id); App.render(); });
           } }))
         ]);
+        applyDrag(tr, p, list);
+        return tr;
       }))
     ]);
     host.appendChild(U.el('div', { class: 'tbl-scroll' }, [tbl]));

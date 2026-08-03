@@ -34,9 +34,8 @@
 
     var tagChips = U.el('div', { style: 'display:flex;gap:6px;align-items:center;margin:0 0 12px;flex-wrap:wrap;' },
       [U.el('span', { class: 'muted', style: 'font-size:13px;', text: 'סינון:' })].concat(TAGS.map(function (t) {
-        var b = U.el('button', { class: 'tag', style: 'cursor:pointer;' + (filterTag === t ? 'outline:2px solid var(--brand);' : ''), text: t });
-        b.addEventListener('click', function () { filterTag = filterTag === t ? '' : t; App.render(); });
-        return b;
+        return U.tagChip(t, { on: filterTag === t,
+          click: function () { filterTag = filterTag === t ? '' : t; App.render(); } });
       })));
     view.appendChild(tagChips);
 
@@ -73,6 +72,8 @@
           } }, [
             U.el('td', null, [
               U.el('strong', { text: Store.empName(e) }),
+              (e.tags || []).length ? U.el('div', { style: 'display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;' },
+                (e.tags || []).map(function (t) { return U.tagChip(t, { style: 'font-size:11px;padding:1px 7px;' }); })) : null,
               e.jobTitle ? U.el('div', { class: 'muted', style: 'font-size:12px;', text: e.jobTitle }) : null
             ])
           ].concat(DAYS_FULL.map(function (d, i) {

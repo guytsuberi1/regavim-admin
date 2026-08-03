@@ -643,7 +643,7 @@
         infoLine('ק"מ נסיעה (מתגבר)', txt(emp.travelKm !== '' && emp.travelKm != null ? String(emp.travelKm) : '')),
         infoLine('הרשאה באפליקציה', txt(emp.role ? Store.roleLabel(emp.role) : '')),
         infoLine('תגיות', (emp.tags || []).length ? U.el('span', null, (emp.tags || []).map(function (t) {
-          return U.el('span', { class: 'tag', text: t, style: 'margin-inline-end:4px;' });
+          return U.tagChip(t, { style: 'margin-inline-end:4px;' });
         })) : null),
         infoLine('קורות חיים', txt(emp.hasCv ? 'יש' : '')),
         infoLine('חוזה חתום', txt(emp.hasContract ? 'יש' : ''))
@@ -842,7 +842,7 @@
     view.appendChild(head);
 
     var left = all.filter(function (e) { return e.active === false; });
-    view.appendChild(U.el('div', { class: 'kpi-row' }, [
+    view.appendChild(U.el('div', { class: 'kpi-grid' }, [
       kpi('', active.length, 'עובדים פעילים'),
       kpi('', active.filter(function (e) { return e.employment === 'amuta'; }).length, 'עובדי עמותה'),
       kpi('', active.filter(function (e) { return e.employment === 'moe'; }).length, 'משרד החינוך'),
@@ -851,9 +851,8 @@
 
     var search = U.el('input', { placeholder: 'חיפוש עובד…', style: 'max-width:220px;' });
     var tagChips = U.el('div', { style: 'display:flex;gap:6px;align-items:center;' }, TAGS.map(function (t) {
-      var b = U.el('button', { class: 'tag', style: 'cursor:pointer;' + (filterTag === t ? 'outline:2px solid var(--brand);' : ''), text: t });
-      b.addEventListener('click', function () { filterTag = filterTag === t ? '' : t; App.render(); });
-      return b;
+      return U.tagChip(t, { on: filterTag === t,
+        click: function () { filterTag = filterTag === t ? '' : t; App.render(); } });
     }));
     var empSel = U.el('select', { style: 'max-width:160px;' }, [U.el('option', { value: '', text: 'כל סוגי ההעסקה' })].concat(
       EMPLOYMENT.map(function (x) { return U.el('option', { value: x.key, text: x.label }); })));
@@ -909,7 +908,7 @@
             U.el('td', null, e.workDays.length
               ? U.el('span', { class: 'wd-mini', text: e.workDays.map(function (i) { return DAYS_SHORT[i]; }).join(' ') })
               : U.el('span', { class: 'muted', text: '—' })),
-            U.el('td', null, (e.tags || []).map(function (t) { return U.el('span', { class: 'tag', text: t, style: 'margin-inline-end:4px;' }); })),
+            U.el('td', null, (e.tags || []).map(function (t) { return U.tagChip(t, { style: 'margin-inline-end:4px;' }); })),
             U.el('td', { text: e.active === false ? offLabel(e) : 'פעיל' })
           ]);
           tr.addEventListener('click', function () { openCard(e.id); });

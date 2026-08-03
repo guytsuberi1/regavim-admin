@@ -685,6 +685,17 @@
   }
   function upsertPosition(rec) { return recruitUpsert('positions', rec); }
   function deletePosition(id) { recruitDelete('positions', id); }
+  // סידור ידני של המשרות — הסדר הוא סדר המערך עצמו
+  function reorderPositions(orderedIds) {
+    var arr = data.recruit.positions || [];
+    var byId = {};
+    arr.forEach(function (r) { byId[r.id] = r; });
+    var out = [];
+    orderedIds.forEach(function (id) { if (byId[id]) { out.push(byId[id]); delete byId[id]; } });
+    arr.forEach(function (r) { if (byId[r.id]) out.push(r); });   // מחוקים/חדשים שלא נכללו
+    data.recruit.positions = out;
+    save('recruit');
+  }
 
   function projectsAll() {
     return (data.projects.records || []).filter(function (r) { return !r.deleted; });
@@ -1465,6 +1476,7 @@
     positionById: positionById,
     upsertPosition: upsertPosition,
     deletePosition: deletePosition,
+    reorderPositions: reorderPositions,
     // אירועים וטיולים
     eventsAll: eventsAll,
     eventById: eventById,
