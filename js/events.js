@@ -20,6 +20,8 @@
     sign: svg('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>')
   };
 
+  var CHEV = svg('<path d="M14 6l-6 6 6 6"/>');   // סגור מצביע שמאלה (RTL), פתוח מסתובב למטה
+
   var ESTATUS = [{ key: 'בתכנון', color: '#d97706' }, { key: 'מוכן', color: '#2563eb' }, { key: 'בוצע', color: '#16a34a' }];
   var TSTATUS = [{ key: 'פתוח', color: '#64748b' }, { key: 'בתהליך', color: '#2563eb' }, { key: 'בוצע', color: '#16a34a' }];
   function stColor(list, s) { var x = list.filter(function (q) { return q.key === s; })[0]; return x ? x.color : '#64748b'; }
@@ -666,7 +668,11 @@
     var doneN = (ev.tasks || []).filter(function (t) { return t.status === 'בוצע'; }).length;
     function mkSec(open, icon, label, key, storeOpen, contentFn) {
       var anchor = 'sec_' + ev.id + '_' + key.replace(/[^a-z0-9]/gi, '');
-      var btn = U.el('button', { class: 'btn', style: 'background:var(--primary-light,#e8f5e9);color:var(--primary-dark,#1b5e20);border:1px solid var(--primary,#2e7d32);font-weight:700;', html: (open ? '▾' : '▸') + ' ' + (icon ? icon + ' ' : '') + esc(label), onclick: function () {
+      // כפתור סעיף בשפת Monday — נפתח נצבע בצבע המותג, סגור נשאר ניטרלי
+      var btn = U.el('button', { class: 'm-sec' + (open ? ' open' : ''), html:
+        '<span class="m-sec-chev">' + CHEV + '</span>' +
+        (icon ? '<span class="m-sec-ic">' + icon + '</span>' : '') +
+        '<span>' + esc(label) + '</span>', onclick: function () {
         var willOpen = !open;
         collapsedMap[key] = storeOpen ? willOpen : !willOpen;
         saveCollapsed();
