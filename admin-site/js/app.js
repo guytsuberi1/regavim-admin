@@ -22,6 +22,7 @@
     kk: global.KkView,
     safety: global.SafetyView,
     base: global.BaseView,
+    users: global.UsersView,
     settings: global.SettingsView
   };
 
@@ -60,7 +61,8 @@
       { id: 'safety', label: 'בטיחות ורישוי' }
     ] },
     { id: 'base', label: 'נתוני בסיס', icon: 'base', subs: [
-      { id: 'base', label: 'נתוני בסיס' }
+      { id: 'base', label: 'נתוני בסיס' },
+      { id: 'users', label: 'הרשאות' }
     ] }
   ];
   // פריטים עצמאיים (לא גיליונות) — הגדרות כגלגל מוצמד לתחתית (כמו בשאר האפליקציות)
@@ -74,7 +76,9 @@
 
   // הרשאות: admin רואה הכל; secretary רק מרכז למידה
   var ROLE_VIEWS = {
-    admin: ['dash', 'status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'kk', 'safety', 'base', 'settings'],
+    admin: ['dash', 'status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'kk', 'safety', 'base', 'users', 'settings'],
+    // הנהלה — כל הגיליונות למעט הגדרות ונתוני בסיס
+    manager: ['dash', 'status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'kk', 'safety'],
     secretary: ['lc']
   };
   function roleKey() { return Store.currentRole(); }
@@ -281,7 +285,7 @@
     Store.initPersistence(function () {
       buildSidebar();
       var allowed = allowedViews();
-      current = roleKey() === 'admin' ? 'dash' : allowed[0];
+      current = (roleKey() === 'admin' || roleKey() === 'manager') ? 'dash' : allowed[0];
       render();
       // נתוני אפליקציית התקציב (חשבוניות קולות קוראים) — ברקע, לא חוסמים את המסך
       if (roleKey() === 'admin' && Store.budgetLoad) {

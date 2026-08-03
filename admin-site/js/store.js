@@ -270,21 +270,46 @@
       return (s.email || '').toLowerCase() === email && s.active !== false;
     })[0] || null;
   }
-  // admin=גיא (הכל) · secretary=מזכירה (מרכז למידה) — ברירת מחדל לעובד לא מוכר: secretary
+  // שלוש רמות: admin (גיא — הכול) · manager (הנהלה — כל הגיליונות למעט הגדרות ונתוני בסיס) ·
+  // secretary (מזכירות — מרכז למידה בלבד). ברירת מחדל לעובד לא מוכר: secretary.
+  var ROLES = ['admin', 'manager', 'secretary'];
   function roleOf(email) {
     email = String(email || '').toLowerCase();
     if (!email) return 'secretary';
+    // הרשאה שנקבעה במסך ניהול ההרשאות גוברת על כל השאר
+    var map = (data && data.core && data.core.settings && data.core.settings.userRoles) || {};
+    if (ROLES.indexOf(map[email]) !== -1) return map[email];
     if (ADMIN_EMAILS.indexOf(email) !== -1) return 'admin';
     var s = empByEmail(email);
-    if (s && (s.role === 'admin' || s.role === 'secretary')) return s.role;
+    if (s && ROLES.indexOf(s.role) !== -1) return s.role;
     return 'secretary';
+  }
+  function setUserRole(email, role) {
+    email = String(email || '').toLowerCase();
+    if (!email || ROLES.indexOf(role) === -1) return;
+    var st = settings();
+    if (!st.userRoles) st.userRoles = {};
+    st.userRoles[email] = role;
+    // מסונכרן גם לרשומת העובד, כדי ששני המקורות לא יסתרו
+    var emp = empByEmail(email);
+    if (emp) { emp.role = role; }
+    saveSettings();
+  }
+  // ניהול חשבונות ההתחברות — דרך פונקציית השרת המשותפת manage-users
+  function manageUsers(payload) {
+    if (!sb) return Promise.reject(new Error('נדרשת התחברות לענן'));
+    return sb.functions.invoke('manage-users', { body: payload }).then(function (res) {
+      if (res.error) throw new Error((res.error && res.error.message) || 'הפעולה נכשלה');
+      if (res.data && res.data.error) throw new Error(res.data.error);
+      return res.data || {};
+    });
   }
   function currentRole() {
     if (!cloudMode) return 'admin'; // מצב מקומי (פיתוח בלבד)
     return sessionUser ? roleOf(currentEmail()) : 'secretary';
   }
   function isAdmin() { return currentRole() === 'admin'; }
-  function roleLabel(r) { return { admin: 'מנהל', secretary: 'מזכירות' }[r] || r; }
+  function roleLabel(r) { return { admin: 'מנהל', manager: 'הנהלה', secretary: 'מזכירות' }[r] || r; }
   function myName() {
     var s = empByEmail(currentEmail());
     if (s) return (s.firstName + ' ' + (s.lastName || '')).trim();
@@ -1390,15 +1415,20 @@
       var name = myName();
       var first = name.split(/\s+/)[0] || '?';
       var dark = document.body.classList.contains('dark');
-      el.innerHTML = '<button class="mode-switch' + (dark ? ' on' : '') + '" id="darkToggle" role="switch" aria-checked="' + dark + '" aria-label="מצב לילה" title="' + (dark ? 'מעבר למצב יום' : 'מעבר למצב לילה') + '">'
-          + '<span class="ms-ico ms-sun">☀️</span><span class="ms-ico ms-moon">🌙</span><span class="ms-knob"></span></button>'
+      var ini = (name || '?').split(/\s+/).slice(0, 2).map(function (w) { return w.charAt(0); }).join('');
+      el.innerHTML = '<button class="btn secondary ico" id="darkToggle" role="switch" aria-checked="' + dark + '"'
+          + ' aria-label="מצב לילה" title="' + (dark ? 'מעבר למצב יום' : 'מעבר למצב לילה') + '">'
+          + (dark ? U.ICO.sun : U.ICO.moon) + '</button>'
         + '<div class="usermenu">'
-        + '<button class="avatar" id="avatarBtn" aria-label="תפריט משתמש" title="' + escHtml(name) + ' · ' + escHtml(email) + '">' + escHtml(first) + '</button>'
+        + '<button class="user-chip" id="avatarBtn" aria-label="תפריט משתמש" title="' + escHtml(name) + ' · ' + escHtml(email) + '">'
+          + '<span class="user-ini">' + escHtml(ini) + '</span>'
+          + '<span class="user-nm">' + escHtml(first) + '</span>'
+        + '</button>'
         + '<div class="usermenu-pop" id="userPop">'
           + '<div class="um-name">' + escHtml(name) + '</div>'
           + '<div class="um-email">' + escHtml(email) + '</div>'
           + '<div class="um-role">הרשאה: ' + escHtml(roleLabel(currentRole())) + '</div>'
-          + '<button class="um-item um-logout" id="umLogout">↩️ התנתקות</button>'
+          + '<button class="um-item um-logout" id="umLogout">' + U.ICO.logout + ' התנתקות</button>'
         + '</div></div>';
       var ab = document.getElementById('avatarBtn'), pop = document.getElementById('userPop');
       if (ab && pop) {
@@ -1410,7 +1440,7 @@
       if (dt) dt.onclick = function () {
         var on = document.body.classList.toggle('dark');
         try { localStorage.setItem('admin_dark', on ? '1' : '0'); } catch (e) {}
-        dt.classList.toggle('on', on);
+        dt.innerHTML = on ? U.ICO.sun : U.ICO.moon;
         dt.setAttribute('aria-checked', on ? 'true' : 'false');
         dt.title = on ? 'מעבר למצב יום' : 'מעבר למצב לילה';
       };
@@ -1551,6 +1581,10 @@
     currentEmail: currentEmail,
     flushPendingRemote: flushPendingRemote,
     publishPortal: publishPortal,
+    roleOf: roleOf,
+    setUserRole: setUserRole,
+    manageUsers: manageUsers,
+    ROLES: ROLES,
     ADMIN_EMAILS: ADMIN_EMAILS
   };
 })(window);
