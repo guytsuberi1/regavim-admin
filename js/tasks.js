@@ -907,7 +907,7 @@
 
     // 5 המשימות המובילות
     var top5 = ranked.slice(0, 5);
-    grid.appendChild(dashCard('⭐ 5 המשימות המובילות', top5.length ? top5.map(taskLine) : [emptyLine('אין משימות פתוחות 🎉')]));
+    grid.appendChild(dashCard('5 המשימות המובילות', top5.length ? top5.map(taskLine) : [emptyLine('אין משימות פתוחות')]));
 
     // עומס לפי אחראי
     var byOwner = {}, order = [];
@@ -917,7 +917,7 @@
       byOwner[o].open++; if (isOverdue(t)) byOwner[o].overdue++;
     });
     order.sort(function (a, b) { return byOwner[b].overdue - byOwner[a].overdue || byOwner[b].open - byOwner[a].open; });
-    grid.appendChild(dashCard('👥 עומס לפי אחראי', order.length ? order.map(function (o) {
+    grid.appendChild(dashCard('עומס לפי אחראי', order.length ? order.map(function (o) {
       var d = byOwner[o];
       return U.el('div', { style: 'display:flex;align-items:center;gap:8px;padding:5px 0;' }, [
         colorChip(o, '👤 ', '', true) || plainChip(o),
@@ -934,7 +934,7 @@
       eventsWeek = Store.eventsAll().filter(function (e) { return !e.archived && e.date && e.date >= today && e.date <= eow; })
         .sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
     }
-    grid.appendChild(dashCard('🗓️ אירועים קרובים השבוע', eventsWeek.length ? eventsWeek.map(function (e) {
+    grid.appendChild(dashCard('אירועים קרובים השבוע', eventsWeek.length ? eventsWeek.map(function (e) {
       return U.el('div', { style: 'display:flex;align-items:center;gap:8px;padding:5px 0;' }, [
         U.el('span', { style: 'font-weight:600;', text: e.title || 'אירוע' }),
         U.el('span', { class: 'tag', style: 'font-size:12px;', text: U.gregLabel(e.date) }),
@@ -946,7 +946,7 @@
 
     // משימות באיחור
     var overdueList = ranked.filter(isOverdue);
-    grid.appendChild(dashCard('⚠️ משימות באיחור (' + overdueList.length + ')', overdueList.length ? overdueList.map(taskLine) : [emptyLine('אין משימות באיחור 👍')]));
+    grid.appendChild(dashCard('משימות באיחור (' + overdueList.length + ')', overdueList.length ? overdueList.map(taskLine) : [emptyLine('אין משימות באיחור')]));
 
     host.appendChild(grid);
   }
@@ -964,7 +964,7 @@
     var addBtn = U.el('button', { class: 'btn', html: U.ICO.plus + ' משימה חדשה', onclick: function () { openModal(null); } });
     // ציר הזמן והדשבורד הועברו לגיליון "דשבורד מנהלים" (ייבנה בהמשך)
     var toggle = U.el('div', { class: 'subtabs', style: 'display:inline-flex;margin:0;' }, [
-      U.el('button', { class: viewMode === 'table' ? 'active' : '', text: '☰ טבלה', onclick: function () { viewMode = 'table'; App.render(); } }),
+      U.el('button', { class: viewMode === 'table' ? 'active' : '', text: 'טבלה', onclick: function () { viewMode = 'table'; App.render(); } }),
       U.el('button', { class: viewMode === 'kanban' ? 'active' : '', text: '▤ קנבן', onclick: function () { viewMode = 'kanban'; App.render(); } })
     ]);
     view.appendChild(U.el('div', { class: 'page-head' }, [
@@ -1003,7 +1003,7 @@
     var GROUP_LBL = { '': 'ללא', domain: 'תחום', owner: 'אחראי', status: 'סטטוס' };
 
     if (!isDash) {
-      var q = U.el('input', { class: 'm-search', value: filters.q, placeholder: '🔍 חיפוש משימה…' });
+      var q = U.el('input', { class: 'm-search', value: filters.q, placeholder: 'חיפוש משימה…' });
       q.addEventListener('input', function () { filters.q = q.value; refresh(); });
 
       // כפתור שפותח פאנל (משתמש במנגנון הסגירה הגלובלי של amenu)
@@ -1038,7 +1038,7 @@
       }
       var activeCount = ['status', 'domain', 'owner', 'priority', 'due'].filter(function (k) { return filters[k]; }).length;
 
-      var filterBtn = popBtn('⚙️ סינון', activeCount, function (pop) {
+      var filterBtn = popBtn('סינון', activeCount, function (pop) {
         pop.appendChild(popSection('סטטוס', filterSel(filters.status, STATUSES.map(function (x) { return x.key; }), 'הכל', 'status')));
         pop.appendChild(popSection('תחום', filterSel(filters.domain, s.taskDomains || [], 'הכל', 'domain')));
         pop.appendChild(popSection('אחראי', filterSel(filters.owner, s.taskOwners || [], 'הכל', 'owner')));
@@ -1052,7 +1052,7 @@
         }));
         pop.appendChild(popSection('תאריך יעד', dueWrap));
         if (activeCount) {
-          pop.appendChild(U.el('button', { class: 'btn secondary', style: 'width:100%;margin-top:10px;justify-content:center;', text: '✕ ניקוי כל הסינונים', onclick: function () {
+          pop.appendChild(U.el('button', { class: 'btn secondary', style: 'width:100%;margin-top:10px;justify-content:center;', text: 'ניקוי כל הסינונים', onclick: function () {
             filters.status = filters.domain = filters.owner = filters.priority = filters.due = ''; App.render();
           } }));
         }
@@ -1060,7 +1060,7 @@
 
       var toolbar = U.el('div', { class: 'm-toolbar' }, [q, filterBtn]);
       if (viewMode === 'table') {
-        toolbar.appendChild(popBtn('↕️ מיון: ' + SORT_LBL[sortBy], 0, function (pop) {
+        toolbar.appendChild(popBtn('↕ מיון:' + SORT_LBL[sortBy], 0, function (pop) {
           Object.keys(SORT_LBL).forEach(function (k) {
             pop.appendChild(U.el('button', { class: 'm-popitem' + (sortBy === k ? ' on' : ''), text: SORT_LBL[k], onclick: function () { sortBy = k; App.render(); } }));
           });

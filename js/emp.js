@@ -120,7 +120,7 @@
       U.el('div', { class: 'row' }, [fld('תאריך תחילת עבודה', startDate), fld('הרשאה באפליקציה', role)]),
       fld('ק"מ נסיעה הלוך ושוב (למתגבר)', travelKm),
       fld('תגיות', U.el('div', null, tagBoxes.map(function (t) { return t.node; }))),
-      fld('מסמכים', U.el('div', null, [cbRow(hasCv, 'קורות חיים ✓'), cbRow(hasContract, 'חוזה חתום ✓')])),
+      fld('מסמכים', U.el('div', null, [cbRow(hasCv, 'קורות חיים'), cbRow(hasContract, 'חוזה חתום')])),
       fld('הערות', notes),
       U.el('label', { style: 'display:flex;align-items:center;gap:6px;cursor:pointer;' }, [active, 'עובד פעיל']),
       err
@@ -595,7 +595,7 @@
         ? U.el('button', { class: 'btn secondary', html: U.ICO.restore + ' החזרה לפעילות', onclick: function () { reactivate(emp); } })
         : null,
       isAdmin && (emp.active !== false || !emp.offboard.date)
-        ? U.el('button', { class: 'btn', text: emp.active === false ? '🚪 רישום פרטי עזיבה' : '🚪 סיום העסקה',
+        ? U.el('button', { class: 'btn', text: emp.active === false ? 'רישום פרטי עזיבה' : 'סיום העסקה',
             onclick: function () { openOffboardModal(emp); } })
         : null,
       isAdmin && U.el('button', { class: 'btn secondary', html: U.ICO.print + ' דף לעובד', onclick: function () { openEmpDoc(emp); } }),
@@ -645,8 +645,8 @@
         infoLine('תגיות', (emp.tags || []).length ? U.el('span', null, (emp.tags || []).map(function (t) {
           return U.el('span', { class: 'tag', text: t, style: 'margin-inline-end:4px;' });
         })) : null),
-        infoLine('קורות חיים', txt(emp.hasCv ? '✓ יש' : '')),
-        infoLine('חוזה חתום', txt(emp.hasContract ? '✓ יש' : ''))
+        infoLine('קורות חיים', txt(emp.hasCv ? 'יש' : '')),
+        infoLine('חוזה חתום', txt(emp.hasContract ? 'יש' : ''))
       ])
     ]);
     body.appendChild(card);
@@ -699,20 +699,20 @@
     }
 
     var card = U.el('div', { class: 'card' }, [
-      fld('🎯 ייעוד התפקיד', purpose),
-      fld('📋 תחומי אחריות', duties, 'כל שורה — תחום אחריות אחד; כך זה יופיע כרשימה בדף המודפס'),
-      fld('🪜 מדווח ל־', reportsTo),
+      fld('ייעוד התפקיד', purpose),
+      fld('תחומי אחריות', duties, 'כל שורה — תחום אחריות אחד; כך זה יופיע כרשימה בדף המודפס'),
+      fld('מדווח ל־', reportsTo),
       manages.length ? U.el('div', { class: 'field', style: 'margin-bottom:12px;' }, [
         U.el('label', { text: 'מדווחים אליו' }),
         U.el('div', null, manages.map(function (e) {
           return U.el('span', { class: 'tag', text: Store.empName(e), style: 'margin-inline-end:4px;cursor:pointer;', onclick: function () { openCard(e.id, 'roledef'); } });
         }))
       ]) : null,
-      fld('📈 מדדי הצלחה', metrics, 'כל שורה — מדד אחד'),
-      fld('📅 מבנה שבועי — ימים ושעות עבודה', U.el('div', { class: 'whours' }, dayRows.map(function (r) { return r.node; })),
+      fld('מדדי הצלחה', metrics, 'כל שורה — מדד אחד'),
+      fld('מבנה שבועי — ימים ושעות עבודה', U.el('div', { class: 'whours' }, dayRows.map(function (r) { return r.node; })),
         'מסמנים יום ובוחרים טווח שעות; אפשר להשאיר יום מסומן בלי שעות'),
       isAdmin && U.el('div', { style: 'display:flex;gap:8px;margin-top:6px;' }, [
-        U.el('button', { class: 'btn', text: '💾 שמירה', onclick: function () {
+        U.el('button', { class: 'btn', text: 'שמירה', onclick: function () {
           rd.purpose = purpose.value.trim();
           rd.duties = duties.value;
           rd.metrics = metrics.value;
@@ -849,7 +849,7 @@
       kpi('', left.length, 'סיימו העסקה')
     ]));
 
-    var search = U.el('input', { placeholder: '🔍 חיפוש עובד…', style: 'max-width:220px;' });
+    var search = U.el('input', { placeholder: 'חיפוש עובד…', style: 'max-width:220px;' });
     var tagChips = U.el('div', { style: 'display:flex;gap:6px;align-items:center;' }, TAGS.map(function (t) {
       var b = U.el('button', { class: 'tag', style: 'cursor:pointer;' + (filterTag === t ? 'outline:2px solid var(--brand);' : ''), text: t });
       b.addEventListener('click', function () { filterTag = filterTag === t ? '' : t; App.render(); });

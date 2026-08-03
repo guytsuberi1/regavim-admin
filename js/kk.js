@@ -458,13 +458,13 @@
             U.el('div', { class: 'muted', style: 'font-size:12px;', text: 'סווג בתקציב כ: ' + (inv.sub || '—') })
           ]),
           sel,
-          U.el('button', { class: 'btn', text: '✅ אישור', onclick: function () {
+          U.el('button', { class: 'btn', text: 'אישור', onclick: function () {
             if (!sel.value) { U.toast('בחרו לאיזה קול קורא לשייך', 'error'); return; }
             Store.setKkInvoiceDecision(inv.id, { status: 'approved', kkId: sel.value });
             U.toast('החשבונית אושרה ונכנסה לניצול');
             App.render();
           } }),
-          U.el('button', { class: 'btn secondary', text: '✕ דחייה', onclick: function () {
+          U.el('button', { class: 'btn secondary', text: 'דחייה', onclick: function () {
             Store.setKkInvoiceDecision(inv.id, { status: 'rejected', kkId: '' });
             U.toast('החשבונית נדחתה ולא תיספר');
             App.render();

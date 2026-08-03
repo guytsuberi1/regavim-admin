@@ -244,7 +244,7 @@
     var emp = Store.empById(c.convertedEmpId);
     if (!emp) return null;
     return U.el('span', {
-      class: 'tag', text: '👤 במצבת', title: 'הועבר למצבת העובדים — לחיצה פותחת את הכרטיס',
+      class: 'tag', text: 'במצבת', title: 'הועבר למצבת העובדים — לחיצה פותחת את הכרטיס',
       style: 'cursor:pointer;background:#e8f5e9;border-color:#16a34a;color:#1b5e20;',
       onclick: function (e) { e.stopPropagation(); App.setView('emp'); EmpView.open(emp.id); }
     });
@@ -344,7 +344,7 @@
     var isAdmin = Store.isAdmin();
     var toggle = U.el('div', { class: 'subtabs', style: 'display:inline-flex;margin:0;' }, [
       U.el('button', { class: viewMode === 'kanban' ? 'active' : '', text: '▤ קנבן', onclick: function () { viewMode = 'kanban'; App.render(); } }),
-      U.el('button', { class: viewMode === 'table' ? 'active' : '', text: '☰ טבלה', onclick: function () { viewMode = 'table'; App.render(); } })
+      U.el('button', { class: viewMode === 'table' ? 'active' : '', text: 'טבלה', onclick: function () { viewMode = 'table'; App.render(); } })
     ]);
     view.appendChild(U.el('div', { class: 'page-head' }, [
       U.el('h2', { text: 'מועמדים' }),

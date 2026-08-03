@@ -1251,7 +1251,7 @@
         if (!errEl) return;
         if (res.error) { errEl.classList.remove('ok'); errEl.textContent = 'שליחת המייל נכשלה — נסו שוב בעוד רגע'; return; }
         errEl.classList.add('ok');
-        errEl.textContent = '✓ נשלח מייל עם קישור לאיפוס — בדקו את תיבת הדואר (גם בספאם)';
+        errEl.textContent = 'נשלח מייל עם קישור לאיפוס — בדקו את תיבת הדואר (גם בספאם)';
       });
     };
     if (passEl) passEl.onkeydown = function (e) { if (e.key === 'Enter') doLogin(); };

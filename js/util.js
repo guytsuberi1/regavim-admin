@@ -100,10 +100,10 @@
 
   // ---------- סטטוסי נוכחות בזמן פנימיה ----------
   var ATT_STATUSES = [
-    { key: 'present', label: 'נוכח',       short: '✓ נוכח' },
-    { key: 'absent',  label: 'נעדר',       short: '✕ נעדר' },
-    { key: 'home',    label: 'בבית באישור', short: '🏠 בבית' },
-    { key: 'sick',    label: 'מחלה',        short: '🤒 מחלה' }
+    { key: 'present', label: 'נוכח',       short: 'נוכח' },
+    { key: 'absent',  label: 'נעדר',       short: 'נעדר' },
+    { key: 'home',    label: 'בבית באישור', short: 'בבית' },
+    { key: 'sick',    label: 'מחלה',        short: 'מחלה' }
   ];
   function attLabel(key) {
     var s = ATT_STATUSES.filter(function (x) { return x.key === key; })[0];

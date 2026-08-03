@@ -86,7 +86,7 @@
 
   function render(view) {
     var month = App.currentMonth();
-    view.appendChild(App.monthHeader('🔁 דוח מילוי מקום', [
+    view.appendChild(App.monthHeader('דוח מילוי מקום', [
       U.el('span', { class: 'spacer' }),
       U.el('button', { class: 'btn', html: U.ICO.plus + ' שורת מילוי מקום', onclick: function () { openRecModal(month, null, null); } })
     ]));

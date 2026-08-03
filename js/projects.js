@@ -77,7 +77,7 @@
     var stats = U.el('div', { style: 'display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 8px;' }, [
       statTile('תקציב (₪)', budgetInp),
       statTile('נוצל', U.el('span', { text: money(b.used) })),
-      statTile('מאזן', U.el('span', { text: money(b.balance) + (b.over ? '  ⚠️ חריגה' : '') }), b.balance < 0 ? '#dc2626' : '#16a34a')
+      statTile('מאזן', U.el('span', { text: money(b.balance) + (b.over ? 'חריגה' : '') }), b.balance < 0 ? '#dc2626' : '#16a34a')
     ]);
     var wrap = U.el('div', null, [stats]);
     if (b.budget > 0) {
@@ -262,13 +262,13 @@
     // שורת מטא: אחראי
     var ownerPick = pList(p, p, 'owner', owners, 'בחירת אחראי'); ownerPick._input.style.minWidth = '150px'; ownerPick._input.style.fontSize = '13px';
     card.appendChild(U.el('div', { style: 'display:flex;align-items:center;gap:6px;margin-top:4px;color:var(--muted,#6b7884);font-size:13px;' }, [
-      U.el('span', { text: '👤 אחראי:' }), ownerPick
+      U.el('span', { text: 'אחראי:' }), ownerPick
     ]));
 
     card.appendChild(budgetBar(p));
     var pb = progressBar(p);
     if (pb) card.appendChild(pb);
-    var notes = pText(p, p, 'notes', '📝 הערות לפרויקט…', 'width:100%;font-size:13px;color:var(--muted,#6b7884);');
+    var notes = pText(p, p, 'notes', 'הערות לפרויקט…', 'width:100%;font-size:13px;color:var(--muted,#6b7884);');
     card.appendChild(U.el('div', { style: 'margin:2px 0 10px;' }, [notes]));
 
     // תת-משימות — ניתן לכווץ/לפתוח

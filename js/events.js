@@ -207,7 +207,7 @@
     });
     var body = U.el('div', null, [
       U.el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:10px;', text: 'סמנו את המשימות הרלוונטיות לאירוע. לכל משימה משויך אחראי אוטומטית לפי התפקיד.' }),
-      U.el('button', { class: 'btn secondary', style: 'margin-bottom:10px;', text: '🤖 בחר משימות אוטומטית', onclick: function () {
+      U.el('button', { class: 'btn secondary', style: 'margin-bottom:10px;', text: 'בחר משימות אוטומטית', onclick: function () {
         // כרגע: בחירה חכמה לפי סימון-המראש; חיבור ל-AI מלא יגיע בשלב ההקלטה
         cat.forEach(function (c) { checks[c.id].checked = (preIds || []).indexOf(c.id) !== -1; });
         U.toast('נבחרו המשימות המומלצות (בחירת AI מלאה תתחבר בשלב ההקלטה)', 'info');
@@ -242,7 +242,7 @@
   }
 
   function buildLozText(ev) {
-    var lines = ['🗓️ *' + (ev.title || 'אירוע') + '*', fmtDateLine(ev.date)];
+    var lines = ['*' + (ev.title || 'אירוע') + '*', fmtDateLine(ev.date)];
     if (ev.startTime) lines.push('🕗 ' + ev.startTime + (ev.endTime ? '–' + ev.endTime : ''));
     if (ev.location) lines.push('📍 ' + ev.location);
     if (ev.group) lines.push('👥 ' + ev.group);
@@ -368,7 +368,7 @@
     var img = U.el('img', { src: dataUrl, style: 'width:100%;border-radius:10px;border:1px solid var(--border,#d6dce1);display:block;' });
     var fname = 'flyer-' + String(ev.title || 'event').replace(/[^\w֐-׿]+/g, '_') + '.png';
     var actions = U.el('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;' }, [
-      U.el('a', { class: 'btn', href: dataUrl, download: fname, text: '⬇️ הורדה' }),
+      U.el('a', { class: 'btn', href: dataUrl, download: fname, text: 'הורדה' }),
       U.el('button', { class: 'btn secondary', html: U.ICO.print + ' הדפסה', onclick: function () { printImage(dataUrl); } })
     ]);
     if (navigator.canShare) actions.appendChild(U.el('button', { class: 'btn secondary', html: WA_GREEN + ' שיתוף', onclick: function () { shareImage(dataUrl, fname, ev); } }));
@@ -466,11 +466,11 @@
   function consentControls(ev) {
     return U.el('div', { class: 'no-print', style: 'display:flex;gap:6px;flex-wrap:wrap;' }, [
       U.el('button', { class: 'btn secondary', html: WA_GREEN + ' שלח אישור הורים', onclick: function () { publishAndSend(ev); } }),
-      U.el('button', { class: 'btn secondary', text: '🔗 העתק קישור', onclick: function () {
+      U.el('button', { class: 'btn secondary', text: 'העתק קישור', onclick: function () {
         Store.publishConsentForm(buildConsentForm(ev)).then(function () { copyText(consentUrl(ev), 'הקישור לחתימה הועתק'); })
           .catch(function (e) { U.toast('פרסום נכשל: ' + e.message, 'error'); });
       } }),
-      U.el('button', { class: 'btn secondary', text: '📄 טופס נייר', onclick: function () { printParents(ev); } })
+      U.el('button', { class: 'btn secondary', text: 'טופס נייר', onclick: function () { printParents(ev); } })
     ]);
   }
   function renderTracking(ev, box, rows) {
@@ -491,7 +491,7 @@
     }
 
     box.appendChild(U.el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;' }, [
-      U.el('span', { class: 'tag', text: '✔ חתמו: ' + rows.length }),
+      U.el('span', { class: 'tag', text: 'חתמו:' + rows.length }),
       chosen ? U.el('span', { class: 'tag', style: 'background:#fff3e0;border-color:#f9a825;color:#8a5a00;', text: '⏳ חסרים: ' + missing.length }) : null,
       U.el('span', { class: 'spacer' }),
       clsSel,
@@ -554,7 +554,7 @@
       groups[key].items.push(p);
     });
     var multi = events.length > 1;
-    var lines = ['📋 *חלוקת משימות' + (title ? ' — ' + title : '') + '*'];
+    var lines = ['*חלוקת משימות' + (title ? ' — ' + title : '') + '*'];
     order.forEach(function (key) {
       var g = groups[key];
       lines.push('', '👤 *' + g.name + '*');
@@ -687,14 +687,14 @@
     });
 
     // הערות
-    var notes = eText(ev, ev, 'notes', '📝 הערות לאירוע…', 'width:100%;font-size:13px;color:var(--muted,#6b7884);margin-top:10px;');
+    var notes = eText(ev, ev, 'notes', 'הערות לאירוע…', 'width:100%;font-size:13px;color:var(--muted,#6b7884);margin-top:10px;');
     card.appendChild(U.el('div', { style: 'margin:8px 0;' }, [notes]));
 
     // פלטים
     var outputs = U.el('div', { class: 'no-print', style: 'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;padding-top:10px;border-top:1px dashed var(--border,#d6dce1);' }, [
       U.el('a', { class: 'btn secondary', href: 'https://wa.me/?text=' + encodeURIComponent(buildLozText(ev)), target: '_blank', rel: 'noopener', html: WA_GREEN + ' שלח לו"ז' }),
-      U.el('button', { class: 'btn secondary', text: '🎨 פלייר האירוע (AI)', onclick: function () { openFlyer(ev); } }),
-      U.el('a', { class: 'btn secondary', href: gcalUrl(ev), target: '_blank', rel: 'noopener', text: '📅 הוסף ליומן Google' }),
+      U.el('button', { class: 'btn secondary', text: 'פלייר האירוע (AI)', onclick: function () { openFlyer(ev); } }),
+      U.el('a', { class: 'btn secondary', href: gcalUrl(ev), target: '_blank', rel: 'noopener', text: 'הוסף ליומן Google' }),
       U.el('a', { class: 'btn secondary', href: 'https://wa.me/?text=' + encodeURIComponent(summaryByOwnerText([ev], ev.title, false)), target: '_blank', rel: 'noopener', html: WA_GREEN + ' סיכום משימות' })
     ]);
     card.appendChild(outputs);
@@ -773,7 +773,7 @@
         U.el('div', null, [
           U.el('div', { style: 'font-weight:600;', text: d.title || 'אירוע' }),
           U.el('div', { class: 'muted', style: 'font-size:12px;', text: meta }),
-          U.el('div', { class: 'muted', style: 'font-size:12px;', text: '🗒️ ' + (d.schedule || []).length + ' שורות לו"ז · ✅ ' + (d.tasks || []).length + ' משימות' })
+          U.el('div', { class: 'muted', style: 'font-size:12px;', text: '🗒️ ' + (d.schedule || []).length + 'שורות לו"ז ·' + (d.tasks || []).length + ' משימות' })
         ])
       ]);
       return { cb: cb, d: d, node: node };
@@ -813,8 +813,8 @@
       U.el('div', { class: 'muted', style: 'font-size:12px;margin-bottom:6px;', text: 'העלו קובץ הקלטה — גם ארוך (חצי שעה ומעלה). עברית נתמכת.' }),
       fileInp
     ]);
-    var btnText = U.el('button', { class: 'active', text: '📝 הדבקת טקסט' });
-    var btnAudio = U.el('button', { text: '🎙️ הקלטה' });
+    var btnText = U.el('button', { class: 'active', text: 'הדבקת טקסט' });
+    var btnAudio = U.el('button', { text: 'הקלטה' });
     btnText.addEventListener('click', function () { mode = 'text'; textWrap.style.display = ''; audioWrap.style.display = 'none'; btnText.classList.add('active'); btnAudio.classList.remove('active'); });
     btnAudio.addEventListener('click', function () { mode = 'audio'; textWrap.style.display = 'none'; audioWrap.style.display = ''; btnAudio.classList.add('active'); btnText.classList.remove('active'); });
     var err = U.el('div', { class: 'field-err' });

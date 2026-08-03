@@ -67,9 +67,9 @@
       var viewBtn = U.el('button', { type: 'button', class: 'btn secondary small', html: U.ICO.clip + ' צפייה' });
       var fileStatus = U.el('span', { class: 'muted', style: 'font-size:13px;' });
       function paintFile(msg) {
-        pickBtn.textContent = filePath ? '🔄 החלפת הקובץ' : '⬆️ העלאת קובץ';
+        pickBtn.textContent = filePath ? 'החלפת הקובץ' : 'העלאת קובץ';
         viewBtn.style.display = filePath ? '' : 'none';
-        fileStatus.textContent = msg || (filePath ? '✓ קובץ מצורף' : 'לא צורף קובץ');
+        fileStatus.textContent = msg || (filePath ? 'קובץ מצורף' : 'לא צורף קובץ');
       }
       paintFile();
       pickBtn.addEventListener('click', function () { fileInput.click(); });
@@ -91,7 +91,7 @@
           filePath = path;
           approval.value = 'received';   // יש קובץ → הסטטוס מתעדכן לבד
           pickBtn.disabled = false;
-          paintFile('✓ הקובץ הועלה');
+          paintFile('הקובץ הועלה');
           U.toast('הקובץ הועלה — הסטטוס עודכן ל"אישור התקבל". נותר לשמור.');
         }).catch(function (e) {
           pickBtn.disabled = false;
@@ -206,7 +206,7 @@
 
   function approvalCell(r) {
     if (r.kind !== 'absence') return null;
-    var lbl = { received: '✓ מצורף', missing: 'חסר', none: '—' }[r.approval] || 'חסר';
+    var lbl = { received: 'מצורף', missing: 'חסר', none: '—' }[r.approval] || 'חסר';
     var cell = U.el('td', null, [U.el('span', { text: lbl, style: r.approval === 'missing' ? 'color:#d97706;font-weight:600;' : '' })]);
     if (r.filePath) {
       var btn = U.el('button', { class: 'btn secondary', html: U.ICO.clip, title: 'צפייה באישור שהועלה', style: 'margin-inline-start:6px;' });
