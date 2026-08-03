@@ -211,6 +211,12 @@ body.dark input[type="month"]::-webkit-calendar-picker-indicator { background-im
 /* עריכה ישירה בתא — שקוף עד פוקוס. הקיזוז מיישר את הטקסט מתחת לכותרת העמודה. */
 .transp { border: 1px solid transparent; background: transparent; padding: 4px 6px; margin-inline: -7px; }
 .transp:focus { background: var(--card); border-color: var(--border); }
+/* שדה שעה בתוך טבלה — כרום מיישר את הערך לשמאל בתוך הקלט; מצמידים לימין
+   כדי שהשעה תשב בדיוק מתחת לכותרת "שעה" */
+table.grid input[type="time"] { direction: ltr; text-align: right; }
+/* בתוך טבלה מסתירים את אייקון הבורר — הוא תפס את המקום שמתחת לכותרת
+   ודחף את השעה שמאלה. הקלדה ישירה עדיין עובדת. */
+table.grid input[type="time"]::-webkit-calendar-picker-indicator { display: none; }
 input.invalid, select.invalid, textarea.invalid { border-color: var(--danger) !important; background: #fef2f2; }
 .field-err { color: var(--danger); font-size: 12px; margin-top: 2px; min-height: 0; }
 
