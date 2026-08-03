@@ -25,7 +25,7 @@
 
   // גיליונות — כל אחד מקבץ כמה מסכים (תת-טאבים בראש התוכן)
   var SHEETS = [
-    { id: 'payroll', label: '💼 דוחות שכר', subs: [
+    { id: 'payroll', label: 'דוחות שכר', icon: 'payroll', subs: [
       { id: 'status', label: '📋 לוח שכר' },
       { id: 'queue', label: '📥 תור אישורים' },
       { id: 'lc', label: '📚 מרכז למידה' },
@@ -33,31 +33,31 @@
       { id: 'abs', label: '🪖 היעדרויות וגמולים' },
       { id: 'pdf', label: '🖨️ חבילת PDF' }
     ] },
-    { id: 'staff', label: '👥 ניהול עובדים', subs: [
+    { id: 'staff', label: 'ניהול עובדים', icon: 'staff', subs: [
       { id: 'emp', label: '👤 עובדים' },
       { id: 'week', label: '🗓️ לוח שבועי' },
       { id: 'cand', label: '🎯 מועמדים' },
       { id: 'pos', label: '📌 משרות' }
     ] },
-    { id: 'tasks', label: '✅ ניהול משימות', subs: [
+    { id: 'tasks', label: 'ניהול משימות', icon: 'tasks', subs: [
       { id: 'tasks', label: '✅ משימות' }
     ] },
-    { id: 'projects', label: '🏗️ ניהול פרויקטים', subs: [
+    { id: 'projects', label: 'ניהול פרויקטים', icon: 'projects', subs: [
       { id: 'projects', label: '🏗️ פרויקטים' }
     ] },
-    { id: 'events', label: '🗓️ תכנון אירועים וטיולים', subs: [
+    { id: 'events', label: 'אירועים וטיולים', icon: 'events', subs: [
       { id: 'events', label: '🗓️ אירועים' }
     ] },
-    { id: 'kk', label: '📣 קולות קוראים', subs: [
+    { id: 'kk', label: 'קולות קוראים', icon: 'kk', subs: [
       { id: 'kk', label: '📣 קולות קוראים' }
     ] },
-    { id: 'base', label: '🗂️ נתוני בסיס', subs: [
+    { id: 'base', label: 'נתוני בסיס', icon: 'base', subs: [
       { id: 'base', label: '🗂️ נתוני בסיס' }
     ] }
   ];
   // פריטים עצמאיים (לא גיליונות) — הגדרות כגלגל מוצמד לתחתית (כמו בשאר האפליקציות)
   var STANDALONE = [
-    { id: 'settings', label: '⚙️', foot: true, title: 'הגדרות' }
+    { id: 'settings', label: '', icon: 'settings', foot: true, title: 'הגדרות' }
   ];
 
   // מפה הפוכה: מסך → הגיליון שאליו הוא שייך
@@ -98,18 +98,25 @@
     if (visibleSheets.length) {
       nav.appendChild(U.el('div', { class: 'nav-sec', text: 'גיליונות' }));
       visibleSheets.forEach(function (sh) {
-        nav.appendChild(U.el('button', { 'data-nav': sh.id, onclick: function () { openSheet(sh.id); } }, sh.label));
+        nav.appendChild(U.el('button', { 'data-nav': sh.id, onclick: function () { openSheet(sh.id); } }, [
+          U.el('span', { class: 'nav-ico', html: U.NAV_ICO[sh.icon] || '' }),
+          U.el('span', { text: sh.label })
+        ]));
       });
     }
     var stand = STANDALONE.filter(function (v) { return allowed.indexOf(v.id) !== -1 && !v.foot; });
     if (stand.length) {
       nav.appendChild(U.el('div', { class: 'nav-sec', text: 'ניהול' }));
       stand.forEach(function (v) {
-        nav.appendChild(U.el('button', { 'data-nav': v.id, onclick: function () { setView(v.id); } }, v.label));
+        nav.appendChild(U.el('button', { 'data-nav': v.id, onclick: function () { setView(v.id); } }, [
+          U.el('span', { class: 'nav-ico', html: U.NAV_ICO[v.icon] || '' }),
+          U.el('span', { text: v.label })
+        ]));
       });
     }
     STANDALONE.filter(function (v) { return allowed.indexOf(v.id) !== -1 && v.foot; }).forEach(function (v) {
-      nav.appendChild(U.el('button', { 'data-nav': v.id, class: 'tab-foot', title: v.title || '', 'aria-label': v.title || '' }, v.label));
+      nav.appendChild(U.el('button', { 'data-nav': v.id, class: 'tab-foot', title: v.title || '', 'aria-label': v.title || '' },
+        U.el('span', { class: 'nav-ico', html: U.NAV_ICO[v.icon] || '' })));
     });
     U.$all('#tabs button[data-nav]').forEach(function (b) {
       if (b.classList.contains('tab-foot')) b.addEventListener('click', function () { setView(b.getAttribute('data-nav')); });
