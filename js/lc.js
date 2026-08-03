@@ -102,7 +102,7 @@
     }
 
     if (!recs.length) {
-      card.appendChild(U.el('div', { class: 'empty' }, 'אין עדיין שורות החודש — לחצו "➕ שורת תגבור"'));
+      card.appendChild(U.el('div', { class: 'empty' }, 'אין עדיין שורות החודש — לחצו " שורת תגבור"'));
     } else {
       var tbl = U.el('table', { class: 'grid' }, [
         U.el('thead', null, U.el('tr', null, ['תאריך', 'מקצוע', 'כיתה', 'תלמיד/ים', 'שעות', ''].map(function (h) { return U.el('th', { text: h }); }))),

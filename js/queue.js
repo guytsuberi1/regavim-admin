@@ -215,7 +215,7 @@
     var handled = subs.filter(function (s) { return s.status !== 'pending'; });
 
     if (!pending.length) {
-      view.appendChild(U.el('div', { class: 'empty' }, '✨ אין דיווחים שממתינים לאישור'));
+      view.appendChild(U.el('div', { class: 'empty' }, 'אין דיווחים שממתינים לאישור'));
     } else {
       pending.forEach(function (s) { view.appendChild(card(s)); });
     }

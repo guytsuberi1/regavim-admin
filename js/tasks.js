@@ -502,7 +502,7 @@
     Store.upsertTask(t);
   }
   function transpInput(inp) {
-    inp.style.cssText += 'border:1px solid transparent;background:transparent;padding:4px 6px;';
+    inp.style.cssText += 'border:1px solid transparent;background:transparent;padding:4px 6px;margin-inline:-7px;';
     inp.addEventListener('focus', function () { inp.style.background = 'var(--card,#fff)'; inp.style.borderColor = 'var(--border,#d6dce1)'; });
     inp.addEventListener('blur', function () { inp.style.background = 'transparent'; inp.style.borderColor = 'transparent'; });
     return inp;
@@ -975,8 +975,8 @@
 
     // תת-טאבים: משימות פעילות / ארכיון
     view.appendChild(U.el('div', { class: 'subtabs', style: 'margin-bottom:12px;' }, [
-      U.el('button', { class: showArchive ? '' : 'active', onclick: function () { showArchive = false; App.render(); } }, '✅ משימות (' + activeTasks.length + ')'),
-      U.el('button', { class: showArchive ? 'active' : '', onclick: function () { showArchive = true; App.render(); } }, '🗄️ ארכיון (' + archivedTasks.length + ')')
+      U.el('button', { class: showArchive ? '' : 'active', onclick: function () { showArchive = false; App.render(); } }, 'משימות (' + activeTasks.length + ')'),
+      U.el('button', { class: showArchive ? 'active' : '', onclick: function () { showArchive = true; App.render(); } }, 'ארכיון (' + archivedTasks.length + ')')
     ]));
 
     // סיכום

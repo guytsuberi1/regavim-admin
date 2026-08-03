@@ -93,7 +93,7 @@
 
     var list = substitutes(month);
     if (!list.length) {
-      view.appendChild(U.el('div', { class: 'empty' }, 'אין עדיין דיווחי מילוי מקום החודש — לחצו "➕ שורת מילוי מקום"'));
+      view.appendChild(U.el('div', { class: 'empty' }, 'אין עדיין דיווחי מילוי מקום החודש — לחצו " שורת מילוי מקום"'));
       return;
     }
     if (!selectedEmpId || !list.some(function (e) { return e.id === selectedEmpId; })) selectedEmpId = list[0].id;

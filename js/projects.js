@@ -18,6 +18,8 @@
   function saveProj(p) { Store.upsertProject(p); }
   function transp(el) {
     el.style.border = '1px solid transparent'; el.style.background = 'transparent'; el.style.padding = '4px 6px';
+    // קיזוז הריפוד הפנימי כדי שהטקסט יתיישר בדיוק מתחת לכותרת העמודה
+    el.style.marginInline = '-7px';
     el.addEventListener('focus', function () { el.style.background = 'var(--card,#fff)'; el.style.borderColor = 'var(--border,#d6dce1)'; });
     el.addEventListener('blur', function () { el.style.background = 'transparent'; el.style.borderColor = 'transparent'; });
     return el;
@@ -251,7 +253,7 @@
       var cb = Store.projectBudget(p);
       card.appendChild(U.el('div', { style: 'display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;color:var(--muted,#6b7884);font-size:13px;' }, [
         U.el('span', { text: '👤 ' + (p.owner || '—') }),
-        U.el('span', { html: U.ICO.copy + ' ' + ((p.items || []).length) + ' תת-משימות' }),
+        U.el('span', { text: ((p.items || []).length) + ' תת-משימות' }),
         U.el('span', { style: (cb.over ? 'color:var(--danger,#c62828);font-weight:600;' : ''), text: 'מאזן:' + money(cb.budget - cb.used) })
       ]));
       return card;
@@ -307,8 +309,8 @@
 
     // תת-טאבים: פרויקטים פעילים / ארכיון
     view.appendChild(U.el('div', { class: 'subtabs', style: 'margin-bottom:12px;' }, [
-      U.el('button', { class: showArchiveProj ? '' : 'active', onclick: function () { showArchiveProj = false; App.render(); } }, '🏗️ פרויקטים (' + activeProjects.length + ')'),
-      U.el('button', { class: showArchiveProj ? 'active' : '', onclick: function () { showArchiveProj = true; App.render(); } }, '🗄️ ארכיון (' + archivedProjects.length + ')')
+      U.el('button', { class: showArchiveProj ? '' : 'active', onclick: function () { showArchiveProj = false; App.render(); } }, 'פרויקטים (' + activeProjects.length + ')'),
+      U.el('button', { class: showArchiveProj ? 'active' : '', onclick: function () { showArchiveProj = true; App.render(); } }, 'ארכיון (' + archivedProjects.length + ')')
     ]));
 
     if (!showArchiveProj) {
