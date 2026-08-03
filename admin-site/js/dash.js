@@ -1,11 +1,13 @@
-/* dash.js — דשבורד מנהלים: מרכז נתונים מכל הגיליונות.
-   שלוש שאלות: מה דחוף לי היום · מה מחכה לאישור שלי · איפה יש סיכון כספי או רגולטורי. */
+/* dash.js — דשבורד מנהלים. שתי שכבות במסך אחד:
+   (1) "מה בוער" — מונים שמופיעים רק כשיש מה לטפל בו. מסך נקי = הכול תקין.
+   (2) "תמונת מצב" — כרטיסים לפי סדר העדיפות: רישוי ובטיחות · אישורים · השבוע הקרוב · כסף · שכר. */
 (function (global) {
   'use strict';
   var U = global.U;
 
-  var SOON_DAYS = 14;      // "מתקרב" לצורך דדליינים
+  var WEEK_DAYS = 14;      // "השבוע הקרוב" — חלון הימים לאירועים
   var WARN_DAYS = 60;      // תפוגת אישורי בטיחות
+  var SPEND_DAYS = 90;     // ממתי דדליין ניצול כסף נחשב סיכון
 
   function daysTo(iso) {
     if (!iso) return null;
@@ -17,255 +19,308 @@
     return new Intl.NumberFormat('he-IL', { maximumFractionDigits: 0 }).format(Math.round(n || 0)) + ' ₪';
   }
   function dateLabel(iso) { return iso ? U.gregLabel(iso) + '/' + iso.slice(2, 4) : ''; }
+  function go(viewId) { App.setView(viewId); }
 
-  function card(title, rows, action) {
-    var head = U.el('div', { style: 'display:flex;align-items:center;gap:8px;margin:0 0 8px;' }, [
-      U.el('h3', { style: 'margin:0;font-size:16px;', text: title }),
-      U.el('span', { class: 'spacer' }),
-      action || null
-    ].filter(Boolean));
-    return U.el('div', { class: 'card m-card' }, [head].concat(rows));
-  }
-  function emptyLine(txt) {
-    return U.el('div', { class: 'muted', style: 'font-size:13px;padding:6px 0;', text: txt });
-  }
-  function goBtn(label, viewId) {
-    return U.el('button', { class: 'btn secondary small', text: label + ' ›',
-      onclick: function () { App.setView(viewId); } });
-  }
-  function line(kids) {
-    return U.el('div', { style: 'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);' },
-      kids.filter(Boolean));
-  }
-  function chip(text, style) { return U.el('span', { class: 'tag', style: 'font-size:12px;' + (style || ''), text: text }); }
   var RED = 'background:#fee2e2;color:#991b1b;border-color:#991b1b33;';
   var ORANGE = 'background:#fef3c7;color:#92400e;border-color:#92400e33;';
+  var GREEN = 'background:#dcfce7;color:#166534;border-color:#16653433;';
 
-  // ---------- מונים עליונים ----------
-  function kpiRow(view, data) {
-    function kpi(val, label, cls, onClick) {
-      var el = U.el('div', { class: 'kpi ' + (cls || 'kpi-neutral'), style: onClick ? 'cursor:pointer;' : '' }, [
-        U.el('div', { class: 'kpi-ic' }),
-        U.el('div', { class: 'kpi-body' }, [
-          U.el('div', { class: 'kpi-row' }, U.el('div', { class: 'kpi-val', text: String(val) })),
-          U.el('div', { class: 'kpi-lbl', text: label })
-        ])
-      ]);
-      if (onClick) el.addEventListener('click', onClick);
-      return el;
-    }
-    view.appendChild(U.el('div', { class: 'kpi-grid' }, [
-      kpi(data.overdue.length, 'משימות באיחור', data.overdue.length ? 'kpi-bad' : 'kpi-good',
-        function () { App.setView('tasks'); }),
-      kpi(data.pendingSubs, 'דיווחי עובדים לאישור', data.pendingSubs ? 'kpi-warn' : 'kpi-neutral',
-        function () { App.setView('queue'); }),
-      kpi(data.pendingInv, 'חשבוניות לאישור', data.pendingInv ? 'kpi-warn' : 'kpi-neutral',
-        function () { App.setView('kk'); }),
-      kpi(ils(data.unplanned), 'כסף מאושר שלא תוכנן', data.unplanned > 0 ? 'kpi-bad' : 'kpi-good',
-        function () { App.setView('kk'); }),
-      kpi(data.certAlerts.length, 'אישורים שפגו/עומדים לפוג', data.certAlerts.length ? 'kpi-bad' : 'kpi-good',
-        function () { App.setView('safety'); })
-    ]));
+  function chip(text, style) { return U.el('span', { class: 'tag', style: 'font-size:12px;' + (style || ''), text: text }); }
+  function line(kids) {
+    return U.el('div', { class: 'dash-line' }, kids.filter(Boolean));
   }
-
-  // ---------- מה מחכה לאישור שלי ----------
-  function inboxCard(data) {
-    var rows = [];
-    if (data.pendingSubs) {
-      rows.push(line([
-        U.el('span', { style: 'flex:1;', text: 'דיווחי עובדים מהפורטל' }),
-        chip(data.pendingSubs + ' ממתינים', ORANGE),
-        goBtn('לתור', 'queue')
-      ]));
-    }
-    if (data.pendingInv) {
-      rows.push(line([
-        U.el('span', { style: 'flex:1;', text: 'חשבוניות קולות קוראים' }),
-        chip(data.pendingInv + ' ממתינות', ORANGE),
-        goBtn('לאישור', 'kk')
-      ]));
-    }
-    if (data.absMissing) {
-      rows.push(line([
-        U.el('span', { style: 'flex:1;', text: 'היעדרויות שחסר להן אישור' }),
-        chip(data.absMissing + ' חסרים', ORANGE),
-        goBtn('להיעדרויות', 'abs')
-      ]));
-    }
-    if (!rows.length) rows.push(emptyLine('אין כלום שממתין לך — נקי'));
-    return card('מחכה לאישור שלי', rows);
+  function label(text) { return U.el('span', { style: 'flex:1;min-width:0;', text: text }); }
+  function emptyLine(txt) { return U.el('div', { class: 'muted', style: 'font-size:13px;padding:6px 0;', text: txt }); }
+  function goBtn(text, viewId) {
+    return U.el('button', { class: 'btn secondary small', text: text + ' ›', onclick: function () { go(viewId); } });
   }
-
-  // ---------- סיכון כספי ----------
-  function moneyCard(data) {
-    var rows = [];
-    data.kkRisk.forEach(function (r) {
-      var n = daysTo(r.spendDeadline);
-      rows.push(line([
-        U.el('span', { style: 'flex:1;min-width:0;font-weight:500;', text: r.name }),
-        chip('נותר ' + ils(r.unplanned), RED),
-        n != null ? chip('לניצול עד ' + dateLabel(r.spendDeadline) + (n >= 0 ? ' · ' + n + ' י׳' : ' · עבר'),
-          n < 30 ? RED : ORANGE) : null
-      ]));
-    });
-    data.kkDeadlines.forEach(function (r) {
-      rows.push(line([
-        U.el('span', { style: 'flex:1;min-width:0;font-weight:500;', text: r.name }),
-        chip('הגשה עד ' + dateLabel(r.deadline) + ' · ' + daysTo(r.deadline) + ' י׳', ORANGE)
-      ]));
-    });
-    data.overBudget.forEach(function (p) {
-      rows.push(line([
-        U.el('span', { style: 'flex:1;min-width:0;font-weight:500;', text: p.name }),
-        chip('חריגה ' + ils(p.over), RED),
-        goBtn('לפרויקט', 'projects')
-      ]));
-    });
-    if (!rows.length) rows.push(emptyLine('אין סיכון כספי פתוח'));
-    return card('סיכון כספי', rows, data.kkRisk.length || data.kkDeadlines.length ? goBtn('קולות קוראים', 'kk') : null);
-  }
-
-  // ---------- בטיחות ורישוי ----------
-  function safetyCard(data) {
-    var rows = data.certAlerts.slice(0, 6).map(function (r) {
-      var exp = Store.safetyExpiry(r);
-      var n = daysTo(exp);
-      return line([
-        U.el('span', { style: 'flex:1;min-width:0;font-weight:500;', text: r.name }),
-        chip(n < 0 ? 'פג לפני ' + Math.abs(n) + ' י׳' : 'פג בעוד ' + n + ' י׳', n < 0 ? RED : ORANGE)
-      ]);
-    });
-    if (!rows.length) rows.push(emptyLine('כל האישורים בתוקף'));
-    if (data.certAlerts.length > 6) {
-      rows.push(U.el('div', { class: 'muted', style: 'font-size:12px;padding-top:6px;',
-        text: 'ועוד ' + (data.certAlerts.length - 6) + '…' }));
-    }
-    return card('בטיחות ורישוי', rows, goBtn('לגיליון', 'safety'));
-  }
-
-  // ---------- לוח השכר של החודש ----------
-  function payrollCard(month) {
-    var s = Store.settings();
-    var statuses = (s.statuses || []);
-    var entries = Store.pstatAll ? Store.pstatAll(month) : null;
-    var emps = Store.employees().length;
-    var done = 0, inprog = 0;
-    if (entries) {
-      Object.keys(entries).forEach(function (k) {
-        var st = entries[k] && entries[k].statusId;
-        if (!st) return;
-        var def = statuses.filter(function (x) { return x.id === st; })[0];
-        if (!def) return;
-        if (/נסגר|הושלם/.test(def.name || '')) done++;
-        else if (/בתהליך/.test(def.name || '')) inprog++;
-      });
-    }
-    var rows = [
-      line([U.el('span', { style: 'flex:1;', text: 'עובדים בלוח' }), chip(String(emps))]),
-      line([U.el('span', { style: 'flex:1;', text: 'נסגרו' }), chip(String(done), done ? 'background:#dcfce7;color:#166534;' : '')]),
-      line([U.el('span', { style: 'flex:1;', text: 'בתהליך' }), chip(String(inprog), inprog ? ORANGE : '')])
-    ];
-    return card('לוח שכר — ' + U.monthLabel(month), rows, goBtn('ללוח', 'status'));
+  function card(title, rows, action) {
+    return U.el('div', { class: 'card m-card' }, [
+      U.el('div', { style: 'display:flex;align-items:center;gap:8px;margin:0 0 8px;' }, [
+        U.el('h3', { style: 'margin:0;font-size:16px;', text: title }),
+        U.el('span', { class: 'spacer' }),
+        action || null
+      ].filter(Boolean))
+    ].concat(rows));
   }
 
   // ---------- איסוף הנתונים ----------
   function collect(month) {
-    var today = U.todayISO();
-    var tasks = (Store.tasksAll() || []).filter(function (t) { return !t.archived && t.status !== 'הושלם'; });
-    var overdue = tasks.filter(function (t) {
-      var d = Store.daysToDue(t.due); return d != null && d < 0;
-    });
+    var d = {};
 
-    var pendingSubs = Store.pendingCount ? Store.pendingCount() : 0;
-    var pendingInv = Store.kkPendingInvoices ? Store.kkPendingInvoices().length : 0;
-
-    var absMissing = 0;
-    (Store.records('abs', month, function (r) { return r.kind === 'absence'; }) || []).forEach(function (r) {
-      if (r.approval === 'missing') absMissing++;
-    });
-
-    var unplanned = 0, kkRisk = [], kkDeadlines = [];
-    (Store.kkAll ? Store.kkAll() : []).forEach(function (r) {
-      var m = Store.kkMoney(r);
-      var funded = ['approved', 'spending', 'closed'].indexOf(r.status) !== -1;
-      if (funded && r.status !== 'closed' && m.unplanned > 0) {
-        unplanned += m.unplanned;
-        // סיכון אמיתי: נשאר כסף וגם יש תאריך ניצול שמתקרב
-        var n = daysTo(r.spendDeadline);
-        if (n != null && n <= 90) kkRisk.push({ name: r.name, unplanned: m.unplanned, spendDeadline: r.spendDeadline });
+    // --- 1. רישוי ובטיחות ---
+    var LICENSE_GROUP = 'רישוי מוסד';
+    var safety = Store.safetyAll ? Store.safetyAll() : [];
+    d.license = null;
+    d.certsExpired = []; d.certsSoon = []; d.licDocs = []; d.licMissing = [];
+    safety.forEach(function (r) {
+      // הרישיון עצמו מוצג בנפרד (כרטיס משלו) — לא נספר שוב ברשימת האישורים
+      if (r.main || r.name === Store.LICENSE_MAIN_NAME) { d.license = r; return; }
+      if (r.group === LICENSE_GROUP) {
+        if (r.na) return;
+        d.licDocs.push(r);
+        if (!r.docPath && !r.issuedAt) d.licMissing.push(r);
+        return;
       }
-      if (!funded && r.status !== 'rejected' && r.deadline) {
-        var d = daysTo(r.deadline);
-        if (d != null && d >= 0 && d <= SOON_DAYS) kkDeadlines.push({ name: r.name, deadline: r.deadline });
-      }
-    });
-    kkRisk.sort(function (a, b) { return b.unplanned - a.unplanned; });
-    kkDeadlines.sort(function (a, b) { return String(a.deadline).localeCompare(String(b.deadline)); });
-
-    var overBudget = [];
-    (Store.projectsAll ? Store.projectsAll() : []).forEach(function (p) {
-      if (p.archived) return;
-      var b = Store.projectBudget(p);
-      if (b && b.over) overBudget.push({ name: p.name, over: b.used - b.budget });
-    });
-
-    var certAlerts = [];
-    (Store.safetyAll ? Store.safetyAll() : []).forEach(function (r) {
       if (r.na) return;
       var exp = Store.safetyExpiry(r);
       if (!exp) return;
       var n = daysTo(exp);
-      if (n != null && n <= WARN_DAYS) certAlerts.push(r);
+      if (n == null) return;
+      if (n < 0) d.certsExpired.push(r);
+      else if (n <= WARN_DAYS) d.certsSoon.push(r);
     });
-    certAlerts.sort(function (a, b) {
+    function byExpiry(a, b) {
       return String(Store.safetyExpiry(a)).localeCompare(String(Store.safetyExpiry(b)));
+    }
+    d.certsExpired.sort(byExpiry); d.certsSoon.sort(byExpiry);
+    d.licenseDays = d.license ? daysTo(Store.safetyExpiry(d.license)) : null;
+
+    // --- 2. תורי אישורים ---
+    d.pendingSubs = Store.pendingCount ? Store.pendingCount() : 0;
+    d.pendingInv = Store.kkPendingInvoices ? Store.kkPendingInvoices().length : 0;
+    d.absMissing = 0;
+    (Store.records('abs', month, function (r) { return r.kind === 'absence'; }) || []).forEach(function (r) {
+      if (r.approval === 'missing' || (!r.approval && !r.docPath)) d.absMissing++;
     });
 
-    return {
-      tasks: tasks, overdue: overdue, pendingSubs: pendingSubs, pendingInv: pendingInv,
-      absMissing: absMissing, unplanned: unplanned, kkRisk: kkRisk, kkDeadlines: kkDeadlines,
-      overBudget: overBudget, certAlerts: certAlerts
-    };
+    // --- 3. השבוע הקרוב ---
+    d.events = [];
+    (Store.eventsAll ? Store.eventsAll() : []).forEach(function (ev) {
+      if (!ev.date) return;
+      var n = daysTo(ev.date);
+      if (n == null || n < 0 || n > WEEK_DAYS) return;
+      var open = (ev.tasks || []).filter(function (t) { return t.status !== 'בוצע'; });
+      d.events.push({ ev: ev, days: n, open: open.length, total: (ev.tasks || []).length });
+    });
+    d.events.sort(function (a, b) { return a.days - b.days; });
+    d.eventsOpen = d.events.reduce(function (s, x) { return s + x.open; }, 0);
+
+    // --- 4. כסף ---
+    d.unplanned = 0; d.kkRows = []; d.kkDeadlines = [];
+    (Store.kkAll ? Store.kkAll() : []).forEach(function (r) {
+      var m = Store.kkMoney(r);
+      var funded = ['approved', 'spending', 'closed'].indexOf(r.status) !== -1;
+      if (funded && r.status !== 'closed') {
+        if (m.unplanned > 0) d.unplanned += m.unplanned;
+        d.kkRows.push({ name: r.name, m: m, spendDeadline: r.spendDeadline });
+      }
+      if (!funded && r.status !== 'rejected' && r.deadline) {
+        var n = daysTo(r.deadline);
+        if (n != null && n >= 0 && n <= 30) d.kkDeadlines.push({ name: r.name, deadline: r.deadline, days: n });
+      }
+    });
+    d.kkRows.sort(function (a, b) { return b.m.unplanned - a.m.unplanned; });
+    d.kkDeadlines.sort(function (a, b) { return a.days - b.days; });
+    d.kkUrgent = d.kkRows.filter(function (r) {
+      var n = daysTo(r.spendDeadline);
+      return r.m.unplanned > 0 && n != null && n <= SPEND_DAYS;
+    });
+
+    d.overBudget = [];
+    (Store.projectsAll ? Store.projectsAll() : []).forEach(function (p) {
+      if (p.archived) return;
+      var b = Store.projectBudget(p);
+      if (b && b.over) d.overBudget.push({ name: p.name, over: b.used - b.budget });
+    });
+
+    // --- 5. שכר ומשימות ---
+    var emps = Store.employees().filter(function (e) { return e.active !== false; });
+    var closed = 0, inprog = 0;
+    emps.forEach(function (e) {
+      var en = Store.pstatEntry(month, e.id);
+      if (!en) return;
+      if (en.status === 'נסגר') closed++;
+      else if (en.status === 'בתהליך') inprog++;
+    });
+    d.payroll = { total: emps.length, closed: closed, inprog: inprog };
+
+    var tasks = (Store.tasksAll() || []).filter(function (t) { return !t.archived && t.status !== 'הושלם'; });
+    d.overdue = tasks.filter(function (t) { var n = Store.daysToDue(t.due); return n != null && n < 0; });
+    d.dueSoon = tasks.filter(function (t) { var n = Store.daysToDue(t.due); return n != null && n >= 0 && n <= 7; });
+    d.overdue.sort(function (a, b) { return String(a.due).localeCompare(String(b.due)); });
+    d.dueSoon.sort(function (a, b) { return String(a.due).localeCompare(String(b.due)); });
+
+    return d;
+  }
+
+  // ---------- שכבה 1: מה בוער ----------
+  function alertTiles(view, d) {
+    var tiles = [];
+    function tile(val, lbl, cls, viewId, sub) {
+      var el = U.el('div', { class: 'kpi ' + cls, style: 'cursor:pointer;' }, [
+        U.el('div', { class: 'kpi-ic' }),
+        U.el('div', { class: 'kpi-body' }, [
+          U.el('div', { class: 'kpi-row' }, U.el('div', { class: 'kpi-val', text: String(val) })),
+          U.el('div', { class: 'kpi-lbl', text: lbl }),
+          sub ? U.el('div', { class: 'kpi-sub', text: sub }) : null
+        ].filter(Boolean))
+      ]);
+      el.addEventListener('click', function () { go(viewId); });
+      tiles.push(el);
+    }
+
+    // סדר העדיפות שנקבע: רישוי ובטיחות → אישורים → השבוע הקרוב → כסף
+    if (d.license && d.licenseDays != null && d.licenseDays <= WARN_DAYS) {
+      tile(d.licenseDays < 0 ? 'פג' : d.licenseDays,
+        d.licenseDays < 0 ? 'רישיון המוסד פג תוקף' : 'ימים לחידוש רישיון המוסד',
+        d.licenseDays < 0 ? 'kpi-bad' : 'kpi-warn', 'safety');
+    }
+    if (d.certsExpired.length) tile(d.certsExpired.length, 'אישורי בטיחות שפגו', 'kpi-bad', 'safety',
+      d.certsExpired[0].name);
+    if (d.certsSoon.length) tile(d.certsSoon.length, 'פגים תוך ' + WARN_DAYS + ' יום', 'kpi-warn', 'safety');
+    if (d.licMissing.length) tile(d.licMissing.length, 'מסמכי רישוי חסרים', 'kpi-warn', 'safety');
+
+    if (d.pendingSubs) tile(d.pendingSubs, 'דיווחי עובדים לאישור', 'kpi-warn', 'queue');
+    if (d.pendingInv) tile(d.pendingInv, 'חשבוניות לאישור', 'kpi-warn', 'kk');
+    if (d.absMissing) tile(d.absMissing, 'היעדרויות בלי אישור', 'kpi-warn', 'abs');
+
+    if (d.eventsOpen) tile(d.eventsOpen, 'משימות פתוחות באירועים קרובים', 'kpi-info', 'events',
+      d.events.length ? d.events[0].ev.title : '');
+
+    if (d.unplanned > 0) tile(ils(d.unplanned), 'כסף מאושר שעוד לא תוכנן', 'kpi-bad', 'kk',
+      d.kkUrgent.length ? d.kkUrgent.length + ' ק"ק עם דדליין ניצול קרוב' : '');
+    if (d.overdue.length) tile(d.overdue.length, 'משימות באיחור', 'kpi-bad', 'tasks');
+
+    if (!tiles.length) {
+      view.appendChild(U.el('div', { class: 'card m-card dash-clear' }, [
+        U.el('div', { style: 'font-size:17px;font-weight:600;', text: 'הכול נקי' }),
+        U.el('div', { class: 'muted', style: 'font-size:13px;margin-top:4px;',
+          text: 'אין אישור שפג, אין דיווח שממתין לך ואין כסף שלא תוכנן.' })
+      ]));
+      return;
+    }
+    view.appendChild(U.el('div', { class: 'kpi-grid' }, tiles));
+  }
+
+  // ---------- שכבה 2: כרטיסים ----------
+  function licenseCard(d) {
+    var rows = [];
+    if (d.license) {
+      var exp = Store.safetyExpiry(d.license);
+      var n = d.licenseDays;
+      var st = n == null ? chip('לא הוזן תאריך') :
+        n < 0 ? chip('פג לפני ' + Math.abs(n) + ' י׳', RED) :
+        n <= WARN_DAYS ? chip('פג בעוד ' + n + ' י׳', ORANGE) : chip('בתוקף', GREEN);
+      rows.push(U.el('div', { class: 'dash-hero' }, [
+        U.el('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;' }, [
+          U.el('strong', { style: 'font-size:17px;', text: 'רישיון מוסד' }), st
+        ]),
+        U.el('div', { class: 'muted', style: 'font-size:13px;margin-top:4px;',
+          text: exp ? 'בתוקף עד ' + dateLabel(exp) : 'לא הוזן תאריך תוקף' }),
+        U.el('div', { style: 'margin-top:8px;' }, [
+          U.el('div', { class: 'dash-bar' }, U.el('span', {
+            style: 'width:' + (d.licDocs.length ? Math.round((d.licDocs.length - d.licMissing.length) / d.licDocs.length * 100) : 0) + '%;'
+          })),
+          U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:4px;',
+            text: (d.licDocs.length - d.licMissing.length) + ' מתוך ' + d.licDocs.length + ' מסמכי רישוי מוכנים' })
+        ])
+      ]));
+    }
+    d.certsExpired.slice(0, 4).forEach(function (r) {
+      var n = daysTo(Store.safetyExpiry(r));
+      rows.push(line([label(r.name), chip('פג לפני ' + Math.abs(n) + ' י׳', RED)]));
+    });
+    d.certsSoon.slice(0, 4).forEach(function (r) {
+      var n = daysTo(Store.safetyExpiry(r));
+      rows.push(line([label(r.name), chip('בעוד ' + n + ' י׳', ORANGE)]));
+    });
+    if (!d.certsExpired.length && !d.certsSoon.length) rows.push(emptyLine('כל אישורי הבטיחות בתוקף'));
+    return card('רישוי ובטיחות', rows, goBtn('לגיליון', 'safety'));
+  }
+
+  function inboxCard(d) {
+    var rows = [];
+    if (d.pendingSubs) rows.push(line([label('דיווחי עובדים מהפורטל'), chip(d.pendingSubs + ' ממתינים', ORANGE), goBtn('לתור', 'queue')]));
+    if (d.pendingInv) rows.push(line([label('חשבוניות קולות קוראים'), chip(d.pendingInv + ' ממתינות', ORANGE), goBtn('להכרעה', 'kk')]));
+    if (d.absMissing) rows.push(line([label('היעדרויות בלי מסמך אישור'), chip(d.absMissing + ' חסרים', ORANGE), goBtn('להיעדרויות', 'abs')]));
+    if (!rows.length) rows.push(emptyLine('אין כלום שממתין לאישור שלך'));
+    return card('מחכה לאישור שלי', rows);
+  }
+
+  function weekCard(d) {
+    var rows = d.events.slice(0, 6).map(function (x) {
+      var when = x.days === 0 ? 'היום' : x.days === 1 ? 'מחר' : 'בעוד ' + x.days + ' י׳';
+      return line([
+        U.el('span', { style: 'flex:1;min-width:0;' }, [
+          U.el('div', { style: 'font-weight:500;', text: x.ev.title || 'אירוע' }),
+          U.el('div', { class: 'muted', style: 'font-size:12px;',
+            text: U.weekdayName(x.ev.date) + ' · ' + dateLabel(x.ev.date) + (x.ev.location ? ' · ' + x.ev.location : '') })
+        ]),
+        chip(when, x.days <= 2 ? ORANGE : ''),
+        x.open ? chip(x.open + ' משימות פתוחות', RED) : chip('מוכן', GREEN)
+      ]);
+    });
+    if (!rows.length) rows.push(emptyLine('אין אירועים ב-' + WEEK_DAYS + ' הימים הקרובים'));
+    return card('השבוע הקרוב', rows, goBtn('לאירועים', 'events'));
+  }
+
+  function moneyCard(d) {
+    var rows = [];
+    d.kkRows.slice(0, 5).forEach(function (r) {
+      var n = daysTo(r.spendDeadline);
+      rows.push(U.el('div', { class: 'dash-line', style: 'flex-direction:column;align-items:stretch;gap:4px;' }, [
+        U.el('div', { style: 'display:flex;align-items:center;gap:8px;' }, [
+          U.el('span', { style: 'flex:1;min-width:0;font-weight:500;', text: r.name }),
+          r.m.unplanned > 0 ? chip('לא תוכנן ' + ils(r.m.unplanned), n != null && n <= SPEND_DAYS ? RED : ORANGE)
+            : chip('מתוכנן במלואו', GREEN)
+        ]),
+        U.el('div', { class: 'muted', style: 'font-size:12px;',
+          text: 'אושר ' + ils(r.m.approved) + ' · נוצל ' + ils(r.m.used) + ' · מתוכנן ' + ils(r.m.planned) +
+            (n != null ? ' · לניצול עד ' + dateLabel(r.spendDeadline) + (n < 0 ? ' (עבר)' : ' · ' + n + ' י׳') : '') })
+      ]));
+    });
+    d.kkDeadlines.slice(0, 3).forEach(function (r) {
+      rows.push(line([label(r.name), chip('הגשה עד ' + dateLabel(r.deadline) + ' · ' + r.days + ' י׳', ORANGE)]));
+    });
+    d.overBudget.slice(0, 3).forEach(function (p) {
+      rows.push(line([label(p.name), chip('חריגה ' + ils(p.over), RED), goBtn('לפרויקט', 'projects')]));
+    });
+    if (!rows.length) rows.push(emptyLine('אין קולות קוראים במימוש ואין חריגות תקציב'));
+    else if (d.unplanned > 0) {
+      rows.push(U.el('div', { style: 'display:flex;align-items:center;gap:8px;padding-top:8px;font-weight:600;' }, [
+        label('סה"כ כסף מאושר שלא תוכנן'), chip(ils(d.unplanned), RED)
+      ]));
+    }
+    return card('כסף — קולות קוראים ופרויקטים', rows, goBtn('לקולות קוראים', 'kk'));
+  }
+
+  function payrollCard(d, month) {
+    var p = d.payroll;
+    var pct = p.total ? Math.round(p.closed / p.total * 100) : 0;
+    var rows = [
+      U.el('div', { class: 'dash-bar' }, U.el('span', { style: 'width:' + pct + '%;' })),
+      U.el('div', { class: 'muted', style: 'font-size:12px;margin:4px 0 8px;',
+        text: p.closed + ' מתוך ' + p.total + ' עובדים נסגרו (' + pct + '%)' }),
+      p.inprog ? line([label('בתהליך'), chip(String(p.inprog), ORANGE)]) : null,
+      d.overdue.length ? line([label('משימות באיחור'), chip(String(d.overdue.length), RED), goBtn('למשימות', 'tasks')]) : null,
+      d.dueSoon.length ? line([label('משימות לשבוע הקרוב'), chip(String(d.dueSoon.length), ORANGE)]) : null
+    ].filter(Boolean);
+    return card('לוח שכר — ' + U.monthLabel(month), rows, goBtn('ללוח', 'status'));
   }
 
   // ---------- רינדור ----------
   function render(view) {
     var month = App.currentMonth();
-    var data = collect(month);
+    var d = collect(month);
 
     view.appendChild(U.el('div', { class: 'page-head' }, [
-      U.el('h2', { text: 'דשבורד מנהלים' }),
+      U.el('h2', { text: 'דשבורד' }),
       U.el('span', { class: 'spacer' }),
       U.el('span', { class: 'muted', style: 'font-size:13px;',
-        text: U.hebrewDate(U.todayISO()) + ' · ' + U.weekdayName(U.todayISO()) })
+        text: U.weekdayName(U.todayISO()) + ' · ' + U.hebrewDate(U.todayISO()) })
     ]));
 
-    kpiRow(view, data);
+    alertTiles(view, d);
 
-    // שורה ראשונה: מה מחכה לי · סיכון כספי · בטיחות
-    view.appendChild(U.el('div', { style: 'display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));margin-bottom:12px;' }, [
-      inboxCard(data),
-      moneyCard(data),
-      safetyCard(data),
-      payrollCard(month)
+    view.appendChild(U.el('div', { class: 'dash-cards' }, [
+      licenseCard(d),
+      inboxCard(d),
+      weekCard(d),
+      moneyCard(d),
+      payrollCard(d, month)
     ]));
-
-    // בלוקי המשימות — נבנו בגיליון המשימות ושמורים לכאן
-    if (global.TasksView && TasksView.renderDashboard) {
-      TasksView.renderDashboard(view, Store.tasksAll().filter(function (t) { return !t.archived; }));
-    }
-
-    // ציר הזמן הוויזואלי
-    if (global.TasksView && TasksView.renderTimeline) {
-      var tl = U.el('div', { class: 'card m-card', style: 'margin-top:12px;' }, [
-        U.el('h3', { style: 'margin:0 0 8px;font-size:16px;', text: 'ציר זמן — מפתיחה עד יעד' })
-      ]);
-      var host = U.el('div');
-      tl.appendChild(host);
-      TasksView.renderTimeline(host, data.tasks);
-      view.appendChild(tl);
-    }
   }
 
-  global.DashView = { render: render };
+  global.DashView = { render: render, collect: collect };
 })(window);

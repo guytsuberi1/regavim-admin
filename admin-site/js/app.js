@@ -5,6 +5,7 @@
 
   // כל מסכי האפליקציה
   var VIEWS = {
+    dash: global.DashView,
     status: global.StatusView,
     queue: global.QueueView,
     lc: global.LcView,
@@ -26,6 +27,9 @@
 
   // גיליונות — כל אחד מקבץ כמה מסכים (תת-טאבים בראש התוכן)
   var SHEETS = [
+    { id: 'dash', label: 'דשבורד', icon: 'dash', subs: [
+      { id: 'dash', label: 'דשבורד' }
+    ] },
     { id: 'payroll', label: 'דוחות שכר', icon: 'payroll', subs: [
       { id: 'status', label: 'לוח שכר' },
       { id: 'queue', label: 'תור אישורים' },
@@ -70,7 +74,7 @@
 
   // הרשאות: admin רואה הכל; secretary רק מרכז למידה
   var ROLE_VIEWS = {
-    admin: ['status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'kk', 'safety', 'base', 'settings'],
+    admin: ['dash', 'status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'kk', 'safety', 'base', 'settings'],
     secretary: ['lc']
   };
   function roleKey() { return Store.currentRole(); }
@@ -277,7 +281,7 @@
     Store.initPersistence(function () {
       buildSidebar();
       var allowed = allowedViews();
-      current = roleKey() === 'admin' ? 'status' : allowed[0];
+      current = roleKey() === 'admin' ? 'dash' : allowed[0];
       render();
       // נתוני אפליקציית התקציב (חשבוניות קולות קוראים) — ברקע, לא חוסמים את המסך
       if (roleKey() === 'admin' && Store.budgetLoad) {
