@@ -98,6 +98,137 @@
     return months[parseInt(p[1], 10) - 1] + ' ' + p[0];
   }
 
+  // ---------- בורר תאריך/חודש מעוצב ----------
+  // מחליף את לוח השנה של הדפדפן (שנראה מיושן) בפופאובר בשפת העיצוב של האפליקציה.
+  // חל אוטומטית על כל input[type=date] ו-input[type=month] באפליקציה.
+  var MONTHS_HE = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני',
+    'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+  var WD_SHORT = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
+  var openPop = null;
+
+  function closePicker() {
+    if (!openPop) return;
+    if (openPop.parentNode) openPop.parentNode.removeChild(openPop);
+    openPop = null;
+  }
+  function commit(input, value) {
+    closePicker();
+    input.value = value;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  function placePop(pop, anchor) {
+    document.body.appendChild(pop);
+    if (window.innerWidth <= 640) { pop.classList.add('dp-sheet'); return; }
+    var r = anchor.getBoundingClientRect();
+    var w = pop.offsetWidth, h = pop.offsetHeight;
+    var top = r.bottom + 6;
+    if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 6);
+    var right = window.innerWidth - r.right;              // RTL — מיישרים לקצה הימני של השדה
+    if (right + w > window.innerWidth - 8) right = Math.max(8, window.innerWidth - w - 8);
+    pop.style.top = top + 'px';
+    pop.style.right = right + 'px';
+  }
+  function popShell() {
+    var pop = el('div', { class: 'dp no-print' });
+    pop.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+    return pop;
+  }
+  function navBtn(dir, onClick) {
+    return el('button', { class: 'dp-nav', type: 'button', 'aria-label': dir > 0 ? 'הבא' : 'הקודם',
+      html: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+        + '<path d="M' + (dir > 0 ? '14 6l-6 6 6 6' : '10 6l6 6-6 6') + '"/></svg>',
+      onclick: onClick });
+  }
+
+  function openDatePicker(input, anchor) {
+    var sel = /^\d{4}-\d{2}-\d{2}$/.test(input.value || '') ? input.value : '';
+    var cur = fromISO(sel || todayISO());
+    var view = { y: cur.getFullYear(), m: cur.getMonth() };
+    var pop = popShell();
+
+    function build() {
+      clear(pop);
+      pop.appendChild(el('div', { class: 'dp-head' }, [
+        navBtn(-1, function () { view.m--; if (view.m < 0) { view.m = 11; view.y--; } build(); }),
+        el('div', { class: 'dp-title', text: MONTHS_HE[view.m] + ' ' + view.y }),
+        navBtn(1, function () { view.m++; if (view.m > 11) { view.m = 0; view.y++; } build(); })
+      ]));
+      pop.appendChild(el('div', { class: 'dp-wd' }, WD_SHORT.map(function (w) { return el('span', { text: w }); })));
+
+      var first = new Date(view.y, view.m, 1);
+      var start = first.getDay();                       // ראשון = 0
+      var days = new Date(view.y, view.m + 1, 0).getDate();
+      var cells = [];
+      for (var i = 0; i < start; i++) cells.push(el('span', { class: 'dp-day dp-empty' }));
+      for (var d = 1; d <= days; d++) {
+        (function (d) {
+          var iso = view.y + '-' + String(view.m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+          var cls = 'dp-day';
+          if (iso === sel) cls += ' on';
+          if (iso === todayISO()) cls += ' today';
+          cells.push(el('button', { class: cls, type: 'button', text: String(d),
+            onclick: function () { commit(input, iso); } }));
+        })(d);
+      }
+      pop.appendChild(el('div', { class: 'dp-grid' }, cells));
+      pop.appendChild(el('div', { class: 'dp-foot' }, [
+        el('button', { class: 'dp-link', type: 'button', text: 'היום',
+          onclick: function () { commit(input, todayISO()); } }),
+        el('span', { class: 'spacer' }),
+        el('button', { class: 'dp-link', type: 'button', text: 'ניקוי',
+          onclick: function () { commit(input, ''); } })
+      ]));
+    }
+    build();
+    openPop = pop;
+    placePop(pop, anchor);
+  }
+
+  function openMonthPicker(input, anchor) {
+    var sel = /^\d{4}-\d{2}$/.test(input.value || '') ? input.value : todayISO().slice(0, 7);
+    var year = parseInt(sel.slice(0, 4), 10);
+    var pop = popShell();
+
+    function build() {
+      clear(pop);
+      pop.appendChild(el('div', { class: 'dp-head' }, [
+        navBtn(-1, function () { year--; build(); }),
+        el('div', { class: 'dp-title', text: String(year) }),
+        navBtn(1, function () { year++; build(); })
+      ]));
+      pop.appendChild(el('div', { class: 'dp-months' }, MONTHS_HE.map(function (name, i) {
+        var mk = year + '-' + String(i + 1).padStart(2, '0');
+        return el('button', { class: 'dp-mon' + (mk === sel ? ' on' : '') + (mk === todayISO().slice(0, 7) ? ' today' : ''),
+          type: 'button', text: name, onclick: function () { commit(input, mk); } });
+      })));
+      pop.appendChild(el('div', { class: 'dp-foot' }, [
+        el('button', { class: 'dp-link', type: 'button', text: 'החודש הנוכחי',
+          onclick: function () { commit(input, todayISO().slice(0, 7)); } })
+      ]));
+    }
+    build();
+    openPop = pop;
+    placePop(pop, anchor);
+  }
+
+  function openPicker(input, anchor) {
+    if (!input || input.disabled || input.readOnly) return;
+    closePicker();
+    anchor = anchor || input.closest('.range-chip') || input;
+    if (input.type === 'month') openMonthPicker(input, anchor);
+    else openDatePicker(input, anchor);
+  }
+
+  document.addEventListener('mousedown', function (e) {
+    var t = e.target;
+    var inp = t && t.closest ? t.closest('input[type="date"],input[type="month"]') : null;
+    if (inp) { e.preventDefault(); openPicker(inp); return; }
+    if (openPop && !(t.closest && t.closest('.dp'))) closePicker();
+  }, true);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closePicker(); });
+  window.addEventListener('resize', closePicker);
+
   // ---------- סטטוסי נוכחות בזמן פנימיה ----------
   var ATT_STATUSES = [
     { key: 'present', label: 'נוכח',       short: 'נוכח' },
@@ -170,10 +301,7 @@
       title: opts.title || (input ? 'לחצו לבחירת תאריך' : '')
     }, kids);
     if (input) {
-      chip.addEventListener('click', function () {
-        try { if (input.showPicker) { input.showPicker(); return; } } catch (e) {}
-        input.click();
-      });
+      chip.addEventListener('mousedown', function (e) { e.preventDefault(); openPicker(input, chip); });
     } else if (opts.onClick) {
       chip.addEventListener('click', opts.onClick);
     }
@@ -330,7 +458,7 @@
     ATT_STATUSES: ATT_STATUSES, attLabel: attLabel,
     FLAGS: FLAGS, flagPill: flagPill,
     num: num, WA_SVG: WA_SVG, XLS_SVG: XLS_SVG,
-    toast: toast, dateChip: dateChip, actionMenu: actionMenu,
+    toast: toast, dateChip: dateChip, actionMenu: actionMenu, openPicker: openPicker,
     trendChart: trendChart, waNumber: waNumber
   };
 })(window);

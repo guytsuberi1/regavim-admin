@@ -34,14 +34,15 @@
   function goBtn(text, viewId) {
     return U.el('button', { class: 'btn secondary small', text: text + ' ›', onclick: function () { go(viewId); } });
   }
-  function card(title, rows, action) {
-    return U.el('div', { class: 'card m-card' }, [
-      U.el('div', { style: 'display:flex;align-items:center;gap:8px;margin:0 0 8px;' }, [
-        U.el('h3', { style: 'margin:0;font-size:16px;', text: title }),
-        U.el('span', { class: 'spacer' }),
-        action || null
-      ].filter(Boolean))
-    ].concat(rows));
+  // כותרת הכרטיס היא הקישור לגיליון — בלי כפתור נפרד
+  function card(title, viewId, rows) {
+    var head = U.el('h3', { class: 'dash-title', title: 'מעבר לגיליון' }, [
+      U.el('span', { text: title }),
+      U.el('span', { class: 'dash-chev', html: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        + 'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 6l-6 6 6 6"/></svg>' })
+    ]);
+    head.addEventListener('click', function () { go(viewId); });
+    return U.el('div', { class: 'card m-card' }, [head].concat(rows));
   }
 
   // ---------- איסוף הנתונים ----------
@@ -226,7 +227,7 @@
       rows.push(line([label(r.name), chip('בעוד ' + n + ' י׳', ORANGE)]));
     });
     if (!d.certsExpired.length && !d.certsSoon.length) rows.push(emptyLine('כל אישורי הבטיחות בתוקף'));
-    return card('רישוי ובטיחות', rows, goBtn('לגיליון', 'safety'));
+    return card('רישוי ובטיחות', 'safety', rows);
   }
 
   function inboxCard(d) {
@@ -235,7 +236,7 @@
     if (d.pendingInv) rows.push(line([label('חשבוניות קולות קוראים'), chip(d.pendingInv + ' ממתינות', ORANGE), goBtn('להכרעה', 'kk')]));
     if (d.absMissing) rows.push(line([label('היעדרויות בלי מסמך אישור'), chip(d.absMissing + ' חסרים', ORANGE), goBtn('להיעדרויות', 'abs')]));
     if (!rows.length) rows.push(emptyLine('אין כלום שממתין לאישור שלך'));
-    return card('מחכה לאישור שלי', rows);
+    return card('מחכה לאישור שלי', 'queue', rows);
   }
 
   function weekCard(d) {
@@ -252,7 +253,7 @@
       ]);
     });
     if (!rows.length) rows.push(emptyLine('אין אירועים ב-' + WEEK_DAYS + ' הימים הקרובים'));
-    return card('השבוע הקרוב', rows, goBtn('לאירועים', 'events'));
+    return card('השבוע הקרוב', 'events', rows);
   }
 
   function moneyCard(d) {
@@ -282,7 +283,7 @@
         label('סה"כ כסף מאושר שלא תוכנן'), chip(ils(d.unplanned), RED)
       ]));
     }
-    return card('כסף — קולות קוראים ופרויקטים', rows, goBtn('לקולות קוראים', 'kk'));
+    return card('כסף — קולות קוראים ופרויקטים', 'kk', rows);
   }
 
   function payrollCard(d, month) {
@@ -293,10 +294,23 @@
       U.el('div', { class: 'muted', style: 'font-size:12px;margin:4px 0 8px;',
         text: p.closed + ' מתוך ' + p.total + ' עובדים נסגרו (' + pct + '%)' }),
       p.inprog ? line([label('בתהליך'), chip(String(p.inprog), ORANGE)]) : null,
-      d.overdue.length ? line([label('משימות באיחור'), chip(String(d.overdue.length), RED), goBtn('למשימות', 'tasks')]) : null,
-      d.dueSoon.length ? line([label('משימות לשבוע הקרוב'), chip(String(d.dueSoon.length), ORANGE)]) : null
+      p.total - p.closed - p.inprog > 0 ? line([label('טרם נפתחו'), chip(String(p.total - p.closed - p.inprog))]) : null
     ].filter(Boolean);
-    return card('לוח שכר — ' + U.monthLabel(month), rows, goBtn('ללוח', 'status'));
+    return card('לוח שכר — ' + U.monthLabel(month), 'status', rows);
+  }
+
+  function tasksCard(d) {
+    var rows = [];
+    d.overdue.slice(0, 5).forEach(function (t) {
+      var n = Math.abs(Store.daysToDue(t.due));
+      rows.push(line([label(t.title || ''), chip('באיחור ' + n + ' י׳', RED)]));
+    });
+    d.dueSoon.slice(0, 5).forEach(function (t) {
+      var n = Store.daysToDue(t.due);
+      rows.push(line([label(t.title || ''), chip(n === 0 ? 'להיום' : 'בעוד ' + n + ' י׳', n <= 2 ? ORANGE : '')]));
+    });
+    if (!rows.length) rows.push(emptyLine('אין משימות באיחור או ליעד השבוע'));
+    return card('המשימות שלי', 'tasks', rows);
   }
 
   // ---------- רינדור ----------
@@ -318,6 +332,7 @@
       inboxCard(d),
       weekCard(d),
       moneyCard(d),
+      tasksCard(d),
       payrollCard(d, month)
     ]));
   }
