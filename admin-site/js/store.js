@@ -134,6 +134,11 @@
       // invoices — הכרעות על חשבוניות שהגיעו מאפליקציית התקציב:
       //   { txId: { status:'approved'|'rejected', kkId, at, note } }
       kk: { records: [], seq: 0, invoices: {}, meta: newMeta() },
+      // בטיחות, רישוי וביטוחים. רשומה:
+      // { id, num:'S-001', name, group:'שנתי'|'5 שנים'|'לפי צורך'|'רישוי מוסד',
+      //   issuedAt, expiresAt (מחושב מהנפקה+תדירות אלא אם expiryManual), issuer, owner,
+      //   docPath, docName, status:'' (נגזר), na (לא רלוונטי), note, createdAt, updatedAt, deleted }
+      safety: { records: [], seq: 0, seeded: false, meta: newMeta() },
       tasks: { records: [], seq: 0, meta: newMeta() },
       // פרויקטים. רשומה: { id, num, name, domain, owner, status:'תכנון'|'בביצוע'|'הושלם',
       //   budget (number), notes, items:[{ id, desc, contractor, cost (number|''),
@@ -207,6 +212,7 @@
     if (rowId === 'recruit') return data.recruit;
     if (rowId === 'events') return data.events;
     if (rowId === 'kk') return data.kk;
+    if (rowId === 'safety') return data.safety;
     var p = rowId.split(':');
     if (MONTH_KINDS[p[0]] && p[1]) return data[p[0]][p[1]] || null;
     return null;
@@ -218,11 +224,12 @@
     if (rowId === 'recruit') { data.recruit = obj; return; }
     if (rowId === 'events') { data.events = obj; return; }
     if (rowId === 'kk') { data.kk = obj; return; }
+    if (rowId === 'safety') { data.safety = obj; return; }
     var p = rowId.split(':');
     if (MONTH_KINDS[p[0]] && p[1]) data[p[0]][p[1]] = obj;
   }
   function allRowIds() {
-    var ids = ['core', 'tasks', 'projects', 'recruit', 'events', 'kk'];
+    var ids = ['core', 'tasks', 'projects', 'recruit', 'events', 'kk', 'safety'];
     Object.keys(MONTH_KINDS).forEach(function (kind) {
       Object.keys(data[kind] || {}).forEach(function (m) { ids.push(kind + ':' + m); });
     });
@@ -376,7 +383,7 @@
     var local = rowGet(rowId);
     var p = rowId.split(':');
 
-    if (rowId === 'tasks' || rowId === 'projects' || rowId === 'events' || rowId === 'kk') {
+    if (rowId === 'tasks' || rowId === 'projects' || rowId === 'events' || rowId === 'kk' || rowId === 'safety') {
       var mt = {
         records: mergeRecords(local && local.records, incoming.records),
         seq: Math.max((local && local.seq) || 0, incoming.seq || 0),
@@ -704,6 +711,84 @@
     for (var i = 0; i < arr.length; i++) if (arr[i].id === id) { arr[i] = { id: id, deleted: true, updatedAt: nowISO() }; break; }
     save('projects');
   }
+  // ---------- בטיחות, רישוי וביטוחים ----------
+  // הרשימה שהתקבלה ממנהל הרישוי — נזרעת פעם אחת, וניתנת לעריכה/מחיקה אחר כך
+  var SAFETY_SEED = [
+    { group: 'שנתי', name: 'תשתית לייעודה (בטיחות בית ספר)' },
+    { group: 'שנתי', name: 'טופס דיווח (בטיחות פנימייה)' },
+    { group: 'שנתי', name: 'כבאות' },
+    { group: 'שנתי', name: 'חשמלאי מוסמך' },
+    { group: '5 שנים', name: 'חשמלאי בודק' },
+    { group: '5 שנים', name: 'מהנדס — יציבות מבנים' },
+    { group: '5 שנים', name: 'מהנדס — תקרות תלויות' },
+    { group: '5 שנים', name: 'מהנדס — מזגנים תלויים' },
+    { group: '5 שנים', name: 'מהנדס — מבנים יבילים' },
+    { group: 'לפי צורך', name: 'תברואן' },
+    { group: 'לפי צורך', name: 'סקר עצים' },
+    { group: 'לפי צורך', name: 'אישורי גז' },
+    { group: 'לפי צורך', name: 'אישור מתקני ספורט' },
+    { group: 'רישוי מוסד', name: 'רשימת תלמידים' },
+    { group: 'רישוי מוסד', name: 'רשימת עובדי חינוך' },
+    { group: 'רישוי מוסד', name: 'רשימת עובדי שירות' },
+    { group: 'רישוי מוסד', name: 'אישור שימוש במבנה' },
+    { group: 'רישוי מוסד', name: 'מערכת שעות ותוכנית לימודים' },
+    { group: 'רישוי מוסד', name: 'תעודת הסמכה מנהל בית הספר' },
+    { group: 'רישוי מוסד', name: 'תשריט המתחם' },
+    { group: 'רישוי מוסד', name: 'היתר בנייה' }
+  ];
+  var SAFETY_MONTHS = { 'שנתי': 12, '5 שנים': 60 };   // 'לפי צורך' ו'רישוי מוסד' — תפוגה ידנית/ללא
+
+  function safetyAll() {
+    return (data.safety.records || []).filter(function (r) { return !r.deleted; });
+  }
+  function safetyById(id) {
+    return (data.safety.records || []).filter(function (r) { return r.id === id; })[0] || null;
+  }
+  function nextSafetyNum() {
+    data.safety.seq = (data.safety.seq || 0) + 1;
+    return 'S-' + String(data.safety.seq).padStart(3, '0');
+  }
+  // תפוגה מחושבת: הנפקה + תדירות. חוזר '' כשאין תדירות או אין תאריך הנפקה.
+  function safetyExpiry(rec) {
+    if (rec.expiryManual && rec.expiresAt) return rec.expiresAt;
+    var months = SAFETY_MONTHS[rec.group];
+    if (!months || !rec.issuedAt) return rec.expiresAt || '';
+    var p = String(rec.issuedAt).split('-');
+    var d = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1 + months, parseInt(p[2], 10));
+    var mm = String(d.getMonth() + 1), dd = String(d.getDate());
+    return d.getFullYear() + '-' + (mm.length < 2 ? '0' + mm : mm) + '-' + (dd.length < 2 ? '0' + dd : dd);
+  }
+  function upsertSafety(rec) {
+    if (!rec.id) { rec.id = uid(); rec.num = rec.num || nextSafetyNum(); rec.createdAt = nowISO(); }
+    rec.updatedAt = nowISO();
+    var arr = data.safety.records, found = false;
+    for (var i = 0; i < arr.length; i++) if (arr[i].id === rec.id) { arr[i] = rec; found = true; break; }
+    if (!found) arr.push(rec);
+    save('safety');
+    return rec;
+  }
+  function deleteSafety(id) {
+    var arr = data.safety.records;
+    for (var i = 0; i < arr.length; i++) if (arr[i].id === id) { arr[i] = { id: id, deleted: true, updatedAt: nowISO() }; break; }
+    save('safety');
+  }
+  // זריעה חד-פעמית של הרשימה מהמנהל
+  function seedSafety(force) {
+    if (data.safety.seeded && !force) return 0;
+    var have = {};
+    safetyAll().forEach(function (r) { have[r.name] = true; });
+    var added = 0;
+    SAFETY_SEED.forEach(function (x) {
+      if (have[x.name]) return;
+      upsertSafety({ name: x.name, group: x.group, issuedAt: '', expiresAt: '', issuer: '', owner: '', note: '' });
+      added++;
+    });
+    data.safety.seeded = true;
+    save('safety');
+    return added;
+  }
+  function safetyGroups() { return ['שנתי', '5 שנים', 'לפי צורך', 'רישוי מוסד']; }
+
   // ---------- קולות קוראים ----------
   function knum(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
   function kkAll() {
@@ -1389,6 +1474,14 @@
     pendingCount: pendingCount,
     updateSubmission: updateSubmission,
     // קולות קוראים
+    // בטיחות ורישוי
+    safetyAll: safetyAll,
+    safetyById: safetyById,
+    upsertSafety: upsertSafety,
+    deleteSafety: deleteSafety,
+    safetyExpiry: safetyExpiry,
+    seedSafety: seedSafety,
+    safetyGroups: safetyGroups,
     kkAll: kkAll,
     syncKkFromBudget: syncKkFromBudget,
     kkById: kkById,
