@@ -55,7 +55,7 @@
     function fld(l, n) { return U.el('div', { class: 'field' }, [U.el('label', { text: l }), n]); }
 
     var name = U.el('input', { value: rec.name || '', placeholder: 'שם הקול הקורא' });
-    var funder = U.el('input', { value: rec.funder || '', placeholder: 'משרד החינוך / מפעל הפיס / הרשות…' });
+    var funder = U.el('input', { value: rec.funder || '', placeholder: 'משרד החינוך / הרשות…' });
     var status = U.el('select', null, STATUSES.map(function (s) { return U.el('option', { value: s.key, text: s.label }); }));
     status.value = rec.status || 'published';
     var year = U.el('input', { value: rec.year || fyLabel(), placeholder: 'שנת כספים' });
@@ -73,8 +73,8 @@
     var deadline = U.el('input', { type: 'date', value: rec.deadline || '' });
     var submittedAt = U.el('input', { type: 'date', value: rec.submittedAt || '' });
     var approvedAt = U.el('input', { type: 'date', value: rec.approvedAt || '' });
-    var amountFunder = U.el('input', { type: 'number', min: '0', step: '1', value: rec.amountFunder != null ? rec.amountFunder : '', placeholder: 'חלק הגורם המממן' });
-    var amountSelf = U.el('input', { type: 'number', min: '0', step: '1', value: rec.amountSelf != null ? rec.amountSelf : '', placeholder: 'מצ׳ינג — חלק הישיבה' });
+    var amountFunder = U.el('input', { type: 'number', min: '0', step: '1', value: rec.amountFunder != null ? rec.amountFunder : '', placeholder: '0' });
+    var amountSelf = U.el('input', { type: 'number', min: '0', step: '1', value: rec.amountSelf != null ? rec.amountSelf : '', placeholder: '0' });
     var spendDeadline = U.el('input', { type: 'date', value: rec.spendDeadline || '' });
     var reportDate = U.el('input', { type: 'date', value: rec.reportDate || '' });
     var owner = U.el('input', { value: rec.owner || '', placeholder: 'אחראי' });

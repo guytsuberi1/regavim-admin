@@ -203,7 +203,11 @@ body.dark input[type="month"]::-webkit-calendar-picker-indicator { background-im
 
 .field { margin-bottom: 10px; }
 .row { display: flex; gap: 12px; flex-wrap: wrap; }
-.row > .field { flex: 1; min-width: 140px; }
+/* min-width:0 מאפשר לשדה להתכווץ מתחת לרוחב התוכן שלו — בלעדיו קלט
+   עם placeholder ארוך גולש מהמסגרת ומתנגש בשדה השכן (קרה בנייד). */
+.row > .field { flex: 1 1 160px; min-width: 0; }
+/* שדה בתוך .field ממלא את הרוחב ולא מקבל רוחב מובנה מהדפדפן */
+.field > input, .field > select, .field > textarea { width: 100%; max-width: 100%; }
 input.invalid, select.invalid, textarea.invalid { border-color: var(--danger) !important; background: #fef2f2; }
 .field-err { color: var(--danger); font-size: 12px; margin-top: 2px; min-height: 0; }
 
