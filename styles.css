@@ -891,3 +891,20 @@ body.dark .kpi-purple  { --kpi-c: #a78bfa; }
 body.dark .kpi-neutral { --kpi-c: #94a3b8; }
 body.dark .kpi-badge.down { background: #3a1f22; color: #f08079; }
 body.dark .kpi-badge.flat { background: #26323f; color: var(--muted); }
+
+/* ===== בטיחות ורישוי ===== */
+/* שורת "רישיון מוסד" הראשית — המטרה שכל שאר האישורים משרתים */
+table.grid tr.sf-main > td { font-weight: 600; background: var(--brand-light); }
+table.grid tr.sf-main > td:first-child { box-shadow: inset -3px 0 0 var(--brand); }
+.sf-link {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font: inherit; font-size: 12px; font-weight: 500;
+  color: var(--brand); text-align: right; text-decoration: underline;
+}
+.sf-link:hover { color: var(--brand-dark); }
+/* רקע לפי מצב — גם במצב חשוך */
+table.grid tr.sf-expired > td { background: #fef2f2; }
+table.grid tr.sf-soon > td    { background: #fffbeb; }
+table.grid tr.sf-na   > td    { opacity: .55; }
+body.dark table.grid tr.sf-expired > td { background: #3a1f22; }
+body.dark table.grid tr.sf-soon > td    { background: #362b16; }
