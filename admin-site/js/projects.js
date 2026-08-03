@@ -29,6 +29,19 @@
     i.addEventListener('change', function () { obj[field] = i.value.trim(); saveProj(p); });
     return i;
   }
+  // שדה טקסט שגדל לגובה התוכן — תיאור ארוך נשבר לשורות במקום להיחתך בשורה אחת
+  function pArea(p, obj, field, ph, style) {
+    var t = transp(U.el('textarea', {
+      rows: 1, placeholder: ph || '',
+      style: 'width:100%;resize:none;overflow:hidden;line-height:1.45;' + (style || '')
+    }, obj[field] || ''));
+    function fit() { t.style.height = 'auto'; t.style.height = (t.scrollHeight + 2) + 'px'; }
+    t.addEventListener('input', fit);
+    t.addEventListener('focus', fit);
+    requestAnimationFrame(fit);        // אחרי שהאלמנט נכנס ל-DOM, אחרת scrollHeight=0
+    t.addEventListener('change', function () { obj[field] = t.value.trim(); saveProj(p); });
+    return t;
+  }
   function pList(p, obj, field, options, ph, rerender) {
     var w = U.dataListInput(obj[field] || '', options, ph || '');
     transp(w._input); w._input.style.minWidth = '110px';
@@ -178,14 +191,14 @@
       var doneRow = it.status === 'בוצע';
       var tr = U.el('tr', { style: doneRow ? 'background:var(--primary-light,#e8f5e9);' : '' }, [
         grip,
-        U.el('td', { style: 'min-width:150px;' }, pText(p, it, 'desc', 'תיאור', 'width:100%;')),
+        U.el('td', { style: 'min-width:220px;' }, pArea(p, it, 'desc', 'תיאור')),
         U.el('td', null, pList(p, it, 'owner', owners, 'אחראי')),
         U.el('td', null, pSelect(it, 'status', ISTATUS, function () { saveProj(p); App.render(); })),
         U.el('td', null, pList(p, it, 'contractor', contractors, 'מבצע')),
         U.el('td', null, pNumber(p, it, 'cost', 'עלות', function () { App.render(); })),
         U.el('td', null, timelineCell(p, it)),
         U.el('td', null, docsCell(p, it)),
-        U.el('td', { style: 'min-width:140px;' }, pText(p, it, 'notes', 'הערות', 'width:100%;')),
+        U.el('td', { style: 'min-width:170px;' }, pArea(p, it, 'notes', 'הערות')),
         U.el('td', null, U.el('button', { class: 'btn secondary', html: U.ICO.trash, title: 'מחיקת שורה', onclick: function () {
           p.items = p.items.filter(function (x) { return x.id !== it.id; });
           saveProj(p); App.render();
