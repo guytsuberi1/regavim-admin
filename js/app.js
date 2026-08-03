@@ -19,6 +19,7 @@
     pos: global.PosView,
     events: global.EventsView,
     kk: global.KkView,
+    safety: global.SafetyView,
     base: global.BaseView,
     settings: global.SettingsView
   };
@@ -51,6 +52,9 @@
     { id: 'kk', label: 'קולות קוראים', icon: 'kk', subs: [
       { id: 'kk', label: 'קולות קוראים' }
     ] },
+    { id: 'safety', label: 'בטיחות ורישוי', icon: 'safety', subs: [
+      { id: 'safety', label: 'בטיחות ורישוי' }
+    ] },
     { id: 'base', label: 'נתוני בסיס', icon: 'base', subs: [
       { id: 'base', label: 'נתוני בסיס' }
     ] }
@@ -66,7 +70,7 @@
 
   // הרשאות: admin רואה הכל; secretary רק מרכז למידה
   var ROLE_VIEWS = {
-    admin: ['status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'kk', 'base', 'settings'],
+    admin: ['status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'kk', 'safety', 'base', 'settings'],
     secretary: ['lc']
   };
   function roleKey() { return Store.currentRole(); }
