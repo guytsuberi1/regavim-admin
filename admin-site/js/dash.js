@@ -104,7 +104,7 @@
       var funded = ['approved', 'spending', 'closed'].indexOf(r.status) !== -1;
       if (funded && r.status !== 'closed') {
         if (m.unplanned > 0) d.unplanned += m.unplanned;
-        d.kkRows.push({ name: r.name, m: m, spendDeadline: r.spendDeadline });
+        d.kkRows.push({ name: r.name, m: m, spendDeadline: r.deadline });   // תאריך היעד המאוחד
       }
       if (!funded && r.status !== 'rejected' && r.deadline) {
         var n = daysTo(r.deadline);

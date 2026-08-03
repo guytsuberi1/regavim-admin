@@ -631,7 +631,7 @@
     } else {
       actionBtns.push(U.el('button', { class: 'btn secondary ico', html: U.ICO.archive, title: 'העברה לארכיון', onclick: function () { ev.archived = true; saveEv(ev); App.render(); } }));
     }
-    card.appendChild(U.el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;' },
+    card.appendChild(U.el('div', { class: 'ev-head', style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;' },
       [chevron,
        U.el('span', { class: 'm-cdot', style: 'background:' + stColor(ESTATUS, ev.status) + ';', title: ev.status || '' }),
        numPill, U.el('span', { class: 'tag', text: typeLabel(ev.type) }), nameInp,
@@ -640,11 +640,14 @@
     // כשמכווץ — תקציר בשורה אחת בלבד
     if (cardCollapsed) {
       var doneC = (ev.tasks || []).filter(function (t) { return t.status === 'בוצע'; }).length;
-      card.appendChild(U.el('div', { style: 'display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;color:var(--muted,#6b7884);font-size:13px;' }, [
-        U.el('span', { text: '📅 ' + (ev.date ? fmtDateLine(ev.date) : '—') }),
-        ev.group ? U.el('span', { text: '👥 ' + ev.group }) : null,
-        ev.location ? U.el('span', { text: '📍 ' + ev.location }) : null,
-        U.el('span', { text: '✅ ' + doneC + '/' + ((ev.tasks || []).length) })
+      function sumItem(icon, txt) {
+        return U.el('span', { class: 'ev-sum', html: icon + '<span>' + esc(txt) + '</span>' });
+      }
+      card.appendChild(U.el('div', { class: 'ev-sumrow' }, [
+        sumItem(U.ICO.calendar, ev.date ? fmtDateLine(ev.date) : '—'),
+        ev.group ? sumItem(ICON.users, ev.group) : null,
+        ev.location ? sumItem(ICON.pin, ev.location) : null,
+        sumItem(ICON.tasks, doneC + '/' + ((ev.tasks || []).length))
       ].filter(Boolean)));
       return card;
     }

@@ -386,6 +386,7 @@ table.grid td.actions { white-space: nowrap; text-align: left; }
 .kpi-grid {
   display: grid; gap: 12px; margin: 4px 0 20px;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-auto-rows: 1fr;            /* גם כשהמונים נשברים לשתי שורות — אותו גובה */
 }
 /* כרטיס מדד בסגנון Monday: שטוח, מסגרת עדינה, מספר גדול ותווית אפורה.
    בלי אימוג'י בקופסה פסטלית ובלי פס צבע — הצבע מסומן בנקודה קטנה בלבד. */
@@ -1046,3 +1047,13 @@ tr.row-drop-before td { box-shadow: inset 0 2px 0 var(--brand); }
 /* צ'יפ טווח שעות — האייקון של הצ'יפ מספיק, בלי השעונים של הדפדפן */
 .range-chip input[type="time"]::-webkit-calendar-picker-indicator { display: none; }
 .range-chip input[type="time"] { min-width: 62px; }
+
+/* ===== כרטיס אירוע ===== */
+/* בנייד: השם תופס שורה משלו, והסטטוס + הארכיון יורדים יחד לשורה הבאה */
+@media (max-width: 640px) {
+  .ev-head > .spacer { flex: 1 0 100%; height: 0; margin: 0; }
+  .ev-head input { flex: 1 1 100%; min-width: 0; }
+}
+.ev-sumrow { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; font-size: 13px; color: var(--muted); }
+.ev-sum { display: inline-flex; align-items: center; gap: 5px; }
+.ev-sum svg { width: 14px; height: 14px; opacity: .8; }
