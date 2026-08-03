@@ -176,7 +176,7 @@
       saveEv(ev); App.render();
     }
     addTitle.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addFree(); } });
-    var fromCatBtn = U.el('button', { class: 'btn secondary', html: U.ICO.copy + ' הוסף מהקטלוג', onclick: function () {
+    var fromCatBtn = U.el('button', { class: 'btn secondary', html: U.ICO.plus + ' הוסף מהקטלוג', onclick: function () {
       var have = (ev.tasks || []).map(function (t) { return t.title; });
       openTaskPicker([], have, function (ids) {
         ids.forEach(function (id) { var c = catById(id); if (c) ev.tasks.push(taskFromCatalog(c)); });
