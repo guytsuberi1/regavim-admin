@@ -38,7 +38,7 @@
 
     var linkRow = U.el('div', { style: 'display:flex;gap:6px;align-items:center;margin-bottom:12px;flex-wrap:wrap;' }, [
       U.el('input', { value: portalUrl(), readonly: 'readonly', style: 'flex:1;min-width:200px;direction:ltr;text-align:left;font-size:12.5px;' }),
-      U.el('button', { class: 'btn secondary', text: '🔗 העתק', onclick: function () { copyText(portalUrl(), 'הקישור הועתק'); } })
+      U.el('button', { class: 'btn secondary', text: 'העתק', onclick: function () { copyText(portalUrl(), 'הקישור הועתק'); } })
     ]);
 
     // שליחה אישית — לכל עובד פעיל עם טלפון במצבת
@@ -173,7 +173,7 @@
     var t = TYPE[s.type] || { icon: '', label: s.type };
     var when = new Date(s.created_at);
     var statusTag = s.status === 'pending' ? null
-      : U.el('span', { class: 'tag', text: s.status === 'approved' ? '✓ אושר' : '✕ נדחה',
+      : U.el('span', { class: 'tag', text: s.status === 'approved' ? 'אושר' : 'נדחה',
           style: s.status === 'approved' ? 'background:#dcfce7;color:#166534;' : 'background:#fee2e2;color:#991b1b;' });
     return U.el('div', { class: 'card', style: 'margin-bottom:10px;' }, [
       U.el('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;' }, [
@@ -188,8 +188,8 @@
           U.el('div', { class: 'muted', style: 'font-size:11px;', text: 'נשלח: ' + when.toLocaleString('he-IL') + (s.handled_by ? ' · טופל ע"י ' + s.handled_by : '') })
         ]),
         fileBtn(s),
-        s.status === 'pending' ? U.el('button', { class: 'btn', text: '✅ אישור', onclick: function () { approve(s); } }) : null,
-        s.status === 'pending' ? U.el('button', { class: 'btn secondary', text: '✕ דחייה', onclick: function () { reject(s); } }) : null
+        s.status === 'pending' ? U.el('button', { class: 'btn', text: 'אישור', onclick: function () { approve(s); } }) : null,
+        s.status === 'pending' ? U.el('button', { class: 'btn secondary', text: 'דחייה', onclick: function () { reject(s); } }) : null
       ].filter(Boolean))
     ]);
   }

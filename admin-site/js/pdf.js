@@ -245,9 +245,9 @@
 
     var card = U.el('div', { class: 'card', style: 'max-width:560px;' }, [
       U.el('h3', { text: 'מה לכלול בחבילה של ' + U.monthLabel(month) + '?' }),
-      line(cbLc, '📚 דוח מרכז למידה', lcCount),
-      line(cbSub, '🔁 דוח מילוי מקום', subCount),
-      line(cbAbs, '🪖 סיכום היעדרויות וגמולים', absCount),
+      line(cbLc, 'דוח מרכז למידה', lcCount),
+      line(cbSub, 'דוח מילוי מקום', subCount),
+      line(cbAbs, 'סיכום היעדרויות וגמולים', absCount),
       U.el('div', { style: 'margin-top:14px;display:flex;gap:8px;' }, [
         U.el('button', { class: 'btn', html: U.ICO.print + ' פתיחת תצוגת הדפסה', onclick: function () {
           openPreview(month, { lc: cbLc.checked, sub: cbSub.checked, abs: cbAbs.checked });

@@ -256,7 +256,7 @@
       fld('תעריף נסיעות לק"מ (₪)', km, 'משמש בחישוב נסיעות במרכז למידה ובדוח הנסיעות'),
       fld('חתימת המנהל', manager, 'השם שיופיע בתחתית כל דוח בחבילת ה-PDF'),
       U.el('div', { style: 'margin-top:8px;' }, [
-        U.el('button', { class: 'btn', text: '💾 שמירת הגדרות', onclick: function () {
+        U.el('button', { class: 'btn', text: 'שמירת הגדרות', onclick: function () {
           s.hourlyRate = U.num(hourly.value, 80);
           s.kmRate = U.num(km.value, 0.9);
           s.managerName = manager.value.trim() || s.managerName;
@@ -281,7 +281,7 @@
       U.el('h3', { text: 'גיבוי ושחזור' }),
       U.el('p', { class: 'muted', style: 'margin-top:0;', text: 'גיבוי מוריד את כל הנתונים לקובץ. שחזור מחליף את כל הנתונים הנוכחיים.' }),
       U.el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;' }, [
-        U.el('button', { class: 'btn secondary', text: '⬇️ גיבוי לקובץ JSON', onclick: Store.exportJSON }),
+        U.el('button', { class: 'btn secondary', text: 'גיבוי לקובץ JSON', onclick: Store.exportJSON }),
         U.el('button', { class: 'btn danger', html: U.ICO.upload + ' שחזור מגיבוי', onclick: function () {
           var inp = U.el('input', { type: 'file', accept: '.json', style: 'display:none;' });
           inp.addEventListener('change', function () {
