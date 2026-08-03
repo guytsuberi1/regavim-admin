@@ -47,6 +47,57 @@
     return U.el('span', { class: 'tag', style: style, text: txt });
   }
 
+  // ---------- עריכה ישירה בשורות הטבלה ----------
+  // כל שדה עוצר את בועת הקליק, אחרת הלחיצה על התא פותחת את מסך הפירוט.
+  function stopBubble(el) {
+    ['click', 'mousedown', 'focus'].forEach(function (ev) {
+      el.addEventListener(ev, function (e) { e.stopPropagation(); });
+    });
+    return el;
+  }
+  function bare(el) {
+    el.style.border = '1px solid transparent';
+    el.style.background = 'transparent';
+    el.style.padding = '4px 6px';
+    el.style.marginInline = '-7px';
+    el.addEventListener('focus', function () { el.style.background = 'var(--card)'; el.style.borderColor = 'var(--border)'; });
+    el.addEventListener('blur', function () { el.style.background = 'transparent'; el.style.borderColor = 'transparent'; });
+    return stopBubble(el);
+  }
+  function saveKk(r) { Store.upsertKk(r); }
+  function cellText(r, field, ph, style) {
+    var i = bare(U.el('input', { value: r[field] || '', placeholder: ph || '', style: style || '', autocomplete: 'off' }));
+    i.addEventListener('change', function () { r[field] = i.value.trim(); saveKk(r); });
+    return i;
+  }
+  function cellDate(r, field) {
+    var i = bare(U.el('input', { type: 'date', value: r[field] || '', style: 'max-width:132px;' }));
+    i.addEventListener('change', function () { r[field] = i.value; saveKk(r); App.render(); });
+    return i;
+  }
+  function cellMoney(r, field, rerender) {
+    var i = bare(U.el('input', { value: r[field] != null && r[field] !== '' ? r[field] : '',
+      placeholder: '0', inputmode: 'numeric', style: 'max-width:104px;text-align:right;font-weight:600;' }));
+    i.addEventListener('change', function () {
+      var v = i.value.trim() === '' ? '' : U.num(i.value);
+      if (v !== r[field]) r.amountManual = true;      // ערך ידני לא נדרס בסנכרון מהתקציב
+      r[field] = v;
+      saveKk(r);
+      if (rerender) App.render();
+    });
+    return i;
+  }
+  // בורר סטטוס צבוע-מלא — שינוי ישירות מהטבלה, בלי להיכנס לעריכה
+  function cellStatus(r) {
+    var sel = U.el('select', { class: 'm-status m-status-auto', style: 'font-size:12px;padding:6px 10px;min-width:118px;' },
+      STATUSES.map(function (x) { return U.el('option', { value: x.key, text: x.label }); }));
+    sel.value = r.status || 'published';
+    sel.style.background = stDef(sel.value).color;
+    stopBubble(sel);
+    sel.addEventListener('change', function () { r.status = sel.value; saveKk(r); App.render(); });
+    return sel;
+  }
+
   // ---------- טופס קול קורא ----------
   function openModal(rec) {
     var isNew = !rec;
@@ -75,8 +126,6 @@
     var approvedAt = U.el('input', { type: 'date', value: rec.approvedAt || '' });
     var amountFunder = U.el('input', { type: 'number', min: '0', step: '1', value: rec.amountFunder != null ? rec.amountFunder : '', placeholder: '0' });
     var amountSelf = U.el('input', { type: 'number', min: '0', step: '1', value: rec.amountSelf != null ? rec.amountSelf : '', placeholder: '0' });
-    var spendDeadline = U.el('input', { type: 'date', value: rec.spendDeadline || '' });
-    var reportDate = U.el('input', { type: 'date', value: rec.reportDate || '' });
     var owner = U.el('input', { value: rec.owner || '', placeholder: 'אחראי' });
     var note = U.el('textarea', { rows: 2, placeholder: 'הערות' }, rec.note || '');
 
@@ -85,10 +134,9 @@
       U.el('div', { class: 'row' }, [fld('אחראי', owner), fld('גוף מממן', funder)]),
       U.el('div', { class: 'row' }, [fld('סטטוס', status), fld('שנת כספים', year)]),
       fld('קטגוריה באפליקציית התקציב (מקור החשבוניות)', budgetSub),
-      U.el('div', { class: 'row' }, [fld('תאריך פרסום', publishedAt), fld('תאריך הגשה אחרון', deadline)]),
+      U.el('div', { class: 'row' }, [fld('תאריך פרסום', publishedAt), fld('תאריך יעד (הגשה / ניצול / דיווח)', deadline)]),
       U.el('div', { class: 'row' }, [fld('הוגש בפועל', submittedAt), fld('תאריך אישור', approvedAt)]),
       U.el('div', { class: 'row' }, [fld('סכום מאושר — הגורם המממן', amountFunder), fld('מצ׳ינג — חלק הישיבה', amountSelf)]),
-      U.el('div', { class: 'row' }, [fld('תאריך אחרון לניצול', spendDeadline), fld('תאריך דיווח נדרש', reportDate)]),
       fld('הערות', note),
       err
     ]), [
@@ -109,8 +157,6 @@
         if (newFunder !== rec.amountFunder) rec.amountManual = true;
         rec.amountFunder = newFunder;
         rec.amountSelf = amountSelf.value.trim() === '' ? '' : U.num(amountSelf.value);
-        rec.spendDeadline = spendDeadline.value;
-        rec.reportDate = reportDate.value;
         rec.owner = owner.value.trim();
         rec.note = note.value.trim();
         Store.upsertKk(rec);
@@ -118,6 +164,17 @@
         App.render();
       } }
     ]);
+  }
+
+  // עד כה היו שלושה תאריכי יעד (הגשה · ניצול · דיווח). אוחדו לשדה אחד — deadline.
+  function migrateDates() {
+    Store.kkAll().forEach(function (r) {
+      if (r.datesMerged) return;
+      if (!r.deadline) r.deadline = r.spendDeadline || r.reportDate || '';
+      delete r.spendDeadline; delete r.reportDate;
+      r.datesMerged = true;
+      Store.upsertKk(r);
+    });
   }
 
   function fyLabel() {
@@ -242,7 +299,7 @@
       U.el('h2', { text: rec.name || '(ללא שם)', style: 'margin-inline-start:8px;' }),
       U.el('span', { class: 'tag', style: 'background:' + st.color + '22;border-color:' + st.color + ';color:' + st.color + ';', text: st.label }),
       U.el('span', { class: 'spacer' }),
-      isFunded(rec) ? deadlineChip(rec.spendDeadline, 'ניצול עד') : deadlineChip(rec.deadline, 'הגשה עד'),
+      deadlineChip(rec.deadline, isFunded(rec) ? 'ניצול/דיווח עד' : 'הגשה עד'),
       U.el('button', { class: 'btn', html: U.ICO.edit + ' עריכה', onclick: function () { openModal(rec); } })
     ].filter(Boolean)));
 
@@ -372,20 +429,20 @@
         var dlStyle = '';
         if (!isFunded(r) && dl !== null && dl >= 0 && dl <= 14) dlStyle = 'color:#b91c1c;font-weight:600;';
         var tr = U.el('tr', { style: 'cursor:pointer;' }, [
-          U.el('td', null, [
-            U.el('strong', { text: r.name || '(ללא שם)' }),
-            r.funder ? U.el('div', { class: 'muted', style: 'font-size:12px;', text: r.funder }) : null
-          ].filter(Boolean)),
-          U.el('td', null, U.el('span', { class: 'tag', style: 'background:' + st.color + '22;border-color:' + st.color + ';color:' + st.color + ';', text: st.label })),
-          U.el('td', { style: 'font-weight:600;', text: m.approved ? ils(m.approved) : '—' }),
+          U.el('td', { style: 'min-width:170px;' }, [
+            cellText(r, 'name', 'שם הקול הקורא', 'font-weight:600;width:100%;'),
+            cellText(r, 'funder', 'גוף מממן…', 'width:100%;font-size:12px;color:var(--muted);')
+          ]),
+          U.el('td', null, cellStatus(r)),
+          U.el('td', null, cellMoney(r, 'amountFunder', true)),
           U.el('td', { style: m.used ? (m.approved && m.used > m.approved ? 'color:#b91c1c;font-weight:600;' : 'color:#16a34a;') : '',
                        text: m.used ? ils(m.used) : '—' }),
           U.el('td', { style: m.planned ? 'color:#2563eb;' : '', text: m.planned ? ils(m.planned) : '—' }),
           U.el('td', { style: isFunded(r) ? (m.unplanned !== 0 ? 'color:#b91c1c;font-weight:600;' : 'color:#16a34a;') : '',
                        title: m.unplanned < 0 ? 'חריגה — נוצל ומתוכנן עולים על ההקצבה' : '',
                        text: isFunded(r) ? (m.unplanned < 0 ? '⚠️ ' + ils(m.unplanned) : ils(m.unplanned)) : '—' }),
-          U.el('td', { style: dlStyle, text: r.deadline ? U.gregLabel(r.deadline) + '/' + r.deadline.slice(2, 4) : '—' }),
-          U.el('td', { text: r.owner || '' })
+          U.el('td', { style: dlStyle }, cellDate(r, 'deadline')),
+          U.el('td', null, cellText(r, 'owner', 'אחראי', 'max-width:110px;'))
         ]);
         tr.addEventListener('click', function () { selectedId = r.id; App.render(); });
         return tr;
@@ -401,14 +458,15 @@
       ]));
       return U.el('div', { class: 'tbl-scroll' }, [U.el('table', { class: 'grid' }, [
         U.el('thead', null, U.el('tr', null,
-          ['שם הקול הקורא', 'סטטוס', 'הקצבה', 'נוצל', 'מתוכנן', 'נותר ללא תכנון', 'הגשה עד', 'באחריות']
+          ['שם הקול הקורא', 'סטטוס', 'הקצבה', 'נוצל', 'מתוכנן', 'נותר ללא תכנון', 'תאריך יעד', 'באחריות']
             .map(function (h) { return U.el('th', { text: h }); }))),
         U.el('tbody', null, body)
       ])]);
     }
 
     view.appendChild(table(openRecs));
-    view.appendChild(U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:6px;', text: 'לחיצה על שורה פותחת את הפירוט המלא של הקול הקורא' }));
+    view.appendChild(U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:6px;',
+      text: 'אפשר לערוך שם, סטטוס, הקצבה, תאריך יעד ואחראי ישירות בטבלה · לחיצה על שאר השורה פותחת את הפירוט המלא' }));
 
     if (doneRecs.length) {
       view.appendChild(U.el('button', {
@@ -530,6 +588,7 @@
 
   // ---------- רינדור ראשי ----------
   function render(view) {
+    migrateDates();
     if (selectedId) {
       var rec = Store.kkById(selectedId);
       if (rec && !rec.deleted) { detail(view, rec); return; }
