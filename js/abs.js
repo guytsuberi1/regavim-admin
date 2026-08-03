@@ -5,13 +5,13 @@
   var U = global.U;
 
   var KINDS = [
-    { kind: 'absence', icon: '🪖', title: 'היעדרויות / מילואים',
+    { kind: 'absence', icon: '', title: 'היעדרויות / מילואים',
       cols: ['שם', 'תאריכים', 'שעות', 'סיבה', 'אישור', 'ניכוי שכר', 'הערות'] },
-    { kind: 'work', icon: '💪', title: 'עבודה בזמן מילואים',
+    { kind: 'work', icon: '', title: 'עבודה בזמן מילואים',
       cols: ['שם', 'תאריכים', 'שעות', 'הערות'] },
-    { kind: 'travel', icon: '🚗', title: 'דוח נסיעות',
+    { kind: 'travel', icon: '', title: 'דוח נסיעות',
       cols: ['שם', 'תאריך', 'נתיב', 'ק"מ', 'הערות'] },
-    { kind: 'trip', icon: '🏕️', title: 'גמול טיול',
+    { kind: 'trip', icon: '', title: 'גמול טיול',
       cols: ['שם', 'מטרת הטיול', 'יציאה', 'חזרה', 'לילות', 'הערות'] }
   ];
 
@@ -64,7 +64,7 @@
       var filePath = rec.filePath || '';
       var fileInput = U.el('input', { type: 'file', accept: 'image/*,.pdf', style: 'display:none;' });
       var pickBtn = U.el('button', { type: 'button', class: 'btn secondary small' });
-      var viewBtn = U.el('button', { type: 'button', class: 'btn secondary small', text: '📎 צפייה' });
+      var viewBtn = U.el('button', { type: 'button', class: 'btn secondary small', html: U.ICO.clip + ' צפייה' });
       var fileStatus = U.el('span', { class: 'muted', style: 'font-size:13px;' });
       function paintFile(msg) {
         pickBtn.textContent = filePath ? '🔄 החלפת הקובץ' : '⬆️ העלאת קובץ';
@@ -182,7 +182,7 @@
     }
 
     var def = KINDS.filter(function (k) { return k.kind === kind; })[0];
-    Modal.open((rec.id ? '✏️ עריכה — ' : '➕ ') + def.title, U.el('div', null, fields.concat([err])), [
+    Modal.open((rec.id ? 'עריכה —' : '') + def.title, U.el('div', null, fields.concat([err])), [
       { label: 'ביטול', class: 'secondary' },
       { label: 'שמירה', onClick: function (close) {
         rec.name = name.input.value.trim();
@@ -206,10 +206,10 @@
 
   function approvalCell(r) {
     if (r.kind !== 'absence') return null;
-    var lbl = { received: '✓ מצורף', missing: '⚠️ חסר', none: '—' }[r.approval] || '⚠️ חסר';
+    var lbl = { received: '✓ מצורף', missing: 'חסר', none: '—' }[r.approval] || 'חסר';
     var cell = U.el('td', null, [U.el('span', { text: lbl, style: r.approval === 'missing' ? 'color:#d97706;font-weight:600;' : '' })]);
     if (r.filePath) {
-      var btn = U.el('button', { class: 'btn secondary', text: '📎', title: 'צפייה באישור שהועלה', style: 'margin-inline-start:6px;' });
+      var btn = U.el('button', { class: 'btn secondary', html: U.ICO.clip, title: 'צפייה באישור שהועלה', style: 'margin-inline-start:6px;' });
       btn.addEventListener('click', function () {
         btn.disabled = true;
         Store.approvalFileUrl(r.filePath).then(function (url) {
@@ -265,15 +265,15 @@
 
   function render(view) {
     var month = App.currentMonth();
-    view.appendChild(App.monthHeader('🪖 היעדרויות וגמולים'));
+    view.appendChild(App.monthHeader('היעדרויות וגמולים'));
 
     KINDS.forEach(function (def) {
       var recs = Store.records('abs', month, function (r) { return r.kind === def.kind; });
       var card = U.el('div', { class: 'card', style: 'margin-bottom:14px;' });
       card.appendChild(U.el('div', { class: 'page-head', style: 'margin-bottom:8px;' }, [
-        U.el('h3', { text: def.icon + ' ' + def.title + (recs.length ? ' (' + recs.length + ')' : '') }),
+        U.el('h3', { text: def.title + (recs.length ? ' (' + recs.length + ')' : '') }),
         U.el('span', { class: 'spacer' }),
-        U.el('button', { class: 'btn secondary', text: '➕ הוספה', onclick: function () { openModal(month, def.kind, null); } })
+        U.el('button', { class: 'btn secondary', html: U.ICO.plus + ' הוספה', onclick: function () { openModal(month, def.kind, null); } })
       ]));
       if (!recs.length) {
         card.appendChild(U.el('div', { class: 'muted', style: 'padding:6px 2px;' }, 'אין רשומות החודש'));
@@ -283,7 +283,7 @@
           U.el('tbody', null, recs.map(function (r) {
             return U.el('tr', null, rowCells(r).concat([
               U.el('td', null, [
-                U.el('button', { class: 'btn secondary', text: '✏️', title: 'עריכה', onclick: function () { openModal(month, def.kind, JSON.parse(JSON.stringify(r))); } }),
+                U.el('button', { class: 'btn secondary', html: U.ICO.edit, title: 'עריכה', onclick: function () { openModal(month, def.kind, JSON.parse(JSON.stringify(r))); } }),
                 ' ',
                 U.el('button', { class: 'btn secondary', html: U.ICO.trash, title: 'מחיקה', onclick: function () {
                   Modal.confirm({ title: 'מחיקה', text: 'למחוק את הרשומה של ' + r.name + '?', okLabel: 'מחיקה', danger: true }, function () {

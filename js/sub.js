@@ -56,7 +56,7 @@
       fld('הערות', note),
       err
     ]);
-    Modal.open(rec.id ? '✏️ עריכת שורה' : '➕ שורת מילוי מקום', body, [
+    Modal.open(rec.id ? 'עריכת שורה' : 'שורת מילוי מקום', body, [
       { label: 'ביטול', class: 'secondary' },
       { label: 'שמירה', onClick: function (close) {
         var targetEmp = empId;
@@ -88,7 +88,7 @@
     var month = App.currentMonth();
     view.appendChild(App.monthHeader('🔁 דוח מילוי מקום', [
       U.el('span', { class: 'spacer' }),
-      U.el('button', { class: 'btn', text: '➕ שורת מילוי מקום', onclick: function () { openRecModal(month, null, null); } })
+      U.el('button', { class: 'btn', html: U.ICO.plus + ' שורת מילוי מקום', onclick: function () { openRecModal(month, null, null); } })
     ]));
 
     var list = substitutes(month);
@@ -116,7 +116,7 @@
     card.appendChild(U.el('div', { class: 'page-head', style: 'margin-bottom:8px;' }, [
       U.el('h3', { text: Store.empName(selectedEmpId) }),
       U.el('span', { class: 'spacer' }),
-      U.el('button', { class: 'btn', text: '➕ שורה ל' + Store.empName(selectedEmpId), onclick: function () { openRecModal(month, selectedEmpId, null); } })
+      U.el('button', { class: 'btn', html: U.ICO.plus + ' שורה ל' + Store.empName(selectedEmpId), onclick: function () { openRecModal(month, selectedEmpId, null); } })
     ]));
 
     var tbl = U.el('table', { class: 'grid' }, [
@@ -130,7 +130,7 @@
           U.el('td', { text: r.purpose || '' }),
           U.el('td', { text: r.note || '' }),
           U.el('td', null, [
-            U.el('button', { class: 'btn secondary', text: '✏️', title: 'עריכה', onclick: function () { openRecModal(month, selectedEmpId, JSON.parse(JSON.stringify(r))); } }),
+            U.el('button', { class: 'btn secondary', html: U.ICO.edit, title: 'עריכה', onclick: function () { openRecModal(month, selectedEmpId, JSON.parse(JSON.stringify(r))); } }),
             ' ',
             U.el('button', { class: 'btn secondary', text: '⧉', title: 'שכפול השורה', onclick: function () {
               // עותק בלי id — נשמר כשורה חדשה. נפתח לעריכה כדי לשנות תאריך.

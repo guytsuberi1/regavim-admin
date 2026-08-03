@@ -5,13 +5,13 @@
 
   // מחזור החיים כפי שגיא תיאר אותו
   var STATUSES = [
-    { key: 'published', label: '📢 פורסם', color: '#64748b' },
-    { key: 'prep', label: '✍️ בהכנה', color: '#d97706' },
-    { key: 'submitted', label: '📤 הוגש', color: '#2563eb' },
-    { key: 'approved', label: '✅ התקבל הקצבה', color: '#16a34a' },
-    { key: 'spending', label: '💰 מימוש', color: '#0d9488' },
-    { key: 'closed', label: '🏁 דווח ונסגר', color: '#475569' },
-    { key: 'rejected', label: '❌ לא אושר / לא רלוונטי', color: '#b91c1c' }
+    { key: 'published', label: 'פורסם', color: '#64748b' },
+    { key: 'prep', label: 'בהכנה', color: '#d97706' },
+    { key: 'submitted', label: 'הוגש', color: '#2563eb' },
+    { key: 'approved', label: 'התקבל הקצבה', color: '#16a34a' },
+    { key: 'spending', label: 'מימוש', color: '#0d9488' },
+    { key: 'closed', label: 'דווח ונסגר', color: '#475569' },
+    { key: 'rejected', label: 'לא אושר / לא רלוונטי', color: '#b91c1c' }
   ];
   // סטטוס שורת תכנון — במילים של האקסל
   var PLAN_STATUS = ['תכנון', 'בביצוע'];
@@ -80,7 +80,7 @@
     var owner = U.el('input', { value: rec.owner || '', placeholder: 'אחראי' });
     var note = U.el('textarea', { rows: 2, placeholder: 'הערות' }, rec.note || '');
 
-    Modal.open(isNew ? '➕ קול קורא חדש' : '✏️ עריכת קול קורא', U.el('div', null, [
+    Modal.open(isNew ? 'קול קורא חדש' : 'עריכת קול קורא', U.el('div', null, [
       fld('שם הקול הקורא', name),
       U.el('div', { class: 'row' }, [fld('אחראי', owner), fld('גוף מממן', funder)]),
       U.el('div', { class: 'row' }, [fld('סטטוס', status), fld('שנת כספים', year)]),
@@ -165,7 +165,7 @@
         ? U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:6px;',
             text: 'מתוכם: ' + ils(m.funder) + ' מהגורם המממן · ' + ils(m.self) + ' מצ׳ינג של הישיבה' })
         : null,
-      m.over ? U.el('div', { style: 'font-size:12px;color:#b91c1c;font-weight:600;margin-top:4px;', text: '⚠️ נוצל + מתוכנן חורגים מהסכום שאושר' }) : null
+      m.over ? U.el('div', { style: 'font-size:12px;color:#b91c1c;font-weight:600;margin-top:4px;', text: 'נוצל + מתוכנן חורגים מהסכום שאושר' }) : null
     ].filter(Boolean));
   }
 
@@ -216,7 +216,7 @@
         } }))
       ]);
     });
-    var addDesc = U.el('input', { placeholder: '➕ הוצאה מתוכננת — תיאור ואנטר' });
+    var addDesc = U.el('input', { placeholder: '+ הוצאה מתוכננת — תיאור ואנטר' });
     addDesc.addEventListener('keydown', function (e) {
       if (e.key !== 'Enter' || !addDesc.value.trim()) return;
       rec.planned.push({ id: 'pl' + Date.now().toString(36), desc: addDesc.value.trim(), supplier: '', amount: 0, status: 'תכנון', date: '', note: '' });
@@ -243,7 +243,7 @@
       U.el('span', { class: 'tag', style: 'background:' + st.color + '22;border-color:' + st.color + ';color:' + st.color + ';', text: st.label }),
       U.el('span', { class: 'spacer' }),
       isFunded(rec) ? deadlineChip(rec.spendDeadline, 'ניצול עד') : deadlineChip(rec.deadline, 'הגשה עד'),
-      U.el('button', { class: 'btn', text: '✏️ עריכה', onclick: function () { openModal(rec); } })
+      U.el('button', { class: 'btn', html: U.ICO.edit + ' עריכה', onclick: function () { openModal(rec); } })
     ].filter(Boolean)));
 
     var meta = [
@@ -262,11 +262,11 @@
     } else {
       view.appendChild(U.el('div', { class: 'card', style: 'margin-bottom:12px;' }, [moneyCard(rec)]));
       view.appendChild(U.el('div', { class: 'card', style: 'margin-bottom:12px;' }, [
-        U.el('h3', { style: 'margin-top:0;', text: '🧾 חשבוניות שאושרו (מאפליקציית התקציב)' }),
+        U.el('h3', { style: 'margin-top:0;', text: 'חשבוניות שאושרו (מאפליקציית התקציב)' }),
         invoicesTable(rec)
       ]));
       view.appendChild(U.el('div', { class: 'card', style: 'margin-bottom:12px;' }, [
-        U.el('h3', { style: 'margin-top:0;', text: '📅 תכנון קדימה' }),
+        U.el('h3', { style: 'margin-top:0;', text: 'תכנון קדימה' }),
         plannedTable(rec)
       ]));
     }
@@ -295,7 +295,7 @@
     return U.el('div', { class: 'card', style: 'margin-bottom:12px;border-inline-start:4px solid var(--brand);' }, [
       U.el('div', { style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;' }, [
         U.el('div', { style: 'flex:1;min-width:220px;' }, [
-          U.el('div', { style: 'font-weight:600;', text: '⬇️ ' + missing.length + ' קולות קוראים קיימים בתקציב ועדיין לא כאן' }),
+          U.el('div', { style: 'font-weight:600;', text: '' + missing.length + ' קולות קוראים קיימים בתקציב ועדיין לא כאן' }),
           U.el('div', { class: 'muted', style: 'font-size:13px;margin-top:2px;',
             text: missing.map(function (c) { return c.sub; }).join(' · ') })
         ]),
@@ -337,9 +337,9 @@
     }
     view.appendChild(U.el('div', { class: 'kpi-row' }, [
       kpi('⏰', soon.length, 'הגשות שנסגרות תוך 14 יום', soon.length ? '#b91c1c' : ''),
-      kpi('📤', waiting.length, 'ממתינים לתשובה'),
-      kpi('💰', ils(unplanned), 'כסף מאושר שעוד לא תוכנן', unplanned > 0 ? '#b91c1c' : '#16a34a'),
-      kpi('🏦', ils(totalApproved), 'סה"כ הקצבות השנה')
+      kpi('', waiting.length, 'ממתינים לתשובה'),
+      kpi('', ils(unplanned), 'כסף מאושר שעוד לא תוכנן', unplanned > 0 ? '#b91c1c' : '#16a34a'),
+      kpi('', ils(totalApproved), 'סה"כ הקצבות השנה')
     ]));
 
     var sync = syncCard();
@@ -505,9 +505,9 @@
     }
     view.appendChild(U.el('div', { class: 'kpi-row' }, [
       kpi('⏰', soon.length, 'הגשות שנסגרות תוך 14 יום', soon.length ? '#b91c1c' : ''),
-      kpi('📤', waiting.length, 'ממתינים לתשובה'),
-      kpi('💰', ils(unplanned), 'כסף מאושר שעוד לא תוכנן', unplanned > 0 ? '#b91c1c' : '#16a34a'),
-      kpi('🏦', ils(totalApproved), 'סה"כ הקצבות השנה')
+      kpi('', waiting.length, 'ממתינים לתשובה'),
+      kpi('', ils(unplanned), 'כסף מאושר שעוד לא תוכנן', unplanned > 0 ? '#b91c1c' : '#16a34a'),
+      kpi('', ils(totalApproved), 'סה"כ הקצבות השנה')
     ]));
 
     if (!recs.length) {
@@ -536,25 +536,25 @@
     var pendingCount = Store.kkPendingInvoices().length;
 
     view.appendChild(U.el('div', { class: 'page-head' }, [
-      U.el('h2', { text: '📣 קולות קוראים' }),
+      U.el('h2', { text: 'קולות קוראים' }),
       U.el('span', { class: 'spacer' }),
-      U.el('button', { class: 'btn secondary', text: '🔄 רענון מהתקציב', onclick: function () {
+      U.el('button', { class: 'btn secondary', html: U.ICO.refresh + ' רענון מהתקציב', onclick: function () {
         Store.budgetLoad(true).then(function () {
           var added = Store.syncKkFromBudget();
           U.toast(added ? ('הנתונים רועננו · ' + added + ' קולות קוראים חדשים נוספו') : 'הנתונים רועננו');
           App.render();
         });
       } }),
-      U.el('button', { class: 'btn', text: '➕ קול קורא חדש',
+      U.el('button', { class: 'btn', html: U.ICO.plus + ' קול קורא חדש',
         title: 'לקול קורא שעדיין לא קיים באפליקציית התקציב',
         onclick: function () { openModal(null); } })
     ]));
 
     view.appendChild(U.el('div', { class: 'subtabs', style: 'margin-bottom:14px;' }, [
-      U.el('button', { class: subTab === 'list' ? 'active' : '', text: '📊 מבט על',
+      U.el('button', { class: subTab === 'list' ? 'active' : '', text: 'מבט על',
         onclick: function () { subTab = 'list'; App.render(); } }),
       U.el('button', { class: subTab === 'inbox' ? 'active' : '',
-        html: '📥 אישור חשבוניות' + (pendingCount ? ' <span class="tab-badge">' + pendingCount + '</span>' : ''),
+        html: 'אישור חשבוניות' + (pendingCount ? ' <span class="tab-badge">' + pendingCount + '</span>' : ''),
         onclick: function () { subTab = 'inbox'; App.render(); } })
     ]));
 
@@ -562,7 +562,7 @@
     if (!Store.budgetState()) {
       var e = Store.budgetLoadError();
       view.appendChild(U.el('div', { class: 'card', style: 'margin-bottom:12px;border-inline-start:4px solid #d97706;' }, [
-        U.el('div', { style: 'font-weight:600;', text: '⚠️ הנתונים מאפליקציית ניהול התקציב לא נטענו' }),
+        U.el('div', { style: 'font-weight:600;', text: 'הנתונים מאפליקציית ניהול התקציב לא נטענו' }),
         U.el('div', { class: 'muted', style: 'font-size:13px;margin-top:4px;',
           text: e ? ('הסיבה מהשרת: ' + e) : 'ייתכן שהנתונים עדיין נטענים — נסו "רענון מהתקציב".' })
       ]));

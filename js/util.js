@@ -302,7 +302,18 @@
     trash: icoSvg('<path d="M3 6h18"/><path d="M8 6V4.5A1.5 1.5 0 0 1 9.5 3h5A1.5 1.5 0 0 1 16 4.5V6"/>'
       + '<path d="M18.5 6l-.9 13a2 2 0 0 1-2 1.9H8.4a2 2 0 0 1-2-1.9L5.5 6"/>'
       + '<path d="M10 10.5v6M14 10.5v6"/>'),
-    edit: icoSvg('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>')
+    edit: icoSvg('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>'),
+    plus: icoSvg('<path d="M12 5v14M5 12h14"/>'),
+    refresh: icoSvg('<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v5h-5"/>'),
+    clip: icoSvg('<path d="M21.4 11.05 12.2 20.2a5.5 5.5 0 0 1-7.78-7.78l9.19-9.19a3.67 3.67 0 1 1 5.19 5.19l-9.2 9.19a1.83 1.83 0 1 1-2.59-2.6l8.49-8.48"/>'),
+    upload: icoSvg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 9l5-5 5 5"/><path d="M12 4v12"/>'),
+    print: icoSvg('<path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7" rx="1"/>'),
+    archive: icoSvg('<rect x="2.5" y="4" width="19" height="4" rx="1"/><path d="M4.5 8v10a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>'),
+    restore: icoSvg('<path d="M3 12a9 9 0 1 0 2.64-6.36"/><path d="M3 4v5h5"/>'),
+    send: icoSvg('<path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7Z"/>'),
+    copy: icoSvg('<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'),
+    search: icoSvg('<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>'),
+    close: icoSvg('<path d="M18 6 6 18M6 6l12 12"/>')
   };
 
   global.U = {

@@ -227,7 +227,7 @@
 
   function render(view) {
     var month = App.currentMonth();
-    view.appendChild(App.monthHeader('🖨️ חבילת PDF לחשבת'));
+    view.appendChild(App.monthHeader('חבילת PDF לחשבת'));
 
     var lcCount = Store.records('lc', month).length;
     var subCount = Store.records('sub', month).length;
@@ -249,7 +249,7 @@
       line(cbSub, '🔁 דוח מילוי מקום', subCount),
       line(cbAbs, '🪖 סיכום היעדרויות וגמולים', absCount),
       U.el('div', { style: 'margin-top:14px;display:flex;gap:8px;' }, [
-        U.el('button', { class: 'btn', text: '🖨️ פתיחת תצוגת הדפסה', onclick: function () {
+        U.el('button', { class: 'btn', html: U.ICO.print + ' פתיחת תצוגת הדפסה', onclick: function () {
           openPreview(month, { lc: cbLc.checked, sub: cbSub.checked, abs: cbAbs.checked });
         } })
       ]),

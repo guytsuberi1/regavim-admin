@@ -137,7 +137,7 @@
     function draw() {
       U.clear(wrap);
       it.docs.forEach(function (d, di) {
-        var link = U.el('a', { href: '#', text: '📎 ' + (d.name || 'קובץ'), title: d.name || 'קובץ', style: 'font-size:12px;cursor:pointer;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' });
+        var link = U.el('a', { href: '#', html: U.ICO.clip + ' ' + (d.name || 'קובץ'), title: d.name || 'קובץ', style: 'font-size:12px;cursor:pointer;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' });
         link.addEventListener('click', function (e) { e.preventDefault(); Store.taskFileUrl(d.path).then(function (url) { if (url) global.open(url, '_blank'); else U.toast('הקישור אינו זמין', 'error'); }); });
         var rm = U.el('button', { class: 'btn secondary', text: '×', title: 'הסרה', style: 'padding:0 6px;', onclick: function () { Store.deleteTaskFile(d.path); it.docs.splice(di, 1); saveProj(p); draw(); } });
         wrap.appendChild(U.el('div', { style: 'display:flex;align-items:center;gap:4px;' }, [link, rm]));
@@ -148,7 +148,7 @@
         Store.uploadTaskFile(f).then(function (res) { it.docs.push(res); saveProj(p); draw(); U.toast('הקובץ הועלה'); })
           .catch(function (e) { U.toast('העלאה נכשלה: ' + e.message, 'error'); });
       });
-      wrap.appendChild(U.el('button', { class: 'btn secondary', text: '📎 העלאה', style: 'font-size:12px;padding:2px 8px;', onclick: function () { finp.click(); } }));
+      wrap.appendChild(U.el('button', { class: 'btn secondary', html: U.ICO.clip + ' העלאה', style: 'font-size:12px;padding:2px 8px;', onclick: function () { finp.click(); } }));
       wrap.appendChild(finp);
     }
     draw();
@@ -203,7 +203,7 @@
       tbody
     ]);
     // שורת הוספה מהירה
-    var addDesc = U.el('input', { placeholder: '➕ תת-משימה / הוצאה — תיאור ולחץ Enter', style: 'flex:2;min-width:160px;' });
+    var addDesc = U.el('input', { placeholder: '+ תת-משימה / הוצאה — תיאור ולחץ Enter', style: 'flex:2;min-width:160px;' });
     var addContractor = U.dataListInput('', contractors, 'מבצע'); addContractor._input.style.flex = '1'; addContractor._input.style.minWidth = '100px';
     var addCost = U.el('input', { type: 'number', min: '0', placeholder: 'עלות', style: 'max-width:110px;' });
     function addItem() {
@@ -238,9 +238,9 @@
     statusSel.classList.add('m-status-auto');
     var actionBtns = [];
     if (p.archived) {
-      actionBtns.push(U.el('button', { class: 'btn secondary ico', text: '↩️', title: 'שחזור מהארכיון', onclick: function () { p.archived = false; saveProj(p); App.render(); } }));
+      actionBtns.push(U.el('button', { class: 'btn secondary ico', html: U.ICO.restore, title: 'שחזור מהארכיון', onclick: function () { p.archived = false; saveProj(p); App.render(); } }));
     } else {
-      actionBtns.push(U.el('button', { class: 'btn secondary ico', text: '📦', title: 'העברה לארכיון', onclick: function () { p.archived = true; saveProj(p); App.render(); } }));
+      actionBtns.push(U.el('button', { class: 'btn secondary ico', html: U.ICO.archive, title: 'העברה לארכיון', onclick: function () { p.archived = true; saveProj(p); App.render(); } }));
     }
     var statusDot = U.el('span', { class: 'm-cdot', style: 'background:' + stColor(PSTATUS, p.status) + ';', title: p.status || '' });
     card.appendChild(U.el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;' },
@@ -251,8 +251,8 @@
       var cb = Store.projectBudget(p);
       card.appendChild(U.el('div', { style: 'display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;color:var(--muted,#6b7884);font-size:13px;' }, [
         U.el('span', { text: '👤 ' + (p.owner || '—') }),
-        U.el('span', { text: '📋 ' + ((p.items || []).length) + ' תת-משימות' }),
-        U.el('span', { style: (cb.over ? 'color:var(--danger,#c62828);font-weight:600;' : ''), text: '💰 מאזן: ' + money(cb.budget - cb.used) })
+        U.el('span', { html: U.ICO.copy + ' ' + ((p.items || []).length) + ' תת-משימות' }),
+        U.el('span', { style: (cb.over ? 'color:var(--danger,#c62828);font-weight:600;' : ''), text: 'מאזן:' + money(cb.budget - cb.used) })
       ]));
       return card;
     }
@@ -292,7 +292,7 @@
     var projects = showArchiveProj ? archivedProjects : activeProjects;
 
     // הוספה מהירה
-    var addName = U.el('input', { placeholder: '➕ פרויקט חדש — שם ולחץ Enter', style: 'flex:1;min-width:220px;font-size:15px;' });
+    var addName = U.el('input', { placeholder: '+ פרויקט חדש — שם ולחץ Enter', style: 'flex:1;min-width:220px;font-size:15px;' });
     function addProject() {
       if (!addName.value.trim()) { addName.focus(); return; }
       Store.upsertProject({ name: addName.value.trim(), owner: '', status: 'תכנון', budget: '', notes: '', items: [] });
@@ -301,7 +301,7 @@
     addName.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addProject(); } });
 
     view.appendChild(U.el('div', { class: 'page-head' }, [
-      U.el('h2', { text: '🏗️ ניהול פרויקטים' }),
+      U.el('h2', { text: 'ניהול פרויקטים' }),
       U.el('span', { class: 'spacer' })
     ]));
 
@@ -316,10 +316,10 @@
       activeProjects.forEach(function (p) { var b = Store.projectBudget(p); totBudget += b.budget; totUsed += b.used; if (b.over) over++; });
       if (activeProjects.length) {
         view.appendChild(U.el('div', { class: 'kpi-row' }, [
-          kpi('🏗️', activeProjects.length, 'פרויקטים', 'kpi-neutral'),
-          kpi('💰', money(totBudget), 'סה"כ תקציב', 'kpi-neutral'),
-          kpi('📉', money(totUsed), 'סה"כ נוצל', totUsed > totBudget && totBudget ? 'kpi-warn' : 'kpi-info'),
-          over ? kpi('⚠️', over, 'בחריגת תקציב', 'kpi-warn') : null
+          kpi('', activeProjects.length, 'פרויקטים', 'kpi-neutral'),
+          kpi('', money(totBudget), 'סה"כ תקציב', 'kpi-neutral'),
+          kpi('', money(totUsed), 'סה"כ נוצל', totUsed > totBudget && totBudget ? 'kpi-warn' : 'kpi-info'),
+          over ? kpi('', over, 'בחריגת תקציב', 'kpi-warn') : null
         ].filter(Boolean)));
       }
       view.appendChild(U.el('div', { class: 'card', style: 'padding:10px;margin-bottom:14px;display:flex;gap:6px;align-items:center;' },

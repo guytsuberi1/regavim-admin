@@ -30,7 +30,7 @@
     var closedCount = 0;
     emps.forEach(function (e) { var en = Store.pstatEntry(month, e.id); if (en && en.status === 'נסגר') closedCount++; });
 
-    view.appendChild(App.monthHeader('📋 לוח שכר — מעקב חודשי'));
+    view.appendChild(App.monthHeader('לוח שכר — מעקב חודשי'));
 
     if (!emps.length) {
       view.appendChild(U.el('div', { class: 'empty' }, [

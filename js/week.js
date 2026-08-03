@@ -28,7 +28,7 @@
     });
 
     view.appendChild(U.el('div', { class: 'page-head' }, [
-      U.el('h2', { text: '🗓️ לוח שבועי' }),
+      U.el('h2', { text: 'לוח שבועי' }),
       U.el('span', { class: 'spacer' })
     ]));
 

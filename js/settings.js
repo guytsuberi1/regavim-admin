@@ -58,7 +58,7 @@
     function add() { if (!addName.value.trim()) return; if (!s.eventRoles) s.eventRoles = []; s.eventRoles.push({ name: addName.value.trim(), empId: '' }); Store.saveSettings(); addName.value = ''; draw(); }
     addName.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); add(); } });
     return U.el('div', { class: 'card', style: 'max-width:560px;margin-bottom:16px;' }, [
-      U.el('h3', { text: '🧑‍🤝‍🧑 תפקידים ומיפוי לעובדים' }),
+      U.el('h3', { text: '‍‍ תפקידים ומיפוי לעובדים' }),
       U.el('p', { class: 'muted', style: 'margin-top:0;font-size:12px;', text: 'כל תפקיד ממופה לעובד מהמצבת. משימות אירוע מקבלות אחראי אוטומטי לפי המיפוי.' }),
       list,
       U.el('div', { style: 'display:flex;gap:6px;margin-top:8px;' }, [addName, U.el('button', { class: 'btn secondary', text: 'הוסף תפקיד', onclick: add })])
@@ -85,7 +85,7 @@
     function add() { if (!addT.value.trim()) return; if (!s.taskCatalog) s.taskCatalog = []; s.taskCatalog.push({ id: Store.uid(), title: addT.value.trim(), defaultRole: '' }); Store.saveSettings(); addT.value = ''; draw(); }
     addT.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); add(); } });
     return U.el('div', { class: 'card', style: 'max-width:560px;margin-bottom:16px;' }, [
-      U.el('h3', { text: '📋 מחסן משימות' }),
+      U.el('h3', { text: 'מחסן משימות' }),
       U.el('p', { class: 'muted', style: 'margin-top:0;font-size:12px;', text: 'כל סוגי המשימות האפשריים לאירועים. לכל אחת תפקיד-אחראי ברירת מחדל.' }),
       list,
       U.el('div', { style: 'display:flex;gap:6px;margin-top:8px;' }, [addT, U.el('button', { class: 'btn secondary', text: 'הוסף משימה', onclick: add })])
@@ -137,7 +137,7 @@
     }
     addL.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); add(); } });
     return U.el('div', { class: 'card', style: 'max-width:560px;margin-bottom:16px;' }, [
-      U.el('h3', { text: '🗓️ סוגי אירועים ותבניות משימות' }),
+      U.el('h3', { text: 'סוגי אירועים ותבניות משימות' }),
       U.el('p', { class: 'muted', style: 'margin-top:0;font-size:12px;', text: 'בחרו סוג אירוע כדי לערוך אילו משימות יסומנו מראש.' }),
       U.el('div', { style: 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;' }, [U.el('span', { class: 'muted', style: 'font-size:13px;', text: 'סוג:' }), sel]),
       editor,
@@ -164,7 +164,7 @@
           ]));
         });
         if (!c.students.length) studWrap.appendChild(U.el('span', { class: 'muted', style: 'font-size:12px;', text: 'אין תלמידים — הוסיפו למטה.' }));
-        var addStud = U.el('input', { placeholder: '➕ שם תלמיד/ה ולחצו Enter', style: 'flex:1;min-width:160px;' });
+        var addStud = U.el('input', { placeholder: '+ שם תלמיד/ה ולחצו Enter', style: 'flex:1;min-width:160px;' });
         function addS() { var v = addStud.value.trim(); if (!v) return; c.students.push({ id: Store.uid(), name: v }); Store.saveClasses(); addStud.value = ''; draw(); var re = document.getElementById('addStud-' + idx); if (re) re.focus(); }
         addStud.id = 'addStud-' + idx;
         addStud.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addS(); } });
@@ -180,7 +180,7 @@
     function add() { if (!addName.value.trim()) return; if (!s.classes) s.classes = []; s.classes.push({ id: Store.uid(), name: addName.value.trim(), students: [] }); Store.saveClasses(); addName.value = ''; draw(); }
     addName.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); add(); } });
     return U.el('div', { class: 'card', style: 'max-width:560px;margin-bottom:16px;' }, [
-      U.el('h3', { text: '🏫 רשימות כיתה' }),
+      U.el('h3', { text: 'רשימות כיתה' }),
       U.el('p', { class: 'muted', style: 'margin-top:0;font-size:12px;', text: 'רשימות התלמידים לכל כיתה — משמשות למעקב "מי חתם / מי חסר" באישורי הורים.' }),
       list,
       U.el('div', { style: 'display:flex;gap:6px;margin-top:8px;' }, [addName, U.el('button', { class: 'btn secondary', text: 'הוסף כיתה', onclick: add })])
@@ -192,7 +192,7 @@
     ta.value = s.consentText || '';
     ta.addEventListener('change', function () { s.consentText = ta.value.trim(); Store.saveSettings(); if (U.toast) U.toast('נוסח האישור נשמר'); });
     return U.el('div', { class: 'card', style: 'max-width:560px;margin-bottom:16px;' }, [
-      U.el('h3', { text: '📄 נוסח אישור הורים' }),
+      U.el('h3', { text: 'נוסח אישור הורים' }),
       U.el('p', { class: 'muted', style: 'margin-top:0;font-size:12px;', text: 'הטקסט שההורה רואה ומאשר בפורטל החתימה. פרטי האירוע (מועד/יעד) מתווספים אוטומטית מעליו.' }),
       ta
     ]);
@@ -230,10 +230,10 @@
       reader.readAsDataURL(f);
     });
     return U.el('div', { class: 'card', style: 'max-width:560px;margin-bottom:16px;' }, [
-      U.el('h3', { text: '🖼️ לוגו לפלייר' }),
+      U.el('h3', { text: 'לוגו לפלייר' }),
       U.el('p', { class: 'muted', style: 'margin-top:0;font-size:12px;', text: 'הלוגו שישמש בפלייר ה-AI (דיוק מרבי במקום לוגו משוער). מומלץ תמונה ברורה על רקע לבן.' }),
       wrap, fileInp,
-      U.el('button', { class: 'btn secondary', text: '📤 העלאת לוגו', style: 'margin-top:8px;', onclick: function () { fileInp.click(); } })
+      U.el('button', { class: 'btn secondary', html: U.ICO.send + ' העלאת לוגו', style: 'margin-top:8px;', onclick: function () { fileInp.click(); } })
     ]);
   }
 
@@ -243,7 +243,7 @@
       return;
     }
     var s = Store.settings();
-    view.appendChild(U.el('div', { class: 'page-head' }, [U.el('h2', { text: '⚙️ הגדרות' })]));
+    view.appendChild(U.el('div', { class: 'page-head' }, [U.el('h2', { text: 'הגדרות' })]));
 
     // ---------- תעריפים וחתימה ----------
     var hourly = U.el('input', { type: 'number', step: '1', min: '0', value: s.hourlyRate, style: 'max-width:160px;' });
@@ -251,7 +251,7 @@
     var manager = U.el('input', { value: s.managerName || '', style: 'max-width:280px;' });
 
     var ratesCard = U.el('div', { class: 'card', style: 'max-width:560px;margin-bottom:16px;' }, [
-      U.el('h3', { text: '💰 תעריפים וחתימה' }),
+      U.el('h3', { text: 'תעריפים וחתימה' }),
       fld('תעריף שעת תגבור (₪)', hourly, 'משמש בחישוב דוח מרכז למידה'),
       fld('תעריף נסיעות לק"מ (₪)', km, 'משמש בחישוב נסיעות במרכז למידה ובדוח הנסיעות'),
       fld('חתימת המנהל', manager, 'השם שיופיע בתחתית כל דוח בחבילת ה-PDF'),
@@ -269,7 +269,7 @@
     view.appendChild(collapsible('rates', ratesCard));
 
     // ---------- אירועים וטיולים ----------
-    view.appendChild(U.el('div', { class: 'page-head', style: 'margin-top:8px;' }, [U.el('h3', { text: '🗓️ תכנון אירועים וטיולים', style: 'font-size:17px;color:var(--primary-dark,#1b5e20);' })]));
+    view.appendChild(U.el('div', { class: 'page-head', style: 'margin-top:8px;' }, [U.el('h3', { text: 'תכנון אירועים וטיולים', style: 'font-size:17px;color:var(--primary-dark,#1b5e20);' })]));
     view.appendChild(collapsible('eventRoles', eventRolesCard()));
     view.appendChild(collapsible('taskCatalog', taskCatalogCard()));
     view.appendChild(collapsible('eventTypes', eventTypesCard()));
@@ -278,11 +278,11 @@
 
     // ---------- גיבוי ושחזור ----------
     var backupCard = U.el('div', { class: 'card danger-zone', style: 'max-width:560px;' }, [
-      U.el('h3', { text: '💾 גיבוי ושחזור' }),
+      U.el('h3', { text: 'גיבוי ושחזור' }),
       U.el('p', { class: 'muted', style: 'margin-top:0;', text: 'גיבוי מוריד את כל הנתונים לקובץ. שחזור מחליף את כל הנתונים הנוכחיים.' }),
       U.el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;' }, [
         U.el('button', { class: 'btn secondary', text: '⬇️ גיבוי לקובץ JSON', onclick: Store.exportJSON }),
-        U.el('button', { class: 'btn danger', text: '⬆️ שחזור מגיבוי', onclick: function () {
+        U.el('button', { class: 'btn danger', html: U.ICO.upload + ' שחזור מגיבוי', onclick: function () {
           var inp = U.el('input', { type: 'file', accept: '.json', style: 'display:none;' });
           inp.addEventListener('change', function () {
             if (!inp.files[0]) return;

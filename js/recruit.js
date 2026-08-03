@@ -58,7 +58,7 @@
     var already = Store.employees(true).filter(function (e) { return Store.empName(e) === (c.name || '').trim(); })[0];
     if (already) return; // קיים במצבת בשם זהה
     Modal.confirm({
-      title: '🎉 המועמד התקבל',
+      title: 'המועמד התקבל',
       text: 'להעביר את "' + c.name + '" למצבת העובדים?\nהפרטים יועברו וייפתח תהליך קליטה.',
       okLabel: 'העברה למצבת', cancelLabel: 'לא עכשיו'
     }, function () {
@@ -211,7 +211,7 @@
   }
 
   function quickAddCand(host) {
-    var name = U.el('input', { placeholder: '➕ מועמד חדש — שם מלא ולחיצה על Enter', style: 'flex:2;min-width:180px;font-size:15px;' });
+    var name = U.el('input', { placeholder: '+ מועמד חדש — שם מלא ולחיצה על Enter', style: 'flex:2;min-width:180px;font-size:15px;' });
     var phone = U.el('input', { placeholder: 'טלפון', type: 'tel', style: 'flex:1;min-width:110px;' });
     var target = U.dataListInput('', positionTitles(), 'מיועד ל־');
     target._input.style.flex = '1'; target._input.style.minWidth = '110px';
@@ -347,7 +347,7 @@
       U.el('button', { class: viewMode === 'table' ? 'active' : '', text: '☰ טבלה', onclick: function () { viewMode = 'table'; App.render(); } })
     ]);
     view.appendChild(U.el('div', { class: 'page-head' }, [
-      U.el('h2', { text: '🎯 מועמדים' }),
+      U.el('h2', { text: 'מועמדים' }),
       U.el('span', { class: 'spacer' }),
       toggle,
       isAdmin && U.actionMenu([
@@ -358,9 +358,9 @@
     var list = filteredCands();
     var inProcess = list.filter(function (c) { return c.status === 'התעניין' || c.status === 'הגיע לראיון'; }).length;
     view.appendChild(U.el('div', { class: 'kpi-row' }, [
-      kpi('🎯', list.length, 'מועמדים'),
+      kpi('', list.length, 'מועמדים'),
       kpi('⏳', inProcess, 'בתהליך'),
-      kpi('🎉', list.filter(function (c) { return c.status === 'התקבל'; }).length, 'התקבלו')
+      kpi('', list.filter(function (c) { return c.status === 'התקבל'; }).length, 'התקבלו')
     ]));
 
     // סינונים: שנה + משרה
@@ -387,7 +387,7 @@
 
   // ---------- מסך משרות ----------
   function quickAddPos(host) {
-    var title = U.el('input', { placeholder: '➕ משרה חדשה — שם התפקיד ולחיצה על Enter', style: 'flex:2;min-width:200px;font-size:15px;' });
+    var title = U.el('input', { placeholder: '+ משרה חדשה — שם התפקיד ולחיצה על Enter', style: 'flex:2;min-width:200px;font-size:15px;' });
     var scope = U.el('input', { placeholder: 'אחוז משרה', style: 'flex:0 0 110px;' });
     function add() {
       if (!title.value.trim()) { title.focus(); return; }
@@ -419,16 +419,16 @@
 
   function renderPositions(view) {
     view.appendChild(U.el('div', { class: 'page-head' }, [
-      U.el('h2', { text: '📌 משרות פנויות' }),
+      U.el('h2', { text: 'משרות פנויות' }),
       U.el('span', { class: 'spacer' })
     ]));
 
     var list = Store.positions();
     var open = list.filter(function (p) { return !(p.filledBy || '').trim(); });
     view.appendChild(U.el('div', { class: 'kpi-row' }, [
-      kpi('📌', list.length, 'משרות'),
-      kpi('🕳️', open.length, 'טרם אוישו'),
-      kpi('✅', list.length - open.length, 'אוישו')
+      kpi('', list.length, 'משרות'),
+      kpi('', open.length, 'טרם אוישו'),
+      kpi('', list.length - open.length, 'אוישו')
     ]));
 
     var host = U.el('div');

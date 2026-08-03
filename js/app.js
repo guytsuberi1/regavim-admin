@@ -26,33 +26,33 @@
   // גיליונות — כל אחד מקבץ כמה מסכים (תת-טאבים בראש התוכן)
   var SHEETS = [
     { id: 'payroll', label: 'דוחות שכר', icon: 'payroll', subs: [
-      { id: 'status', label: '📋 לוח שכר' },
-      { id: 'queue', label: '📥 תור אישורים' },
-      { id: 'lc', label: '📚 מרכז למידה' },
-      { id: 'sub', label: '🔁 מילוי מקום' },
-      { id: 'abs', label: '🪖 היעדרויות וגמולים' },
-      { id: 'pdf', label: '🖨️ חבילת PDF' }
+      { id: 'status', label: 'לוח שכר' },
+      { id: 'queue', label: 'תור אישורים' },
+      { id: 'lc', label: 'מרכז למידה' },
+      { id: 'sub', label: 'מילוי מקום' },
+      { id: 'abs', label: 'היעדרויות וגמולים' },
+      { id: 'pdf', label: 'חבילת PDF' }
     ] },
     { id: 'staff', label: 'ניהול עובדים', icon: 'staff', subs: [
-      { id: 'emp', label: '👤 עובדים' },
-      { id: 'week', label: '🗓️ לוח שבועי' },
-      { id: 'cand', label: '🎯 מועמדים' },
-      { id: 'pos', label: '📌 משרות' }
+      { id: 'emp', label: 'עובדים' },
+      { id: 'week', label: 'לוח שבועי' },
+      { id: 'cand', label: 'מועמדים' },
+      { id: 'pos', label: 'משרות' }
     ] },
     { id: 'tasks', label: 'ניהול משימות', icon: 'tasks', subs: [
-      { id: 'tasks', label: '✅ משימות' }
+      { id: 'tasks', label: 'משימות' }
     ] },
     { id: 'projects', label: 'ניהול פרויקטים', icon: 'projects', subs: [
-      { id: 'projects', label: '🏗️ פרויקטים' }
+      { id: 'projects', label: 'פרויקטים' }
     ] },
     { id: 'events', label: 'אירועים וטיולים', icon: 'events', subs: [
-      { id: 'events', label: '🗓️ אירועים' }
+      { id: 'events', label: 'אירועים' }
     ] },
     { id: 'kk', label: 'קולות קוראים', icon: 'kk', subs: [
-      { id: 'kk', label: '📣 קולות קוראים' }
+      { id: 'kk', label: 'קולות קוראים' }
     ] },
     { id: 'base', label: 'נתוני בסיס', icon: 'base', subs: [
-      { id: 'base', label: '🗂️ נתוני בסיס' }
+      { id: 'base', label: 'נתוני בסיס' }
     ] }
   ];
   // פריטים עצמאיים (לא גיליונות) — הגדרות כגלגל מוצמד לתחתית (כמו בשאר האפליקציות)
