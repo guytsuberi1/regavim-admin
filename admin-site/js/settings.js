@@ -237,6 +237,55 @@
     ]);
   }
 
+  // ---------- גיוס: נוסחי ההודעות למועמדים ----------
+  function recruitMsgCard() {
+    var s = Store.settings();
+    if (!s.recruitMsg) s.recruitMsg = {};
+    var D = (global.CandView && CandView.MSG_DEFAULTS) || {};
+    var vars = (global.CandView && CandView.MSG_VARS) || '';
+    var wrap = U.el('div');
+
+    var phone = U.el('input', { value: s.secretaryPhone || '', placeholder: '05X-XXXXXXX', style: 'max-width:200px;' });
+    phone.addEventListener('change', function () {
+      s.secretaryPhone = phone.value.trim(); Store.saveSettings(); U.toast('טלפון המזכירות נשמר');
+    });
+    var sign = U.el('textarea', { rows: 2, style: 'width:100%;font-size:13px;' });
+    sign.value = s.recruitSign != null ? s.recruitSign : ((global.CandView && CandView.SIGN_DEFAULT) || '');
+    sign.addEventListener('change', function () {
+      s.recruitSign = sign.value; Store.saveSettings(); U.toast('החתימה נשמרה');
+    });
+
+    Object.keys(D).forEach(function (status) {
+      var ta = U.el('textarea', { rows: 5, style: 'width:100%;font-size:13px;' });
+      ta.value = s.recruitMsg[status] != null ? s.recruitMsg[status] : D[status];
+      ta.addEventListener('change', function () {
+        s.recruitMsg[status] = ta.value; Store.saveSettings(); U.toast('הנוסח נשמר');
+      });
+      var reset = U.el('button', { class: 'btn secondary small', html: U.ICO.refresh, title: 'שחזור נוסח ברירת המחדל',
+        onclick: function () { ta.value = D[status]; s.recruitMsg[status] = D[status]; Store.saveSettings(); U.toast('שוחזר נוסח ברירת המחדל'); } });
+      wrap.appendChild(U.el('div', { style: 'margin-bottom:12px;' }, [
+        U.el('div', { style: 'display:flex;align-items:center;gap:6px;margin-bottom:4px;' }, [
+          U.el('label', { style: 'font-weight:600;', text: status }),
+          U.el('span', { class: 'spacer' }),
+          status === 'לא רלוונטי'
+            ? U.el('span', { class: 'muted', style: 'font-size:11px;', text: 'נשלח רק בלחיצה על כפתור השליחה' })
+            : U.el('span', { class: 'muted', style: 'font-size:11px;', text: 'נפתח אוטומטית בשינוי הסטטוס' }),
+          reset
+        ]),
+        ta
+      ]));
+    });
+
+    return U.el('div', { class: 'card', style: 'max-width:640px;margin-bottom:16px;' }, [
+      U.el('h3', { text: 'נוסחי הודעות למועמדים' }),
+      U.el('p', { class: 'muted', style: 'margin-top:0;font-size:12px;',
+        text: 'ההודעה נפתחת לעריכה לפני כל שליחה. משתנים שמתמלאים אוטומטית: ' + vars }),
+      fld('טלפון המזכירות (לתיאום ראיון)', phone, 'מחליף את {טלפון_מזכירה} בנוסח'),
+      fld('חתימה', sign, 'מחליפה את {חתימה}. {מנהלן} מתמלא משם חתימת המנהל שלמעלה'),
+      wrap
+    ]);
+  }
+
   function render(view) {
     if (!Store.isAdmin()) {
       view.appendChild(U.el('div', { class: 'empty' }, 'למסך ההגדרות יש גישה למנהל בלבד.'));
@@ -267,6 +316,11 @@
       ])
     ]);
     view.appendChild(collapsible('rates', ratesCard));
+
+    // ---------- גיוס ----------
+    view.appendChild(U.el('div', { class: 'page-head', style: 'margin-top:8px;' },
+      [U.el('h3', { text: 'גיוס ומועמדים', style: 'font-size:17px;color:var(--brand-dark);' })]));
+    view.appendChild(collapsible('recruitMsg', recruitMsgCard()));
 
     // ---------- אירועים וטיולים ----------
     view.appendChild(U.el('div', { class: 'page-head', style: 'margin-top:8px;' }, [U.el('h3', { text: 'תכנון אירועים וטיולים', style: 'font-size:17px;color:var(--primary-dark,#1b5e20);' })]));

@@ -15,67 +15,6 @@
   }
   var FLYER = ['', 'בוצע', 'לא בוצע', 'לא צריך'];
 
-  // הודעה מוכנה לשליחה לכל שינוי סטטוס — נפתחת לעריכה לפני השליחה
-  function firstName(c) { return String(c.name || '').trim().split(/\s+/)[0] || ''; }
-  function roleOf(c) { return (c.target || '').trim() || 'המשרה'; }
-  var MSG = {
-    'התעניין': function (c) {
-      return 'שלום ' + firstName(c) + ',\n' +
-        'חוזר אליך בעקבות פנייתך למשרת ' + roleOf(c) + ' בישיבת רגבים בנימין.\n' +
-        'אשמח לתאם ראיון — נא ליצור קשר עם המזכירה לתיאום מועד.\n' +
-        'זמין לכל שאלה.';
-    },
-    'הגיע לראיון': function (c) {
-      return 'שלום ' + firstName(c) + ',\n' +
-        'תודה שהגעת לראיון למשרת ' + roleOf(c) + '.\n' +
-        'נעדכן אותך בהמשך התהליך בהקדם.\n' +
-        'תודה ובהצלחה.';
-    },
-    'התקבל': function (c) {
-      return 'שלום ' + firstName(c) + ',\n' +
-        'שמחים לבשר שהתקבלת למשרת ' + roleOf(c) + ' בישיבת רגבים בנימין!\n' +
-        'ניצור קשר לתיאום המשך תהליך הקליטה והחתמת מסמכים.\n' +
-        'ברוך הבא.';
-    },
-    'לא רלוונטי': function (c) {
-      return 'שלום ' + firstName(c) + ',\n' +
-        'תודה על התעניינותך במשרת ' + roleOf(c) + ' בישיבת רגבים בנימין.\n' +
-        'לאחר בחינת המועמדויות בחרנו להתקדם עם מועמד אחר.\n' +
-        'נשמח לשמור את פרטיך לפניות עתידיות. בהצלחה בהמשך הדרך.';
-    }
-  };
-  function offerMessage(c, status, done) {
-    var build = MSG[status];
-    if (!build) { done && done(); return; }
-    var phone = (c.phone || '').trim();
-    var ta = U.el('textarea', { rows: 8, style: 'width:100%;font-size:14px;line-height:1.6;' }, build(c));
-    var body = U.el('div', null, [
-      U.el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:8px;',
-        text: 'הסטטוס עודכן ל"' + status + '". אפשר לערוך את הנוסח ולשלוח ל' + (c.name || 'מועמד') +
-          (phone ? ' (' + phone + ')' : '') + ':' }),
-      ta,
-      phone ? null : U.el('div', { class: 'field-err', style: 'margin-top:6px;',
-        text: 'למועמד אין מספר טלפון — אפשר להעתיק את הנוסח ולשלוח ידנית.' })
-    ].filter(Boolean));
-
-    Modal.open('שליחת הודעה למועמד', body, [
-      { label: 'לא עכשיו', class: 'secondary', onClick: function (close) { close(); done && done(); } },
-      { label: 'העתקה', class: 'secondary', onClick: function () {
-        try { navigator.clipboard.writeText(ta.value); U.toast('הנוסח הועתק'); }
-        catch (e) { U.toast('ההעתקה נכשלה', 'error'); }
-      } },
-      { label: 'SMS', class: 'secondary', onClick: function (close) {
-        if (!phone) { U.toast('אין מספר טלפון למועמד', 'error'); return; }
-        window.open('sms:' + phone.replace(/[^0-9+]/g, '') + '?body=' + encodeURIComponent(ta.value), '_blank');
-        close(); done && done();
-      } },
-      { label: 'שליחה בוואטסאפ', onClick: function (close) {
-        if (!phone) { U.toast('אין מספר טלפון למועמד', 'error'); return; }
-        window.open('https://wa.me/' + U.waNumber(phone) + '?text=' + encodeURIComponent(ta.value), '_blank');
-        close(); done && done();
-      } }
-    ]);
-  }
   var DEFAULT_YEAR = 'תשפ"ז';
 
   var viewMode = 'kanban'; // 'kanban' | 'table'
@@ -114,6 +53,131 @@
     return cb;
   }
 
+  // ---------- הודעות למועמדים ----------
+  // הנוסחים נערכים במסך ההגדרות; כאן רק ברירות המחדל והמשתנים.
+  var MSG_VARS = '{שם} · {משרה} · {מראיין} · {טלפון_מזכירה} · {חתימה}';
+  var MSG_DEFAULTS = {
+    'התעניין':
+      'שלום {שם},\n' +
+      'חוזר אליך בעקבות פנייתך למשרת {משרה} בישיבת רגבים בנימין.\n' +
+      'אשמח לתאם ראיון — נא ליצור קשר עם המזכירה בטלפון {טלפון_מזכירה} לתיאום מועד.\n' +
+      'זמין לכל שאלה.\n{חתימה}',
+    'הגיע לראיון':
+      'שלום {שם},\n' +
+      'תודה שהגעת לראיון למשרת {משרה}.\n' +
+      'נעדכן אותך בהמשך התהליך בהקדם.\n' +
+      'תודה ובהצלחה.\n{חתימה}',
+    'התקבל':
+      'שלום {שם},\n' +
+      'שמחים לבשר שהתקבלת למשרת {משרה} בישיבת רגבים בנימין!\n' +
+      'ניצור קשר לתיאום המשך תהליך הקליטה והחתמת המסמכים.\n' +
+      'ברוך הבא.\n{חתימה}',
+    'לא רלוונטי':
+      'שלום {שם},\n' +
+      'תודה על התעניינותך במשרת {משרה} בישיבת רגבים בנימין.\n' +
+      'לאחר בחינת המועמדויות בחרנו להתקדם עם מועמד אחר.\n' +
+      'נשמח לשמור את פרטיך לפניות עתידיות. בהצלחה בהמשך הדרך.\n{חתימה}'
+  };
+  var SIGN_DEFAULT = 'בברכה,\n{מנהלן} · מנהלן ישיבת רגבים בנימין';
+  // "לא רלוונטי" לא נפתח לבד — הודעת דחייה נשלחת רק בלחיצה מפורשת
+  var AUTO_STATUSES = { 'התעניין': 1, 'הגיע לראיון': 1, 'התקבל': 1 };
+
+  function firstName(c) { return String(c.name || '').trim().split(/\s+/)[0] || ''; }
+  function signature() {
+    var s = Store.settings();
+    var txt = s.recruitSign != null ? s.recruitSign : SIGN_DEFAULT;
+    return txt.replace(/\{מנהלן\}/g, s.managerName || Store.myName() || '');
+  }
+  function msgTemplate(status) {
+    var t = (Store.settings().recruitMsg || {})[status];
+    return t != null && String(t).trim() !== '' ? t : (MSG_DEFAULTS[status] || '');
+  }
+  function buildMsg(c, status) {
+    var s = Store.settings();
+    return msgTemplate(status)
+      .replace(/\{שם\}/g, firstName(c))
+      .replace(/\{משרה\}/g, (c.target || '').trim() || 'המשרה')
+      .replace(/\{מראיין\}/g, (c.interviewer || '').trim())
+      .replace(/\{טלפון_מזכירה\}/g, (s.secretaryPhone || '').trim())
+      .replace(/\{חתימה\}/g, signature())
+      .replace(/[ \t]+\n/g, '\n');
+  }
+  function logSend(c, status, channel, text) {
+    if (!Array.isArray(c.msgLog)) c.msgLog = [];
+    c.msgLog.push({ at: new Date().toISOString(), status: status, channel: channel, text: text });
+    Store.upsertCandidate(c);
+  }
+  function lastSend(c) {
+    var log = c.msgLog || [];
+    return log.length ? log[log.length - 1] : null;
+  }
+  // חיווי: מתי נשלחה ההודעה האחרונה; ריחוף מציג את כל ההיסטוריה
+  function sentBadge(c) {
+    var last = lastSend(c);
+    if (!last) return null;
+    var title = (c.msgLog || []).map(function (m) {
+      return U.gregLabel(String(m.at).slice(0, 10)) + ' · ' + m.status + ' · ' + m.channel;
+    }).join('\n');
+    return U.el('span', { class: 'tag', title: 'הודעות שנשלחו:\n' + title,
+      style: 'background:#dcfce7;color:#166534;border-color:#16653433;font-size:11px;white-space:nowrap;',
+      text: 'נשלח ' + U.gregLabel(String(last.at).slice(0, 10)) });
+  }
+
+  function offerMessage(c, status, done) {
+    status = status || c.status || 'התעניין';
+    if (!MSG_DEFAULTS[status]) { done && done(); return; }
+    var phone = (c.phone || '').trim();
+    var ta = U.el('textarea', { rows: 9, style: 'width:100%;font-size:14px;line-height:1.6;' }, buildMsg(c, status));
+    var prev = lastSend(c);
+    var body = U.el('div', null, [
+      U.el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:8px;',
+        text: 'הסטטוס: "' + status + '". אפשר לערוך את הנוסח ולשלוח ל' + (c.name || 'מועמד') +
+          (phone ? ' (' + phone + ')' : '') + ':' }),
+      ta,
+      prev ? U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:6px;',
+        text: 'הודעה קודמת נשלחה ב-' + U.gregLabel(String(prev.at).slice(0, 10)) + ' (' + prev.status + ' · ' + prev.channel + ')' }) : null,
+      phone ? null : U.el('div', { class: 'field-err', style: 'margin-top:6px;',
+        text: 'למועמד אין מספר טלפון — אפשר להעתיק את הנוסח ולשלוח ידנית.' }),
+      U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:6px;',
+        text: 'את הנוסחים הקבועים עורכים במסך ההגדרות.' })
+    ].filter(Boolean));
+
+    function after(close, channel) {
+      logSend(c, status, channel, ta.value);
+      close();
+      App.render();
+      done && done();
+    }
+    Modal.open('שליחת הודעה למועמד', body, [
+      { label: 'לא עכשיו', class: 'secondary', onClick: function (close) { close(); done && done(); } },
+      { label: 'העתקה', class: 'secondary', onClick: function (close) {
+        try {
+          navigator.clipboard.writeText(ta.value);
+          U.toast('הנוסח הועתק');
+          after(close, 'העתקה');
+        } catch (e) { U.toast('ההעתקה נכשלה', 'error'); }
+      } },
+      { label: 'SMS', class: 'secondary', onClick: function (close) {
+        if (!phone) { U.toast('אין מספר טלפון למועמד', 'error'); return; }
+        window.open('sms:' + phone.replace(/[^0-9+]/g, '') + '?body=' + encodeURIComponent(ta.value), '_blank');
+        after(close, 'SMS');
+      } },
+      { label: 'שליחה בוואטסאפ', onClick: function (close) {
+        if (!phone) { U.toast('אין מספר טלפון למועמד', 'error'); return; }
+        window.open('https://wa.me/' + U.waNumber(phone) + '?text=' + encodeURIComponent(ta.value), '_blank');
+        after(close, 'וואטסאפ');
+      } }
+    ]);
+  }
+  // כפתור שליחה ידני — קיים בכל שורה, והדרך היחידה לשלוח הודעת "לא רלוונטי"
+  function sendBtn(c) {
+    return U.el('button', {
+      class: 'btn secondary small', html: U.ICO.send,
+      title: 'שליחת הודעה למועמד (' + (c.status || 'התעניין') + ')',
+      onclick: function (e) { e.stopPropagation(); offerMessage(c, c.status || 'התעניין'); }
+    });
+  }
+
   // ---------- המרת מועמד שהתקבל לעובד ----------
   function offerConversion(c) {
     if (c.convertedEmpId && Store.empById(c.convertedEmpId)) return; // כבר הועבר
@@ -143,6 +207,10 @@
     c.status = status;
     Store.upsertCandidate(c);
     App.render();
+    if (!AUTO_STATUSES[status]) {                      // "לא רלוונטי" — רק בלחיצה על כפתור השליחה
+      if (status === 'התקבל') offerConversion(c);
+      return;
+    }
     offerMessage(c, status, function () {
       if (status === 'התקבל') offerConversion(c);
     });
@@ -281,13 +349,14 @@
     target._input.style.flex = '1'; target._input.style.minWidth = '110px';
     function add() {
       if (!name.value.trim()) { name.focus(); return; }
-      Store.upsertCandidate({
+      var rec = Store.upsertCandidate({
         name: name.value.trim(), phone: phone.value.trim(), target: target.get(),
         city: '', status: 'התעניין', interviewer: '', hasCv: false, hasGrapho: false,
         impression: '', familyStatus: '', notes: '', year: yearFilter || DEFAULT_YEAR
       });
       focusAdd = true;
       App.render();
+      offerMessage(rec, 'התעניין');      // הרגע הנכון להשיב לפנייה
     }
     name.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); add(); } });
     host.appendChild(U.el('div', { class: 'card', style: 'padding:10px;margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;' },
@@ -326,7 +395,7 @@
         var nameCell = U.el('td', { style: 'min-width:170px;' }, [
           U.el('div', { style: 'display:flex;align-items:center;gap:6px;' }, [
             inpText(c, 'name', saveCand, 'שם מלא', 'font-weight:600;width:100%;'),
-            convertedBadge(c)
+            convertedBadge(c), sentBadge(c)
           ].filter(Boolean)),
           inpText(c, 'city', saveCand, 'מגורים…', 'width:100%;font-size:12px;color:var(--muted,#6b7884);'),
           inpText(c, 'notes', saveCand, 'הערות…', 'width:100%;font-size:12px;color:var(--muted,#6b7884);')
@@ -341,10 +410,13 @@
           U.el('td', { class: 'center' }, inpCheck(c, 'hasGrapho', saveCand)),
           U.el('td', null, inpText(c, 'impression', saveCand, 'התרשמות…')),
           U.el('td', null, inpText(c, 'familyStatus', saveCand, 'רווק/נשוי…', 'max-width:90px;')),
-          U.el('td', null, U.el('button', { class: 'btn secondary', html: U.ICO.trash, title: 'מחיקה', onclick: function () {
-            Modal.confirm({ title: 'מחיקת מועמד', text: 'למחוק את "' + (c.name || '') + '"?', okLabel: 'מחיקה', danger: true },
-              function () { Store.deleteCandidate(c.id); App.render(); });
-          } }))
+          U.el('td', { style: 'white-space:nowrap;' }, [
+            sendBtn(c), ' ',
+            U.el('button', { class: 'btn secondary', html: U.ICO.trash, title: 'מחיקה', onclick: function () {
+              Modal.confirm({ title: 'מחיקת מועמד', text: 'למחוק את "' + (c.name || '') + '"?', okLabel: 'מחיקה', danger: true },
+                function () { Store.deleteCandidate(c.id); App.render(); });
+            } })
+          ])
         ]);
       }))
     ]);
@@ -372,7 +444,8 @@
         card.appendChild(U.el('div', { class: 'kb-title' }, [
           U.el('span', { class: 'kb-dot', style: 'background:' + stColor(c.status) + ';', title: c.status || '' }),
           U.el('span', { text: c.name || '' }),
-          convertedBadge(c)
+          convertedBadge(c), sentBadge(c),
+          U.el('span', { class: 'spacer' }), sendBtn(c)
         ].filter(Boolean)));
         card.appendChild(U.el('div', { style: 'display:flex;flex-wrap:wrap;gap:4px;align-items:center;' }, [
           c.target ? U.el('span', { class: 'tag', text: c.target }) : null,
@@ -668,6 +741,6 @@
     host.appendChild(U.el('div', { class: 'tbl-scroll' }, [tbl]));
   }
 
-  global.CandView = { render: renderCands };
+  global.CandView = { render: renderCands, MSG_DEFAULTS: MSG_DEFAULTS, SIGN_DEFAULT: SIGN_DEFAULT, MSG_VARS: MSG_VARS };
   global.PosView = { render: renderPositions, importFile: importExcel };
 })(window);
