@@ -893,7 +893,7 @@
         (e.tasks || []).forEach(function (t) { if (t.status !== 'בוצע') openTasks++; });
         if (e.date && e.date >= today && e.status !== 'בוצע') upcoming++;
       });
-      view.appendChild(U.el('div', { class: 'kpi-row', style: 'margin-bottom:16px;' }, [
+      view.appendChild(U.el('div', { class: 'kpi-grid', style: 'margin-bottom:16px;' }, [
         kpi('', active.length, 'אירועים', 'kpi-neutral'),
         kpi('', upcoming, 'קרובים', 'kpi-info'),
         kpi('', openTasks, 'משימות פתוחות', openTasks ? 'kpi-warn' : 'kpi-neutral')
@@ -914,9 +914,9 @@
 
   function kpi(icon, val, label, cls) {
     return U.el('div', { class: 'kpi ' + (cls || 'kpi-neutral') }, [
-      U.el('span', { class: 'kpi-ic', text: icon }),
+      U.el('div', { class: 'kpi-ic' }),
       U.el('div', { class: 'kpi-body' }, [
-        U.el('div', { class: 'kpi-val', text: String(val) }),
+        U.el('div', { class: 'kpi-row' }, U.el('div', { class: 'kpi-val', text: String(val) })),
         U.el('div', { class: 'kpi-lbl', text: label })
       ])
     ]);

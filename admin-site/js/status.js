@@ -42,18 +42,18 @@
 
     var pct = emps.length ? Math.round(closedCount / emps.length * 100) : 0;
     var pending = Store.pendingCount();
-    view.appendChild(U.el('div', { class: 'kpi-row', style: 'margin:16px 0 14px;' }, [
+    view.appendChild(U.el('div', { class: 'kpi-grid', style: 'margin:16px 0 14px;' }, [
       U.el('div', { class: 'kpi ' + (pct === 100 ? 'kpi-good' : 'kpi-info') }, [
-        U.el('span', { class: 'kpi-ic', text: pct === 100 ? '🎉' : '📊' }),
+        U.el('div', { class: 'kpi-ic' }),
         U.el('div', { class: 'kpi-body' }, [
-          U.el('div', { class: 'kpi-val', text: closedCount + ' / ' + emps.length }),
+          U.el('div', { class: 'kpi-row' }, U.el('div', { class: 'kpi-val', text: closedCount + ' / ' + emps.length })),
           U.el('div', { class: 'kpi-lbl', text: 'עובדים שנסגרו (' + pct + '%)' })
         ])
       ]),
       pending > 0 ? U.el('div', { class: 'kpi kpi-warn', style: 'cursor:pointer;', onclick: function () { App.setView('queue'); } }, [
-        U.el('span', { class: 'kpi-ic', text: '📥' }),
+        U.el('div', { class: 'kpi-ic' }),
         U.el('div', { class: 'kpi-body' }, [
-          U.el('div', { class: 'kpi-val', text: String(pending) }),
+          U.el('div', { class: 'kpi-row' }, U.el('div', { class: 'kpi-val', text: String(pending) })),
           U.el('div', { class: 'kpi-lbl', text: 'דיווחי עובדים ממתינים לאישור' })
         ])
       ]) : null

@@ -964,8 +964,10 @@
     var addBtn = U.el('button', { class: 'btn', html: U.ICO.plus + ' משימה חדשה', onclick: function () { openModal(null); } });
     // ציר הזמן והדשבורד הועברו לגיליון "דשבורד מנהלים" (ייבנה בהמשך)
     var toggle = U.el('div', { class: 'subtabs', style: 'display:inline-flex;margin:0;' }, [
-      U.el('button', { class: viewMode === 'table' ? 'active' : '', text: 'טבלה', onclick: function () { viewMode = 'table'; App.render(); } }),
-      U.el('button', { class: viewMode === 'kanban' ? 'active' : '', text: '▤ קנבן', onclick: function () { viewMode = 'kanban'; App.render(); } })
+      U.el('button', { class: viewMode === 'table' ? 'active' : '', html: U.ICO.table + ' טבלה',
+        title: 'תצוגת טבלה', onclick: function () { viewMode = 'table'; App.render(); } }),
+      U.el('button', { class: viewMode === 'kanban' ? 'active' : '', html: U.ICO.board + ' קנבן',
+        title: 'תצוגת קנבן', onclick: function () { viewMode = 'kanban'; App.render(); } })
     ]);
     view.appendChild(U.el('div', { class: 'page-head' }, [
       U.el('h2', { text: 'ניהול משימות' }),
@@ -983,10 +985,10 @@
     var open = all.filter(function (t) { return t.status === 'פתוח'; }).length;
     var prog = all.filter(function (t) { return t.status === 'בתהליך'; }).length;
     var overdue = all.filter(function (t) { return t.status !== 'הושלם' && Store.daysToDue(t.due) != null && Store.daysToDue(t.due) < 0; }).length;
-    view.appendChild(U.el('div', { class: 'kpi-row' }, [
-      kpi('', open, 'פתוחות', 'kpi-neutral'),
-      kpi('⏳', prog, 'בתהליך', 'kpi-info'),
-      kpi('', overdue, 'באיחור', overdue ? 'kpi-warn' : 'kpi-neutral')
+    view.appendChild(U.el('div', { class: 'kpi-grid' }, [
+      kpi(open, 'פתוחות', 'kpi-neutral'),
+      kpi(prog, 'בתהליך', 'kpi-info'),
+      kpi(overdue, 'באיחור', overdue ? 'kpi-warn' : 'kpi-neutral')
     ]));
 
     // ---------- סרגל כלים קומפקטי: חיפוש + סינון אחד + מיון + קיבוץ ----------
@@ -1134,11 +1136,11 @@
     }
   }
 
-  function kpi(icon, val, label, cls) {
+  function kpi(val, label, cls) {
     return U.el('div', { class: 'kpi ' + (cls || 'kpi-neutral') }, [
-      U.el('span', { class: 'kpi-ic', text: icon }),
+      U.el('div', { class: 'kpi-ic' }),
       U.el('div', { class: 'kpi-body' }, [
-        U.el('div', { class: 'kpi-val', text: String(val) }),
+        U.el('div', { class: 'kpi-row' }, U.el('div', { class: 'kpi-val', text: String(val) })),
         U.el('div', { class: 'kpi-lbl', text: label })
       ])
     ]);

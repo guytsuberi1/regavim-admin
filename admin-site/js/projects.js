@@ -317,7 +317,7 @@
       var totBudget = 0, totUsed = 0, over = 0;
       activeProjects.forEach(function (p) { var b = Store.projectBudget(p); totBudget += b.budget; totUsed += b.used; if (b.over) over++; });
       if (activeProjects.length) {
-        view.appendChild(U.el('div', { class: 'kpi-row' }, [
+        view.appendChild(U.el('div', { class: 'kpi-grid' }, [
           kpi('', activeProjects.length, 'פרויקטים', 'kpi-neutral'),
           kpi('', money(totBudget), 'סה"כ תקציב', 'kpi-neutral'),
           kpi('', money(totUsed), 'סה"כ נוצל', totUsed > totBudget && totBudget ? 'kpi-warn' : 'kpi-info'),
@@ -338,9 +338,9 @@
 
   function kpi(icon, val, label, cls) {
     return U.el('div', { class: 'kpi ' + (cls || 'kpi-neutral') }, [
-      U.el('span', { class: 'kpi-ic', text: icon }),
+      U.el('div', { class: 'kpi-ic' }),
       U.el('div', { class: 'kpi-body' }, [
-        U.el('div', { class: 'kpi-val', text: String(val) }),
+        U.el('div', { class: 'kpi-row' }, U.el('div', { class: 'kpi-val', text: String(val) })),
         U.el('div', { class: 'kpi-lbl', text: label })
       ])
     ]);

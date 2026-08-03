@@ -811,9 +811,9 @@
   // ---------- טבלת המצבת ----------
   function kpi(icon, val, label) {
     return U.el('div', { class: 'kpi kpi-neutral' }, [
-      U.el('span', { class: 'kpi-ic', text: icon }),
+      U.el('div', { class: 'kpi-ic' }),
       U.el('div', { class: 'kpi-body' }, [
-        U.el('div', { class: 'kpi-val', text: String(val) }),
+        U.el('div', { class: 'kpi-row' }, U.el('div', { class: 'kpi-val', text: String(val) })),
         U.el('div', { class: 'kpi-lbl', text: label })
       ])
     ]);
