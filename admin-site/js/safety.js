@@ -39,10 +39,13 @@
     if (n <= WARN_DAYS) return STATE.soon;
     return STATE.valid;
   }
-  // סדר דחיפות: פג → עומד לפוג → חסר → בתוקף → לא רלוונטי
+  // סדר דחיפות: פג → עומד לפוג → חסר → בתוקף → לא רלוונטי.
+  // שורת "רישיון מוסד" תמיד ראשונה — היא המטרה שכל שאר האישורים משרתים.
   var URGENCY = { expired: 0, soon: 1, missing: 2, valid: 3, na: 4 };
+  function isMain(rec) { return !!rec.main || rec.name === Store.LICENSE_MAIN_NAME; }
   function sortByUrgency(list) {
     return list.slice().sort(function (a, b) {
+      if (isMain(a) !== isMain(b)) return isMain(a) ? -1 : 1;
       var ua = URGENCY[stateOf(a).key], ub = URGENCY[stateOf(b).key];
       if (ua !== ub) return ua - ub;
       var ea = Store.safetyExpiry(a) || '9999', eb = Store.safetyExpiry(b) || '9999';
@@ -167,6 +170,19 @@
     return wrap;
   }
 
+  // שם השורה הראשית — כותרת מודגשת + קיצור דרך לצ'ק-ליסט מסמכי הרישוי
+  function mainNameCell(rec) {
+    var docs = Store.safetyAll().filter(function (r) { return r.group === LICENSE_GROUP && !r.na; });
+    var ready = docs.filter(function (r) { return stateOf(r).key !== 'missing'; }).length;
+    var link = U.el('button', { class: 'sf-link',
+      text: 'מסמכי הרישוי: ' + ready + '/' + docs.length,
+      onclick: function () { subTab = 'license'; App.render(); } });
+    return U.el('div', { style: 'display:flex;flex-direction:column;gap:2px;' }, [
+      U.el('strong', { style: 'font-size:16px;color:var(--brand-dark);', text: rec.name || '' }),
+      docs.length ? link : null
+    ].filter(Boolean));
+  }
+
   // ---------- טבלה ----------
   function table(list, isLicense) {
     if (!list.length) {
@@ -179,6 +195,7 @@
     var rows = sortByUrgency(list).map(function (rec) {
       var st = stateOf(rec);
       var exp = Store.safetyExpiry(rec);
+      var main = !isLicense && isMain(rec);
       var tds = isLicense
         ? [
             U.el('td', null, U.el('strong', { text: rec.name || '' })),
@@ -189,7 +206,7 @@
             U.el('td', { class: 'muted', text: rec.note || '' })
           ]
         : [
-            U.el('td', null, U.el('strong', { text: rec.name || '' })),
+            U.el('td', null, main ? mainNameCell(rec) : U.el('strong', { text: rec.name || '' })),
             U.el('td', null, U.el('span', { class: 'tag', text: rec.group || '' })),
             U.el('td', null, statePill(rec)),
             U.el('td', { text: dateLabel(rec.issuedAt) || '—' }),
@@ -208,12 +225,13 @@
             function () { Store.deleteSafety(rec.id); App.render(); });
         } })
       ]));
-      // רקע עדין לפי מצב — כדי שהעין תתפוס מיד מה בוער
-      var rowStyle = '';
-      if (st.key === 'expired') rowStyle = 'background:#fef2f2;';
-      else if (st.key === 'soon') rowStyle = 'background:#fffbeb;';
-      else if (st.key === 'na') rowStyle = 'opacity:.55;';
-      return U.el('tr', { style: rowStyle }, tds);
+      // רקע עדין לפי מצב — כדי שהעין תתפוס מיד מה בוער (מחלקות, כדי שיעבוד גם במצב חשוך)
+      var cls = [];
+      if (main) cls.push('sf-main');
+      if (st.key === 'expired') cls.push('sf-expired');
+      else if (st.key === 'soon') cls.push('sf-soon');
+      else if (st.key === 'na') cls.push('sf-na');
+      return U.el('tr', { class: cls.join(' ') }, tds);
     });
 
     return U.el('div', { class: 'tbl-scroll' }, [U.el('table', { class: 'grid' }, [
@@ -224,6 +242,7 @@
 
   // ---------- רינדור ----------
   function render(view) {
+    Store.ensureLicenseRow();
     var all = Store.safetyAll();
     var certs = all.filter(function (r) { return r.group !== LICENSE_GROUP; });
     var license = all.filter(function (r) { return r.group === LICENSE_GROUP; });
@@ -281,7 +300,8 @@
       view.appendChild(U.el('div', { class: 'card', style: 'margin-bottom:12px;' }, [
         U.el('div', { class: 'muted', style: 'font-size:13px;' },
           'המסמכים שנדרשים לחידוש רישיון המוסד. צרפו את הקובץ העדכני לכל שורה — ' +
-          'תאריך העדכון נרשם אוטומטית, כך שרואים מה כבר מוכן ומה עוד חסר.')
+          'תאריך העדכון נרשם אוטומטית, כך שרואים מה כבר מוכן ומה עוד חסר. ' +
+          'המונה מופיע גם בשורת "רישיון מוסד" שבראש טבלת האישורים.')
       ]));
       view.appendChild(table(license, true));
     } else {

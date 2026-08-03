@@ -713,7 +713,9 @@
   }
   // ---------- בטיחות, רישוי וביטוחים ----------
   // הרשימה שהתקבלה ממנהל הרישוי — נזרעת פעם אחת, וניתנת לעריכה/מחיקה אחר כך
+  var LICENSE_MAIN_NAME = 'רישיון מוסד';   // השורה הראשית — כל שאר האישורים משרתים אותה
   var SAFETY_SEED = [
+    { group: 'שנתי', name: LICENSE_MAIN_NAME, main: true },
     { group: 'שנתי', name: 'תשתית לייעודה (בטיחות בית ספר)' },
     { group: 'שנתי', name: 'טופס דיווח (בטיחות פנימייה)' },
     { group: 'שנתי', name: 'כבאות' },
@@ -780,12 +782,28 @@
     var added = 0;
     SAFETY_SEED.forEach(function (x) {
       if (have[x.name]) return;
-      upsertSafety({ name: x.name, group: x.group, issuedAt: '', expiresAt: '', issuer: '', owner: '', note: '' });
+      upsertSafety({ name: x.name, group: x.group, main: !!x.main,
+        issuedAt: '', expiresAt: '', issuer: '', owner: '', note: '' });
       added++;
     });
     data.safety.seeded = true;
     save('safety');
     return added;
+  }
+  // שורת "רישיון מוסד" נוספה אחרי הזריעה הראשונה — משלימים אותה למי שכבר טען את הרשימה.
+  function ensureLicenseRow() {
+    var recs = safetyAll();
+    if (!recs.length) return null;                        // גיליון ריק — הזריעה הרגילה תטפל
+    var found = null;
+    recs.forEach(function (r) { if (r.main || r.name === LICENSE_MAIN_NAME) found = r; });
+    if (found) {
+      if (!found.main) { found.main = true; upsertSafety(found); }
+      return found;
+    }
+    var rec = { name: LICENSE_MAIN_NAME, group: 'שנתי', main: true,
+      issuedAt: '', expiresAt: '', issuer: 'משרד החינוך', owner: '', note: '' };
+    upsertSafety(rec);
+    return rec;
   }
   function safetyGroups() { return ['שנתי', '5 שנים', 'לפי צורך', 'רישוי מוסד']; }
 
@@ -1482,6 +1500,8 @@
     safetyExpiry: safetyExpiry,
     seedSafety: seedSafety,
     safetyGroups: safetyGroups,
+    ensureLicenseRow: ensureLicenseRow,
+    LICENSE_MAIN_NAME: LICENSE_MAIN_NAME,
     kkAll: kkAll,
     syncKkFromBudget: syncKkFromBudget,
     kkById: kkById,
