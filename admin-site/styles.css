@@ -208,6 +208,9 @@ body.dark input[type="month"]::-webkit-calendar-picker-indicator { background-im
 .row > .field { flex: 1 1 160px; min-width: 0; }
 /* שדה בתוך .field ממלא את הרוחב ולא מקבל רוחב מובנה מהדפדפן */
 .field > input, .field > select, .field > textarea { width: 100%; max-width: 100%; }
+/* עריכה ישירה בתא — שקוף עד פוקוס. הקיזוז מיישר את הטקסט מתחת לכותרת העמודה. */
+.transp { border: 1px solid transparent; background: transparent; padding: 4px 6px; margin-inline: -7px; }
+.transp:focus { background: var(--card); border-color: var(--border); }
 input.invalid, select.invalid, textarea.invalid { border-color: var(--danger) !important; background: #fef2f2; }
 .field-err { color: var(--danger); font-size: 12px; margin-top: 2px; min-height: 0; }
 
@@ -278,7 +281,7 @@ table.grid td.actions { white-space: nowrap; text-align: left; }
 .grade-badge.gb4 { background: #7c3aed; }
 .grade-badge.gbx { background: #64748b; }
 .range-chip { display: inline-flex; align-items: center; gap: 7px; background: var(--card); border: 1px solid var(--border); border-radius: var(--r-s, 4px); padding: 5px 12px; font-size: 13px; font-weight: 500; color: var(--text); box-shadow: none; }
-.range-chip .rc-ic { opacity: .8; font-size: 14px; }
+.range-chip .rc-ic { opacity: .75; display: inline-flex; align-items: center; }
 .chip-date-input { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
 
 /* פיל סטטוס (דווח/ממתין, פתוח/סגור) */

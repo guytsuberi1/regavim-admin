@@ -160,7 +160,7 @@
   function dateChip(text, input, opts) {
     opts = opts || {};
     var clickable = !!(input || opts.onClick);
-    var kids = [el('span', { class: 'rc-ic', text: '📅' }), el('span', { text: text })];
+    var kids = [el('span', { class: 'rc-ic', html: ICO.calendar }), el('span', { text: text })];
     if (input) {
       input.classList.add('chip-date-input');
       kids.push(input);
@@ -313,7 +313,8 @@
     send: icoSvg('<path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7Z"/>'),
     copy: icoSvg('<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'),
     search: icoSvg('<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>'),
-    close: icoSvg('<path d="M18 6 6 18M6 6l12 12"/>')
+    close: icoSvg('<path d="M18 6 6 18M6 6l12 12"/>'),
+    calendar: icoSvg('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>')
   };
 
   global.U = {

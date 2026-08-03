@@ -72,7 +72,7 @@
     });
 
     if (!shown.length) {
-      view.appendChild(U.el('div', { class: 'empty' }, '🎉 כל העובדים נסגרו החודש!'));
+      view.appendChild(U.el('div', { class: 'empty' }, 'כל העובדים נסגרו החודש!'));
       return;
     }
 

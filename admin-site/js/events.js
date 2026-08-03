@@ -43,6 +43,8 @@
   function saveEv(ev) { Store.upsertEvent(ev); }
   function transp(el) {
     el.style.border = '1px solid transparent'; el.style.background = 'transparent'; el.style.padding = '4px 6px';
+    // קיזוז הריפוד הפנימי כדי שהטקסט יתיישר בדיוק מתחת לכותרת העמודה
+    el.style.marginInline = '-7px';
     el.addEventListener('focus', function () { el.style.background = 'var(--card,#fff)'; el.style.borderColor = 'var(--border,#d6dce1)'; });
     el.addEventListener('blur', function () { el.style.background = 'transparent'; el.style.borderColor = 'transparent'; });
     return el;
@@ -881,8 +883,8 @@
 
     // תת-טאבים: אירועים פעילים / ארכיון
     view.appendChild(U.el('div', { class: 'subtabs', style: 'margin-bottom:12px;' }, [
-      U.el('button', { class: showArchive ? '' : 'active', onclick: function () { showArchive = false; App.render(); } }, '🗓️ אירועים (' + active.length + ')'),
-      U.el('button', { class: showArchive ? 'active' : '', onclick: function () { showArchive = true; App.render(); } }, '🗄️ ארכיון (' + archived.length + ')')
+      U.el('button', { class: showArchive ? '' : 'active', onclick: function () { showArchive = false; App.render(); } }, 'אירועים (' + active.length + ')'),
+      U.el('button', { class: showArchive ? 'active' : '', onclick: function () { showArchive = true; App.render(); } }, 'ארכיון (' + archived.length + ')')
     ]));
 
     if (!showArchive && active.length) {
