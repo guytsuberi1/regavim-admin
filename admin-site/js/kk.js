@@ -21,7 +21,6 @@
 
   var subTab = 'list';      // 'list' (מבט על) | 'inbox'
   var selectedId = null;    // קול קורא פתוח בפירוט
-  var showClosed = false;
 
   function ils(n) {
     return new Intl.NumberFormat('he-IL', { maximumFractionDigits: 0 }).format(Math.round(n || 0)) + ' ₪';
@@ -368,8 +367,9 @@
   // ---------- מבט על — שורה לכל קול קורא ----------
   function overview(view) {
     var recs = Store.kkAll();
-    var openRecs = recs.filter(function (r) { return r.status !== 'closed' && r.status !== 'rejected'; });
-    var doneRecs = recs.filter(function (r) { return r.status === 'closed' || r.status === 'rejected'; });
+    // הכול בטבלה אחת; ק"ק שדווח ונסגר או שאינו רלוונטי יורד לתחתית הטבלה ומוצג בעמעום
+    function isDone(r) { return r.status === 'closed' || r.status === 'rejected'; }
+    var openRecs = recs.filter(function (r) { return !isDone(r); });
 
     var soon = openRecs.filter(function (r) {
       var n = daysTo(r.deadline);
@@ -412,6 +412,7 @@
     function table(list) {
       // מיון לפי דחיפות: קודם כסף שאושר ולא תוכנן, אחריו הגשות שהדדליין מתקרב, ואז לפי שם
       list = list.slice().sort(function (a, b) {
+        if (isDone(a) !== isDone(b)) return isDone(a) ? 1 : -1;   // הסגורים תמיד בסוף
         var ma = Store.kkMoney(a), mb = Store.kkMoney(b);
         var ua = isFunded(a) ? Math.max(0, ma.unplanned) : 0;
         var ub = isFunded(b) ? Math.max(0, mb.unplanned) : 0;
@@ -424,11 +425,13 @@
       var tot = { approved: 0, used: 0, planned: 0, balance: 0 };
       var body = list.map(function (r) {
         var m = Store.kkMoney(r), st = stDef(r.status);
-        tot.approved += m.approved; tot.used += m.used; tot.planned += m.planned; tot.balance += m.unplanned;
+        tot.approved += m.approved; tot.used += m.used; tot.planned += m.planned;
+        // ק"ק שנסגר או שאינו רלוונטי — אין לו "נותר לתכנון", ולכן גם לא נספר בסיכום
+        if (!isDone(r)) tot.balance += m.unplanned;
         var dl = daysTo(r.deadline);
         var dlStyle = '';
         if (!isFunded(r) && dl !== null && dl >= 0 && dl <= 14) dlStyle = 'color:#b91c1c;font-weight:600;';
-        var tr = U.el('tr', { style: 'cursor:pointer;' }, [
+        var tr = U.el('tr', { style: 'cursor:pointer;' + (isDone(r) ? 'opacity:.62;' : '') }, [
           U.el('td', { style: 'min-width:170px;' }, [
             cellText(r, 'name', 'שם הקול הקורא', 'font-weight:600;width:100%;'),
             cellText(r, 'funder', 'גוף מממן…', 'width:100%;font-size:12px;color:var(--muted);')
@@ -438,9 +441,9 @@
           U.el('td', { style: m.used ? (m.approved && m.used > m.approved ? 'color:#b91c1c;font-weight:600;' : 'color:#16a34a;') : '',
                        text: m.used ? ils(m.used) : '—' }),
           U.el('td', { style: m.planned ? 'color:#2563eb;' : '', text: m.planned ? ils(m.planned) : '—' }),
-          U.el('td', { style: isFunded(r) ? (m.unplanned !== 0 ? 'color:#b91c1c;font-weight:600;' : 'color:#16a34a;') : '',
+          U.el('td', { style: (isFunded(r) && !isDone(r)) ? (m.unplanned !== 0 ? 'color:#b91c1c;font-weight:600;' : 'color:#16a34a;') : '',
                        title: m.unplanned < 0 ? 'חריגה — נוצל ומתוכנן עולים על ההקצבה' : '',
-                       text: isFunded(r) ? (m.unplanned < 0 ? '⚠️ ' + ils(m.unplanned) : ils(m.unplanned)) : '—' }),
+                       text: (isFunded(r) && !isDone(r)) ? (m.unplanned < 0 ? '⚠️ ' + ils(m.unplanned) : ils(m.unplanned)) : '—' }),
           U.el('td', { style: dlStyle }, cellDate(r, 'deadline')),
           U.el('td', null, cellText(r, 'owner', 'אחראי', 'max-width:110px;'))
         ]);
@@ -464,18 +467,10 @@
       ])]);
     }
 
-    view.appendChild(table(openRecs));
+    view.appendChild(table(recs));
     view.appendChild(U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:6px;',
-      text: 'אפשר לערוך שם, סטטוס, הקצבה, תאריך יעד ואחראי ישירות בטבלה · לחיצה על שאר השורה פותחת את הפירוט המלא' }));
-
-    if (doneRecs.length) {
-      view.appendChild(U.el('button', {
-        class: 'btn secondary', style: 'margin-top:14px;',
-        text: (showClosed ? '▾ ' : '▸ ') + 'סגורים ולא רלוונטיים (' + doneRecs.length + ')',
-        onclick: function () { showClosed = !showClosed; App.render(); }
-      }));
-      if (showClosed) view.appendChild(table(doneRecs));
-    }
+      text: 'אפשר לערוך שם, סטטוס, הקצבה, תאריך יעד ואחראי ישירות בטבלה · לחיצה על שאר השורה פותחת את הפירוט המלא · ' +
+            'קולות קוראים שדווחו ונסגרו מופיעים בתחתית הטבלה' }));
   }
 
   // ---------- תור אישור החשבוניות ----------
@@ -535,57 +530,6 @@
   }
 
   // ---------- רשימת הקולות הקוראים ----------
-  function list(view) {
-    var recs = Store.kkAll();
-    var open = recs.filter(function (r) { return r.status !== 'closed' && r.status !== 'rejected'; });
-    var done = recs.filter(function (r) { return r.status === 'closed' || r.status === 'rejected'; });
-
-    // שורת "מה דחוף עכשיו"
-    var soon = open.filter(function (r) {
-      var n = daysTo(r.deadline);
-      return !isFunded(r) && n !== null && n >= 0 && n <= 14;
-    });
-    var waiting = open.filter(function (r) { return r.status === 'submitted'; });
-    var unplanned = 0, totalApproved = 0;
-    recs.filter(isFunded).forEach(function (r) {
-      var m = Store.kkMoney(r);
-      totalApproved += m.approved;
-      if (m.unplanned > 0 && r.status !== 'closed') unplanned += m.unplanned;
-    });
-
-    function kpi(cls, val, label, color) {
-      return U.el('div', { class: 'kpi ' + (cls || 'kpi-neutral') }, [
-        U.el('div', { class: 'kpi-ic' }),
-        U.el('div', { class: 'kpi-body' }, [
-          U.el('div', { class: 'kpi-row' },
-            U.el('div', { class: 'kpi-val', style: color ? 'color:' + color + ';' : '', text: String(val) })),
-          U.el('div', { class: 'kpi-lbl', text: label })
-        ])
-      ]);
-    }
-    view.appendChild(U.el('div', { class: 'kpi-grid' }, [
-      kpi(soon.length ? 'kpi-bad' : 'kpi-neutral', soon.length, 'הגשות שנסגרות תוך 14 יום', soon.length ? '#b91c1c' : ''),
-      kpi('kpi-info', waiting.length, 'ממתינים לתשובה'),
-      kpi(unplanned > 0 ? 'kpi-bad' : 'kpi-good', ils(unplanned), 'כסף מאושר שעוד לא תוכנן', unplanned > 0 ? '#b91c1c' : '#16a34a'),
-      kpi('kpi-neutral', ils(totalApproved), 'סה"כ הקצבות השנה')
-    ]));
-
-    if (!recs.length) {
-      view.appendChild(U.el('div', { class: 'empty' }, 'אין עדיין קולות קוראים — הוסיפו את הראשון בכפתור למעלה'));
-      return;
-    }
-    open.forEach(function (r) { view.appendChild(card(r)); });
-
-    if (done.length) {
-      view.appendChild(U.el('button', {
-        class: 'btn secondary', style: 'margin-top:10px;',
-        text: (showClosed ? '▾ ' : '▸ ') + 'סגורים ונדחים (' + done.length + ')',
-        onclick: function () { showClosed = !showClosed; App.render(); }
-      }));
-      if (showClosed) done.forEach(function (r) { view.appendChild(card(r)); });
-    }
-  }
-
   // ---------- רינדור ראשי ----------
   function render(view) {
     migrateDates();
