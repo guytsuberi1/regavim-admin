@@ -123,19 +123,19 @@
         return rec.fromDate ? null : 'נדרש תאריך';
       };
     } else if (kind === 'work') {
-      var wdates = U.el('input', { value: rec.dates || '', placeholder: 'תאריכים' });
-      var whours = U.el('input', { value: rec.hours || '', placeholder: 'כמות שעות / "דוח מצורף" / "עבד כרגיל"' });
       var wnote = U.el('input', { value: rec.note || '', placeholder: 'הערות' });
+      var hasDays = rec.days && Object.keys(rec.days).length;
       fields = [
         fld('שם העובד', name.node),
-        U.el('div', { class: 'row' }, [fld('תאריכים', wdates), fld('כמות שעות', whours)]),
-        fld('הערות', wnote)
+        fld('הערות', wnote),
+        U.el('div', { class: 'muted', style: 'font-size:13px;margin-top:4px;line-height:1.6;' },
+          hasDays
+            ? 'התאריכים וסה"כ השעות מחושבים מדוח השעות היום-יומי (' + rec.dates + ' · ' + rec.hours + ' שעות).'
+            : 'אחרי השמירה ייפתח דוח השעות החודשי — שם ממלאים כניסה ויציאה לכל יום, והתאריכים והסה"כ מתמלאים לבד.')
       ];
       collect = function () {
-        rec.dates = wdates.value.trim();
-        rec.hours = whours.value.trim();
         rec.note = wnote.value.trim();
-        return rec.dates ? null : 'נדרשים תאריכים';
+        return null;                     // שם העובד לבדו מספיק — השאר מגיע מהדוח
       };
     } else if (kind === 'travel') {
       var tdate = U.el('input', { type: 'date', value: rec.date || U.todayISO() });
@@ -190,9 +190,11 @@
         var problem = collect();
         if (problem) { err.textContent = problem; return; }
         rec.kind = kind;
-        Store.upsertRecord('abs', month, rec);
+        var isNew = !rec.id;
+        var saved = Store.upsertRecord('abs', month, rec) || rec;
         close();
         App.render();
+        if (kind === 'work' && isNew) openReport(month, saved);
       } }
     ]);
   }
