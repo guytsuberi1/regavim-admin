@@ -179,11 +179,52 @@
     return h + signBlock() + '</section>';
   }
 
+
+  // דוח שעות יום-יום לכל עובד שמילא פירוט במקטע "עבודה בזמן מילואים"
+  var DAY_LETTERS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
+  function hoursBetween(a, b) {
+    if (!a || !b) return 0;
+    var p1 = String(a).split(':'), p2 = String(b).split(':');
+    var m1 = parseInt(p1[0], 10) * 60 + parseInt(p1[1] || '0', 10);
+    var m2 = parseInt(p2[0], 10) * 60 + parseInt(p2[1] || '0', 10);
+    var diff = m2 - m1;
+    if (diff < 0) diff += 1440;
+    return Math.round(diff / 6) / 10;
+  }
+  function miluimSections(month) {
+    var recs = Store.records('abs', month, function (r) {
+      return r.kind === 'work' && r.days && Object.keys(r.days).length;
+    });
+    if (!recs.length) return '';
+    var y = parseInt(month.slice(0, 4), 10), m = parseInt(month.slice(5, 7), 10);
+    var last = new Date(y, m, 0).getDate();
+    return recs.map(function (r) {
+      var emp = Store.employees(true).filter(function (e) { return Store.empName(e) === r.name; })[0];
+      var tz = emp && emp.tz ? ' · ת.ז: ' + esc(emp.tz) : '';
+      var rows = [], tot = 0;
+      for (var d = 1; d <= last; d++) {
+        var iso = month + '-' + String(d).padStart(2, '0');
+        var e = r.days[iso] || {};
+        var h = e.hours != null && e.hours !== '' ? U.num(e.hours) : hoursBetween(e.in, e.out);
+        tot += h;
+        var dow = U.fromISO(iso).getDay();
+        rows.push([DAY_LETTERS[dow], U.gregLabel(iso), esc(e.in || ''), esc(e.out || ''),
+          h ? String(h) : '', esc(e.note || '')]);
+      }
+      tot = Math.round(tot * 10) / 10;
+      return '<section class="page"><h2>דוח שעות של ' + esc(r.name) + tz + ' — ' + esc(U.monthLabel(month)) + '</h2>'
+        + table(['יום', 'תאריך', 'כניסה', 'יציאה', 'סה"כ שעות', 'הערות'], rows)
+        + '<div class="tot grand">סה"כ שעות: <b>' + tot + '</b></div>'
+        + '<div class="muted">דוח עבודה בתקופת שירות מילואים.</div>'
+        + signBlock() + '</section>';
+    }).join('');
+  }
+
   function buildHtml(month, included) {
     var body = '';
     if (included.lc) body += lcSection(month);
     if (included.sub) body += subSection(month);
-    if (included.abs) body += absSection(month);
+    if (included.abs) body += absSection(month) + miluimSections(month);
     body += coverSection(month, included, true);        // סיכום לפי עובד — בסוף
     // הכותרת נכנסת לתוך העמוד הראשון ולא תופסת דף משלה
     body = body.replace('<section class="page">', '<section class="page">' + coverSection(month, included));
@@ -259,5 +300,5 @@
     view.appendChild(card);
   }
 
-  global.PdfView = { render: render };
+  global.PdfView = { render: render, buildHtml: buildHtml };
 })(window);

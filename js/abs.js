@@ -263,6 +263,155 @@
     ];
   }
 
+
+  // ---------- דוח שעות חודשי (עבודה בזמן מילואים) ----------
+  // מבנה: rec.days = { 'YYYY-MM-DD': { in, out, note } } · הסיכום בשורה הראשית נגזר ממנו.
+  var DAY_LETTERS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
+
+  function monthDays(month) {
+    var y = parseInt(month.slice(0, 4), 10), m = parseInt(month.slice(5, 7), 10);
+    var last = new Date(y, m, 0).getDate(), out = [];
+    for (var d = 1; d <= last; d++) {
+      var iso = month + '-' + String(d).padStart(2, '0');
+      out.push({ iso: iso, dow: U.fromISO(iso).getDay(), dnum: d });
+    }
+    return out;
+  }
+  // הפרש שעות בין כניסה ליציאה; חצייה של חצות נספרת ליום הבא
+  function hoursBetween(a, b) {
+    if (!a || !b) return 0;
+    var p1 = a.split(':'), p2 = b.split(':');
+    var m1 = parseInt(p1[0], 10) * 60 + parseInt(p1[1] || '0', 10);
+    var m2 = parseInt(p2[0], 10) * 60 + parseInt(p2[1] || '0', 10);
+    var diff = m2 - m1;
+    if (diff < 0) diff += 24 * 60;
+    return Math.round(diff / 6) / 10;      // עיגול לעשירית שעה
+  }
+  function reportTotal(rec) {
+    var t = 0;
+    var days = rec.days || {};
+    Object.keys(days).forEach(function (k) {
+      var d = days[k];
+      t += d.hours != null && d.hours !== '' ? U.num(d.hours) : hoursBetween(d.in, d.out);
+    });
+    return Math.round(t * 10) / 10;
+  }
+  function reportRange(rec, month) {
+    var days = rec.days || {}, worked = [];
+    monthDays(month).forEach(function (d) {
+      var e = days[d.iso];
+      if (e && (e.in || e.out || e.hours)) worked.push(d.dnum);
+    });
+    if (!worked.length) return '';
+    var mm = parseInt(month.slice(5, 7), 10);
+    if (worked.length === 1) return worked[0] + '/' + mm;
+    // כותבים את החודש בשני הצדדים — בטקסט RTL טווח עם חודש אחד נקרא הפוך
+    return worked[0] + '/' + mm + ' – ' + worked[worked.length - 1] + '/' + mm;
+  }
+
+  // מילוי אוטומטי בפתיחה ראשונה: ימי מילואים מדוח ההיעדרויות + שעות העבודה מהלוח השבועי
+  function autoFill(rec, month) {
+    var emp = Store.employees(true).filter(function (e) { return Store.empName(e) === rec.name; })[0];
+    var days = rec.days || (rec.days = {});
+    // ימי מילואים של אותו עובד באותו חודש
+    Store.records('abs', month, function (r) { return r.kind === 'absence' && r.name === rec.name; })
+      .forEach(function (a) {
+        if (!/מילואים/.test(a.reason || '')) return;
+        var from = a.fromDate, to = a.toDate || a.fromDate;
+        if (!from) return;
+        monthDays(month).forEach(function (d) {
+          if (d.iso >= from && d.iso <= to) {
+            days[d.iso] = days[d.iso] || {};
+            if (!days[d.iso].note) days[d.iso].note = 'מילואים';
+          }
+        });
+      });
+    // שעות לפי הלוח השבועי בכרטיס העובד
+    if (emp && emp.workHours) {
+      monthDays(month).forEach(function (d) {
+        var wh = emp.workHours[d.dow];
+        if (!wh || (!wh.from && !wh.to)) return;
+        days[d.iso] = days[d.iso] || {};
+        // ביום מילואים לא ממלאים שעות מראש — הדוח נועד לתעד מה נעבד בפועל
+        if (/מילואים/.test(days[d.iso].note || '')) return;
+        if (!days[d.iso].in && !days[d.iso].out) { days[d.iso].in = wh.from || ''; days[d.iso].out = wh.to || ''; }
+      });
+    }
+    rec.autoFilled = true;
+  }
+
+  function openReport(month, rec) {
+    var work = JSON.parse(JSON.stringify(rec));
+    if (!work.days) work.days = {};
+    if (!work.autoFilled) autoFill(work, month);
+
+    var totalEl = U.el('b', { text: '0' });
+    var rows = [];
+    function recalc() {
+      var t = 0;
+      rows.forEach(function (r) {
+        var h = hoursBetween(r.inp.value, r.outp.value);
+        r.sum.textContent = h ? String(h) : '';
+        t += h;
+      });
+      totalEl.textContent = String(Math.round(t * 10) / 10);
+    }
+
+    var tbody = U.el('tbody', null, monthDays(month).map(function (d) {
+      var e = work.days[d.iso] || (work.days[d.iso] = {});
+      var inp = U.el('input', { type: 'time', value: e.in || '' });
+      var outp = U.el('input', { type: 'time', value: e.out || '' });
+      var note = U.el('input', { value: e.note || '', placeholder: '' });
+      var sum = U.el('td', { class: 'mil-sum' });
+      [inp, outp].forEach(function (x) { x.addEventListener('change', recalc); });
+      var cls = '';
+      if (d.dow === 5 || d.dow === 6) cls = 'mil-rest';
+      if (/מילואים/.test(e.note || '')) cls = 'mil-duty';
+      rows.push({ iso: d.iso, inp: inp, outp: outp, note: note, sum: sum });
+      return U.el('tr', { class: cls }, [
+        U.el('td', { class: 'mil-day', text: DAY_LETTERS[d.dow] }),
+        U.el('td', { class: 'mil-date', text: U.gregLabel(d.iso) }),
+        U.el('td', null, inp),
+        U.el('td', null, outp),
+        sum,
+        U.el('td', null, note)
+      ]);
+    }));
+
+    var tbl = U.el('table', { class: 'mil-tbl' }, [
+      U.el('thead', null, U.el('tr', null, ['יום', 'תאריך', 'כניסה', 'יציאה', 'סה"כ', 'הערות']
+        .map(function (h) { return U.el('th', { text: h }); }))),
+      tbody
+    ]);
+    var body = U.el('div', null, [
+      U.el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:8px;' },
+        'ימי מילואים מדוח ההיעדרויות מסומנים בכחול · שישי ושבת באפור · שעות העבודה הקבועות מולאו מהלוח השבועי בכרטיס העובד.'),
+      U.el('div', { style: 'max-height:56vh;overflow:auto;' }, tbl),
+      U.el('div', { class: 'mil-foot' }, [U.el('span', { text: 'סה"כ שעות:' }), totalEl])
+    ]);
+    recalc();
+
+    Modal.open('דוח שעות של ' + (rec.name || '') + ' — ' + U.monthLabel(month), body, [
+      { label: 'ביטול', class: 'secondary' },
+      { label: 'שמירה', onClick: function (close) {
+        rows.forEach(function (r) {
+          var e = { in: r.inp.value, out: r.outp.value, note: r.note.value.trim() };
+          if (!e.in && !e.out && !e.note) delete work.days[r.iso];
+          else work.days[r.iso] = e;
+        });
+        work.autoFilled = true;
+        var tot = reportTotal(work);
+        work.hours = tot ? String(tot) : work.hours;
+        var range = reportRange(work, month);
+        if (range) work.dates = range;
+        Store.upsertRecord('abs', month, work);
+        close();
+        U.toast('דוח השעות נשמר — סה"כ ' + tot + ' שעות');
+        App.render();
+      } }
+    ], { wide: true });
+  }
+
   function render(view) {
     var month = App.currentMonth();
     view.appendChild(App.monthHeader('היעדרויות וגמולים'));
@@ -282,7 +431,12 @@
           U.el('thead', null, U.el('tr', null, def.cols.concat(['']).map(function (h) { return U.el('th', { text: h }); }))),
           U.el('tbody', null, recs.map(function (r) {
             return U.el('tr', null, rowCells(r).concat([
-              U.el('td', null, [
+              U.el('td', { style: 'white-space:nowrap;' }, [
+                def.kind === 'work' ? U.el('button', {
+                  class: 'btn secondary', html: U.ICO.table, title: 'דוח שעות חודשי — יום-יום',
+                  onclick: function () { openReport(month, r); }
+                }) : null,
+                def.kind === 'work' ? ' ' : null,
                 U.el('button', { class: 'btn secondary', html: U.ICO.edit, title: 'עריכה', onclick: function () { openModal(month, def.kind, JSON.parse(JSON.stringify(r))); } }),
                 ' ',
                 U.el('button', { class: 'btn secondary', html: U.ICO.trash, title: 'מחיקה', onclick: function () {
@@ -291,7 +445,7 @@
                     App.render();
                   });
                 } })
-              ])
+              ].filter(Boolean))
             ]));
           }))
         ]);
