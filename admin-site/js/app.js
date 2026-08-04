@@ -240,7 +240,8 @@
 
   // ---------- מודאל גנרי ----------
   global.Modal = {
-    open: function (title, bodyNode, buttons) {
+    open: function (title, bodyNode, buttons, opts) {
+      opts = opts || {};
       var bg = U.el('div', { class: 'modal-bg' });
       var closeBtn = U.el('button', { class: 'x', text: '×', onclick: close });
       var head = U.el('div', { class: 'modal-head' }, [U.el('h3', { text: title }), closeBtn]);
@@ -252,7 +253,7 @@
         }, b.label);
       });
       var foot = U.el('div', { class: 'modal-foot' }, footChildren);
-      var modal = U.el('div', { class: 'modal' }, [head, body, foot]);
+      var modal = U.el('div', { class: 'modal' + (opts.wide ? ' modal-wide' : '') }, [head, body, foot]);
       bg.appendChild(modal);
       var downOnBg = false;
       var downEvt = ('onpointerdown' in window) ? 'pointerdown' : 'mousedown';
