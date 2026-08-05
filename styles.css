@@ -1132,3 +1132,9 @@ body.dark .b-month.over { background: #3a1f22; }
 .b-key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; }
 .b-key.plan { background: #94a3b8; }
 .b-key.act { background: var(--brand); }
+.b-chevbtn { background: none; border: 0; padding: 2px 4px; cursor: pointer; color: var(--muted); }
+.b-chevbtn:hover { color: var(--brand); }
+tr.b-add td { background: var(--bg); padding: 4px 0; }
+.b-month .b-month-plan { color: var(--muted); }
+tr.b-add button { display: inline-flex; align-items: center; gap: 6px; }
+tr.b-add button svg { width: 14px; height: 14px; }

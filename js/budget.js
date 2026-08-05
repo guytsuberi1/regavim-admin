@@ -93,6 +93,89 @@
     return U.el('td', { text: ils(proj) });
   }
 
+
+  // ---------- עריכה ----------
+  // כל שינוי נכתב דרך Store.budgetPatch: קריאה טרייה → שינוי נקודתי → כתיבה.
+  // כך שינוי כאן לא דורס חשבונית שהמזכירה הזינה שנייה קודם.
+  var saving = false;
+  function patchCat(catId, apply, okMsg) {
+    if (saving) return;
+    saving = true;
+    Store.budgetPatch(function (st) {
+      var c = (st.categories || []).filter(function (x) { return x.id === catId; })[0];
+      if (!c) throw new Error('הקטגוריה לא נמצאה בנתוני התקציב');
+      apply(c, st);
+    }).then(function () {
+      saving = false;
+      U.toast(okMsg || 'נשמר');
+      App.render();
+    }).catch(function (e) {
+      saving = false;
+      U.toast('השמירה נכשלה: ' + (e && e.message ? e.message : ''), 'error');
+      App.render();
+    });
+  }
+  function bare(el) {
+    el.style.border = '1px solid transparent';
+    el.style.background = 'transparent';
+    el.style.padding = '4px 6px';
+    el.addEventListener('focus', function () { el.style.background = 'var(--card)'; el.style.borderColor = 'var(--border)'; });
+    el.addEventListener('blur', function () { el.style.background = 'transparent'; el.style.borderColor = 'transparent'; });
+    return el;
+  }
+  function moneyCell(c) {
+    var i = bare(U.el('input', { value: U.num(c.annualBudget, 0) || '', placeholder: '0', inputmode: 'numeric',
+      style: 'width:110px;text-align:right;font-weight:600;' }));
+    i.addEventListener('change', function () {
+      var v = i.value.trim() === '' ? 0 : U.num(i.value, 0);
+      if (v === U.num(c.annualBudget, 0)) return;
+      patchCat(c.id, function (cat) { cat.annualBudget = v; }, 'התקציב עודכן');
+    });
+    return i;
+  }
+  function textCell(c, field, ph, width) {
+    var i = bare(U.el('input', { value: c[field] || '', placeholder: ph || '', autocomplete: 'off',
+      style: 'width:' + (width || 110) + 'px;' }));
+    i.addEventListener('change', function () {
+      var v = i.value.trim();
+      if (v === (c[field] || '')) return;
+      patchCat(c.id, function (cat) { cat[field] = v; }, 'נשמר');
+    });
+    return i;
+  }
+  function monthCell(c, idx, n) {
+    var plan = monthlyPlanOf(c, n);
+    var i = bare(U.el('input', { value: Math.round(plan[idx]) || '', inputmode: 'numeric',
+      style: 'width:100%;text-align:center;font-weight:600;' }));
+    i.addEventListener('change', function () {
+      var v = i.value.trim() === '' ? 0 : U.num(i.value, 0);
+      patchCat(c.id, function (cat) {
+        var arr = monthlyPlanOf(cat, n);
+        arr[idx] = v;
+        cat.monthlyPlan = arr;
+      }, 'הפיזור החודשי עודכן');
+    });
+    return i;
+  }
+  function spreadEven(c, n) {
+    patchCat(c.id, function (cat) {
+      var even = U.num(cat.annualBudget, 0) / (n || 1), arr = [];
+      for (var i = 0; i < n; i++) arr.push(even);
+      cat.monthlyPlan = arr;
+    }, 'התקציב פוזר שווה בשווה');
+  }
+  // הוספת תת-קטגוריה לקטגוריה ראשית קיימת
+  function addSub(main) {
+    Modal.confirm({ title: 'תת-קטגוריה חדשה', text: 'להוסיף תת-קטגוריה תחת "' + main + '"?', okLabel: 'הוספה' }, function () {
+      Store.budgetPatch(function (st) {
+        if (!st.categories) st.categories = [];
+        st.categories.push({ id: 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+          main: main, sub: 'תת-קטגוריה חדשה', annualBudget: 0, owner: '', note: '' });
+      }).then(function () { U.toast('נוספה תת-קטגוריה — ערכו את השם'); App.render(); })
+        .catch(function (e) { U.toast('ההוספה נכשלה: ' + (e && e.message ? e.message : ''), 'error'); });
+    });
+  }
+
   // ---------- גיליון ניהול ----------
   function sheetView(view) {
     var cats = Store.budgetCategories();
@@ -115,6 +198,7 @@
         U.el('td', { text: main }),
         U.el('td', { text: ils(mB) }),
         U.el('td'),
+        U.el('td'),
         U.el('td', { text: ils(mA) }),
         U.el('td', { style: mB - mA < 0 ? 'color:#b91c1c;' : '', text: ils(mB - mA) }),
         U.el('td', null, progressBar(mA, mB, frac)),
@@ -125,15 +209,18 @@
         var a = actual[c.main + '||' + c.sub] || 0;
         var annual = U.num(c.annualBudget, 0);
         var open = !!openRows[c.id];
-        var nameCell = U.el('td', { style: 'padding-inline-start:18px;' }, [
-          U.el('button', { class: 'b-link', title: 'פיזור חודשי',
-            onclick: function () { openRows[c.id] = !open; App.render(); } },
-            [U.el('span', { class: 'b-chev', text: open ? '▾' : '▸' }), ' ', c.sub || ''])
-        ]);
+        var nameCell = U.el('td', { style: 'padding-inline-start:12px;' },
+          U.el('div', { style: 'display:flex;align-items:center;gap:2px;' }, [
+            U.el('button', { class: 'b-chevbtn', title: 'פיזור חודשי',
+              onclick: function () { openRows[c.id] = !open; App.render(); } },
+              U.el('span', { class: 'b-chev', text: open ? '▾' : '▸' })),
+            textCell(c, 'sub', 'שם תת-קטגוריה', 150)
+          ]));
         body.push(U.el('tr', null, [
           nameCell,
-          U.el('td', { text: annual ? ils(annual) : '—' }),
-          U.el('td', { class: 'muted', text: c.owner || '' }),
+          U.el('td', null, moneyCell(c)),
+          U.el('td', null, textCell(c, 'owner', 'אחראי', 100)),
+          U.el('td', null, textCell(c, 'note', 'הערה', 140)),
           U.el('td', { text: a ? ils(a) : '—' }),
           U.el('td', { style: annual - a < 0 ? 'color:#b91c1c;font-weight:600;' : '', text: ils(annual - a) }),
           U.el('td', null, progressBar(a, annual, frac)),
@@ -146,21 +233,31 @@
             var act = am[ym] || 0;
             return U.el('div', { class: 'b-month' + (act > plan[i] && plan[i] > 0 ? ' over' : '') }, [
               U.el('div', { class: 'b-month-lbl', text: monthLabel(ym) }),
-              U.el('div', { class: 'b-month-plan', text: 'תוכנן ' + ils(plan[i]) }),
+              monthCell(c, i, months.length),
               U.el('div', { class: 'b-month-act', text: 'בפועל ' + ils(act) })
             ]);
           }));
-          body.push(U.el('tr', null, U.el('td', { colspan: '7' }, [
-            U.el('div', { class: 'muted', style: 'font-size:12px;margin-bottom:6px;',
-              text: 'פיזור חודשי — ' + c.sub + (c.note ? ' · ' + c.note : '') }),
+          body.push(U.el('tr', null, U.el('td', { colspan: '8' }, [
+            U.el('div', { style: 'display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;' }, [
+              U.el('span', { class: 'muted', style: 'font-size:12px;', text: 'פיזור חודשי — ' + c.sub + ' · המספר בכל חודש הוא התכנון, מתחתיו הביצוע בפועל' }),
+              U.el('span', { class: 'spacer' }),
+              U.el('button', { class: 'btn secondary small', text: 'פזר שווה',
+                title: 'חלוקת התקציב השנתי שווה בשווה בין החודשים',
+                onclick: function () { spreadEven(c, months.length); } })
+            ]),
             grid
           ])));
         }
       });
+      body.push(U.el('tr', { class: 'b-add' }, U.el('td', { colspan: '8' },
+        U.el('button', { class: 'b-link', style: 'font-size:13px;color:var(--brand);padding-inline-start:12px;',
+          html: U.ICO.plus + ' תת-קטגוריה ל"' + main + '"',
+          onclick: function () { addSub(main); } }))));
     });
     body.push(U.el('tr', { class: 'b-grand' }, [
       U.el('td', { text: 'סה"כ כללי' }),
       U.el('td', { text: ils(gB) }),
+      U.el('td'),
       U.el('td'),
       U.el('td', { text: ils(gA) }),
       U.el('td', { style: gB - gA < 0 ? 'color:#b91c1c;' : '', text: ils(gB - gA) }),
@@ -169,12 +266,13 @@
     ]));
 
     view.appendChild(U.el('div', { class: 'tbl-scroll' }, [U.el('table', { class: 'grid b-sheet' }, [
-      U.el('thead', null, U.el('tr', null, ['קטגוריה', 'תקציב שנתי', 'אחראי', 'נוצל', 'יתרה', 'ניצול מול קצב השנה', 'תחזית לסוף השנה']
+      U.el('thead', null, U.el('tr', null, ['קטגוריה', 'תקציב שנתי', 'אחראי', 'הערות', 'נוצל', 'יתרה', 'ניצול מול קצב השנה', 'תחזית לסוף השנה']
         .map(function (h) { return U.el('th', { text: h }); }))),
       U.el('tbody', null, body)
     ])]));
     view.appendChild(U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:6px;',
-      text: 'לחיצה על שם קטגוריה פותחת את הפיזור החודשי · הסמן בפס מציין כמה מהשנה חלף (' + pct(frac) + ') — פס שעבר אותו הוא קצב חריג.' }));
+      text: 'אפשר לערוך כאן שם, תקציב שנתי, אחראי, הערה ופיזור חודשי — השינוי נשמר ישירות בנתוני התקציב ומופיע גם אצל המזכירה. ' +
+            'הסמן בפס מציין כמה מהשנה חלף (' + pct(frac) + ') — פס שעבר אותו הוא קצב חריג.' }));
   }
 
   // ---------- תקציב מול ביצוע ----------
