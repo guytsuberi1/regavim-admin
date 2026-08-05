@@ -1093,3 +1093,42 @@ tr.row-drop-before td { box-shadow: inset 0 2px 0 var(--brand); }
 .mil-tbl td.mil-sum { font-weight: 600; color: var(--brand-dark); width: 58px; }
 .mil-foot { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 15px; font-weight: 600; }
 body.dark .mil-tbl tr.mil-duty td { background: #16233a; }
+
+/* ===== ניהול תקציב ===== */
+.b-sheet td, .b-sheet th { vertical-align: middle; }
+tr.b-main td { background: var(--brand-light); font-weight: 700; }
+tr.b-grand td { background: var(--bg); font-weight: 700; border-top: 2px solid var(--border); }
+.b-link {
+  background: none; border: 0; padding: 0; cursor: pointer; font: inherit;
+  font-weight: 500; color: var(--text); text-align: right;
+}
+.b-link:hover { color: var(--brand); }
+.b-chev { color: var(--muted); font-size: 11px; }
+/* פס ניצול עם סמן "איפה היינו אמורים להיות" */
+.bpb { position: relative; height: 16px; min-width: 120px; border-radius: 999px; background: var(--border); overflow: hidden; }
+.bpb-fill { height: 100%; border-radius: 999px; }
+.bpb.pb-green .bpb-fill { background: #16a34a; }
+.bpb.pb-orange .bpb-fill { background: #d97706; }
+.bpb.pb-red .bpb-fill { background: #dc2626; }
+.bpb-marker { position: absolute; top: -2px; width: 2px; height: 20px; background: var(--text); opacity: .55; }
+.bpb-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+/* פיזור חודשי */
+.b-months { display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); }
+.b-month { border: 1px solid var(--border); border-radius: var(--r-s, 4px); padding: 6px 8px; font-size: 12px; }
+.b-month.over { border-color: #dc2626; background: #fef2f2; }
+body.dark .b-month.over { background: #3a1f22; }
+.b-month-lbl { font-weight: 600; margin-bottom: 2px; }
+.b-month-plan { color: var(--muted); }
+.b-month-act { font-weight: 600; }
+/* גרף תוכנן מול בפועל */
+.b-chart { display: flex; gap: 6px; align-items: flex-end; height: 170px; overflow-x: auto; padding-bottom: 4px; }
+.b-bar-col { flex: 1 1 42px; min-width: 42px; display: flex; flex-direction: column; align-items: center; height: 100%; }
+.b-bars { flex: 1; display: flex; align-items: flex-end; gap: 3px; width: 100%; }
+.b-bar { flex: 1; border-radius: 3px 3px 0 0; min-height: 2px; }
+.b-bar.plan { background: #94a3b8; }
+.b-bar.act { background: var(--brand); }
+.b-bar.act.over { background: #dc2626; }
+.b-bar-lbl { font-size: 10px; color: var(--muted); margin-top: 4px; white-space: nowrap; }
+.b-key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; }
+.b-key.plan { background: #94a3b8; }
+.b-key.act { background: var(--brand); }

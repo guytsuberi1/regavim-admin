@@ -20,6 +20,7 @@
     pos: global.PosView,
     events: global.EventsView,
     kk: global.KkView,
+    budget: global.BudgetView,
     safety: global.SafetyView,
     base: global.BaseView,
     users: global.UsersView,
@@ -54,6 +55,9 @@
     { id: 'events', label: 'אירועים וטיולים', icon: 'events', subs: [
       { id: 'events', label: 'אירועים' }
     ] },
+    { id: 'budget', label: 'ניהול תקציב', icon: 'budget', subs: [
+      { id: 'budget', label: 'ניהול תקציב' }
+    ] },
     { id: 'kk', label: 'קולות קוראים', icon: 'kk', subs: [
       { id: 'kk', label: 'קולות קוראים' }
     ] },
@@ -76,9 +80,9 @@
 
   // הרשאות: admin רואה הכל; secretary רק מרכז למידה
   var ROLE_VIEWS = {
-    admin: ['dash', 'status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'kk', 'safety', 'base', 'users', 'settings'],
+    admin: ['dash', 'status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'budget', 'kk', 'safety', 'base', 'users', 'settings'],
     // הנהלה — כל הגיליונות למעט הגדרות ונתוני בסיס
-    manager: ['dash', 'status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'kk', 'safety'],
+    manager: ['dash', 'status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'budget', 'kk', 'safety'],
     secretary: ['lc']
   };
   function roleKey() { return Store.currentRole(); }

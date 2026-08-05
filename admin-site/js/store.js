@@ -968,6 +968,81 @@
     return (st && st.fiscalYear) || { start: '', end: '' };
   }
 
+  // ---------- ניהול תקציב: קריאה מלאה מאפליקציית התקציב ----------
+  // אותה שורת app_state; כאן היא נקראת כמקור אמת מלא ולא רק לקולות קוראים.
+  function budgetCategories() {
+    var st = budgetState();
+    return (st && st.categories) ? st.categories.slice() : [];
+  }
+  function budgetTransactions() {
+    var st = budgetState();
+    if (!st || !st.transactions) return [];
+    return st.transactions.map(function (t) {
+      return {
+        id: t.id, kind: t.kind || 'invoice', date: t.date || '',
+        main: t.main || '', sub: t.sub || '', amount: knum(t.amount),
+        supplier: t.supplier || '', employee: t.employee || '',
+        payee: (t.kind === 'reimburse') ? (t.employee || '') : (t.supplier || ''),
+        invoiceNo: t.invoiceNo || '', description: t.description || t.purpose || '',
+        docType: t.docType || '', method: t.method || ''
+      };
+    });
+  }
+  // חודשי שנת הכספים (1/9–31/8) לפי ההגדרה באפליקציית התקציב
+  function budgetFyMonths() {
+    var fy = budgetFiscalYear();
+    if (!fy.start || !fy.end) return [];
+    var s = new Date(fy.start), e = new Date(fy.end), out = [];
+    var d = new Date(s.getFullYear(), s.getMonth(), 1);
+    var end = new Date(e.getFullYear(), e.getMonth(), 1);
+    for (var g = 0; d < end && g < 60; g++) {
+      out.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
+      d.setMonth(d.getMonth() + 1);
+    }
+    return out;
+  }
+  // איזה חלק משנת הכספים כבר חלף (0..1) — לחישוב קצב ותחזית
+  function budgetFyFraction() {
+    var fy = budgetFiscalYear();
+    if (!fy.start || !fy.end) return 0;
+    var s = new Date(fy.start), e = new Date(fy.end), now = new Date();
+    if (now <= s) return 0;
+    if (now >= e) return 1;
+    return (now - s) / (e - s);
+  }
+  // עדכון בזמן אמת — המזכירה מזינה חשבונית והמסך כאן מתעדכן
+  var budgetChannel = null;
+  function budgetSubscribe(onChange) {
+    if (!sb || budgetChannel) return;
+    budgetChannel = sb.channel('admin_budget_rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: BUDGET_TABLE, filter: 'id=eq.main' },
+        function (payload) {
+          var incoming = payload && payload.new && payload.new.data;
+          if (!incoming) return;
+          budgetCache = { at: Date.now(), state: incoming };
+          if (onChange) onChange();
+        })
+      .subscribe();
+  }
+  // כתיבה בטוחה: קוראים את המצב העדכני, משנים רק את מה שצריך, וכותבים בחזרה.
+  // בלי זה כתיבה מכאן עלולה לדרוס חשבונית שהמזכירה הזינה שנייה קודם.
+  function budgetPatch(mutate) {
+    if (!sb) return Promise.reject(new Error('נדרשת התחברות לענן'));
+    return sb.from(BUDGET_TABLE).select('data').eq('id', 'main').maybeSingle().then(function (res) {
+      if (res.error) throw new Error(res.error.message);
+      var st = (res.data && res.data.data) || null;
+      if (!st) throw new Error('לא נמצאו נתוני תקציב');
+      var changed = mutate(st);
+      if (changed === false) return st;
+      return sb.from(BUDGET_TABLE).upsert({ id: 'main', data: st, updated_at: new Date().toISOString() })
+        .then(function (r2) {
+          if (r2.error) throw new Error(r2.error.message);
+          budgetCache = { at: Date.now(), state: st };
+          return st;
+        });
+    });
+  }
+
   // חשבוניות ששויכו לקול קורא מסוים — לפי ההכרעה שלי, ואם אין — לפי הסיווג של המזכירה
   function kkInvoicesFor(rec) {
     var dec = kkInvoiceDecisions();
@@ -1560,6 +1635,12 @@
     budgetKkSubs: budgetKkSubs,
     budgetKkInvoices: budgetKkInvoices,
     budgetFiscalYear: budgetFiscalYear,
+    budgetCategories: budgetCategories,
+    budgetTransactions: budgetTransactions,
+    budgetFyMonths: budgetFyMonths,
+    budgetFyFraction: budgetFyFraction,
+    budgetSubscribe: budgetSubscribe,
+    budgetPatch: budgetPatch,
     budgetLoadError: budgetLoadError,
     approvalFileUrl: approvalFileUrl,
     uploadApproval: uploadApproval,
