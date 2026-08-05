@@ -353,8 +353,9 @@
 
     var st = Store.budgetState();
     var fy = Store.budgetFiscalYear();
+    var TITLES = { sheet: 'ניהול תקציב', dash: 'תקציב מול ביצוע', search: 'חיפוש חכם' };
     view.appendChild(U.el('div', { class: 'page-head' }, [
-      U.el('h2', { text: 'ניהול תקציב' }),
+      U.el('h2', { text: TITLES[subTab] || 'ניהול תקציב' }),
       fy.start ? U.el('span', { class: 'tag', text: 'שנת כספים ' + U.gregLabel(fy.start) + '/' + fy.start.slice(0, 4) + ' – ' + U.gregLabel(fy.end) + '/' + fy.end.slice(0, 4) }) : null,
       U.el('span', { class: 'spacer' }),
       U.el('button', { class: 'btn secondary', html: U.ICO.refresh + ' רענון', onclick: function () {
@@ -370,15 +371,6 @@
       ]));
       return;
     }
-
-    view.appendChild(U.el('div', { class: 'subtabs' }, [
-      U.el('button', { class: subTab === 'sheet' ? 'active' : '', html: U.ICO.table + ' גיליון ניהול',
-        onclick: function () { subTab = 'sheet'; App.render(); } }),
-      U.el('button', { class: subTab === 'dash' ? 'active' : '', text: 'תקציב מול ביצוע',
-        onclick: function () { subTab = 'dash'; App.render(); } }),
-      U.el('button', { class: subTab === 'search' ? 'active' : '', html: U.ICO.search + ' חיפוש חכם',
-        onclick: function () { subTab = 'search'; App.render(); } })
-    ]));
 
     if (subTab === 'sheet') {
       var mains = mainOrder();
@@ -396,5 +388,11 @@
       text: 'הנתונים מגיעים בזמן אמת מאפליקציית ניהול התקציב. הזנת חשבוניות נעשית שם, על ידי המזכירות.' }));
   }
 
-  global.BudgetView = { render: render };
+  // שלושה מסכים = שלושה תת-טאבים של הגיליון (הניווט מנוהל ב-app.js)
+  function viewFor(mode) {
+    return { render: function (view) { subTab = mode; render(view); } };
+  }
+  global.BudgetView = viewFor('sheet');
+  global.BudgetDashView = viewFor('dash');
+  global.BudgetSearchView = viewFor('search');
 })(window);
