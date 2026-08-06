@@ -6,6 +6,7 @@
   var U = global.U;
 
   var subTab = 'sheet';                 // 'sheet' | 'dash' | 'search'
+  var fyKey = null;                     // שנת הכספים המוצגת (null = השנה הפעילה)
   var openRows = {};                    // פיזור חודשי פתוח לפי מזהה קטגוריה
   var mainFilter = '';
   var q = '', qMain = '', qFrom = '', qTo = '', qKind = '';
@@ -20,10 +21,50 @@
     return ['ינו', 'פבר', 'מרץ', 'אפר', 'מאי', 'יונ', 'יול', 'אוג', 'ספט', 'אוק', 'נוב', 'דצמ'][parseInt(p[1], 10) - 1] + ' ' + p[0].slice(2);
   }
 
-  // ---------- חישובים (זהים לאפליקציית התקציב) ----------
+  // ---------- שנת הכספים המוצגת ----------
+  // "נוצל" נספר רק מתנועות שבתוך השנה — אחרת ב-1/9 כל הקטגוריות נשארות בחריגה
+  // כי הן ממשיכות לספור את החשבוניות של השנה שעברה.
+  function fy() {
+    var years = Store.budgetFyYears ? Store.budgetFyYears() : [];
+    if (fyKey) {
+      var hit = years.filter(function (y) { return String(y.year) === String(fyKey); })[0];
+      if (hit) return hit;
+    }
+    return Store.budgetCurrentFy ? Store.budgetCurrentFy() : { start: '', end: '', label: '' };
+  }
+  function inFy(dateISO) {
+    var f = fy(), d = String(dateISO || '');
+    if (!f.start || !d) return true;
+    return d >= f.start && d <= f.end;
+  }
+  function fyTransactions() {
+    return Store.budgetTransactions().filter(function (t) { return inFy(t.date); });
+  }
+  function fyMonths() {
+    var f = fy();
+    if (!f.start) return [];
+    var out = [], y = parseInt(f.start.slice(0, 4), 10);
+    for (var i = 0; i < 12; i++) {
+      var mm = 9 + i, yy = y;
+      if (mm > 12) { mm -= 12; yy = y + 1; }
+      out.push(yy + '-' + String(mm).padStart(2, '0'));
+    }
+    return out;
+  }
+  // כמה מהשנה המוצגת חלף: שנה שהסתיימה = 1, שנה עתידית = 0
+  function fyFraction() {
+    var f = fy();
+    if (!f.start) return 0;
+    var s0 = new Date(f.start), e0 = new Date(f.end), now = new Date();
+    if (now <= s0) return 0;
+    if (now >= e0) return 1;
+    return (now - s0) / (e0 - s0);
+  }
+
+  // ---------- חישובים (מסוננים לשנת הכספים המוצגת) ----------
   function actualBySub() {
     var m = {};
-    Store.budgetTransactions().forEach(function (t) {
+    fyTransactions().forEach(function (t) {
       var k = t.main + '||' + t.sub;
       m[k] = (m[k] || 0) + t.amount;
     });
@@ -31,7 +72,7 @@
   }
   function actualByMonthSub() {
     var m = {};
-    Store.budgetTransactions().forEach(function (t) {
+    fyTransactions().forEach(function (t) {
       var k = t.main + '||' + t.sub, ym = String(t.date).slice(0, 7);
       if (!m[k]) m[k] = {};
       m[k][ym] = (m[k][ym] || 0) + t.amount;
@@ -180,7 +221,7 @@
   function sheetView(view) {
     var cats = Store.budgetCategories();
     if (!cats.length) { view.appendChild(U.el('div', { class: 'empty' }, 'לא נטענו קטגוריות מאפליקציית התקציב.')); return; }
-    var frac = Store.budgetFyFraction(), actual = actualBySub(), months = Store.budgetFyMonths();
+    var frac = fyFraction(), actual = actualBySub(), months = fyMonths();
     var amSub = actualByMonthSub();
     var mains = mainOrder().filter(function (m) { return !mainFilter || m === mainFilter; });
 
@@ -306,7 +347,7 @@
   // ---------- תקציב מול ביצוע (הורד מהניווט לבקשת גיא — נשמר למקרה שנחזיר) ----------
   function dashView(view) {
     var cats = Store.budgetCategories();
-    var frac = Store.budgetFyFraction(), actual = actualBySub(), months = Store.budgetFyMonths();
+    var frac = fyFraction(), actual = actualBySub(), months = fyMonths();
     var amSub = actualByMonthSub();
 
     var rows = mainOrder().map(function (main) {
@@ -360,7 +401,7 @@
 
   // ---------- חיפוש חכם: חשבוניות · ספקים · עובדים במקום אחד ----------
   function searchView(view) {
-    var all = Store.budgetTransactions();
+    var all = fyTransactions();
     var mains = mainOrder();
 
     var qi = U.el('input', { value: q, placeholder: 'חיפוש חופשי — ספק, עובד, מס׳ חשבונית, תיאור…', style: 'flex:2;min-width:200px;' });
@@ -478,11 +519,18 @@
     }
 
     var st = Store.budgetState();
-    var fy = Store.budgetFiscalYear();
     var TITLES = { sheet: 'ניהול תקציב', dash: 'תקציב מול ביצוע', search: 'חיפוש חכם' };
+    var years = Store.budgetFyYears ? Store.budgetFyYears() : [];
+    var cur = fy();
+    var ySel = U.el('select', { style: 'max-width:150px;', title: 'שנת כספים (1/9–31/8)' },
+      years.map(function (y) { return U.el('option', { value: String(y.year), text: 'שנת ' + y.label }); }));
+    ySel.value = String(cur.year);
+    ySel.addEventListener('change', function () { fyKey = ySel.value; App.render(); });
     view.appendChild(U.el('div', { class: 'page-head' }, [
       U.el('h2', { text: TITLES[subTab] || 'ניהול תקציב' }),
-      fy.start ? U.el('span', { class: 'tag', text: 'שנת כספים ' + U.gregLabel(fy.start) + '/' + fy.start.slice(0, 4) + ' – ' + U.gregLabel(fy.end) + '/' + fy.end.slice(0, 4) }) : null,
+      years.length ? ySel : null,
+      (String(cur.year) !== String((Store.budgetCurrentFy ? Store.budgetCurrentFy() : {}).year))
+        ? U.el('span', { class: 'tag', style: 'background:#fef3c7;color:#92400e;', text: 'שנה קודמת — לצפייה' }) : null,
       U.el('span', { class: 'spacer' }),
       U.el('button', { class: 'btn secondary', html: U.ICO.refresh + ' רענון', onclick: function () {
         Store.budgetLoad(true).then(function () { U.toast('הנתונים רועננו'); App.render(); });
