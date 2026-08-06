@@ -471,13 +471,18 @@
     }
 
     if (subTab === 'sheet') {
+      // בורר אחד במקום שורת צ'יפים — יש עשרות קטגוריות ראשיות
       var mains = mainOrder();
-      var chips = U.el('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center;' },
-        [U.el('span', { class: 'muted', style: 'font-size:12px;', text: 'קטגוריה:' })].concat(mains.map(function (m) {
-          return U.el('button', { class: 'tag', style: 'cursor:pointer;' + (mainFilter === m ? 'background:var(--brand);color:#fff;' : ''),
-            text: m, onclick: function () { mainFilter = mainFilter === m ? '' : m; App.render(); } });
-        })));
-      view.appendChild(chips);
+      var sel = U.el('select', { style: 'max-width:260px;' },
+        [U.el('option', { value: '', text: 'כל הקטגוריות (' + mains.length + ')' })]
+          .concat(mains.map(function (m) { return U.el('option', { value: m, text: m }); })));
+      sel.value = mainFilter;
+      sel.addEventListener('change', function () { mainFilter = sel.value; App.render(); });
+      view.appendChild(U.el('div', { style: 'display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;' }, [
+        U.el('span', { class: 'muted', style: 'font-size:13px;', text: 'קטגוריה:' }), sel,
+        mainFilter ? U.el('button', { class: 'btn secondary small', text: 'ניקוי',
+          onclick: function () { mainFilter = ''; App.render(); } }) : null
+      ].filter(Boolean)));
       sheetView(view);
     } else if (subTab === 'dash') dashView(view);
     else searchView(view);

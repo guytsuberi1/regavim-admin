@@ -34,6 +34,12 @@
     { id: 'dash', label: 'דשבורד', icon: 'dash', subs: [
       { id: 'dash', label: 'דשבורד' }
     ] },
+    { id: 'budget', label: 'ניהול תקציב', icon: 'budget', subs: [
+      { id: 'budget', label: 'גיליון ניהול' },
+      { id: 'bdash', label: 'תקציב מול ביצוע' },
+      { id: 'bsearch', label: 'חיפוש חכם' },
+      { id: 'kk', label: 'קולות קוראים' }
+    ] },
     { id: 'payroll', label: 'דוחות שכר', icon: 'payroll', subs: [
       { id: 'status', label: 'לוח שכר' },
       { id: 'queue', label: 'תור אישורים' },
@@ -56,12 +62,6 @@
     ] },
     { id: 'events', label: 'אירועים וטיולים', icon: 'events', subs: [
       { id: 'events', label: 'אירועים' }
-    ] },
-    { id: 'budget', label: 'ניהול תקציב', icon: 'budget', subs: [
-      { id: 'budget', label: 'גיליון ניהול' },
-      { id: 'bdash', label: 'תקציב מול ביצוע' },
-      { id: 'bsearch', label: 'חיפוש חכם' },
-      { id: 'kk', label: 'קולות קוראים' }
     ] },
     { id: 'safety', label: 'בטיחות ורישוי', icon: 'safety', subs: [
       { id: 'safety', label: 'בטיחות ורישוי' }
