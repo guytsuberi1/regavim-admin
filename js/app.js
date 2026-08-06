@@ -36,7 +36,6 @@
     ] },
     { id: 'budget', label: 'ניהול תקציב', icon: 'budget', subs: [
       { id: 'budget', label: 'גיליון ניהול' },
-      { id: 'bdash', label: 'תקציב מול ביצוע' },
       { id: 'bsearch', label: 'חיפוש חכם' },
       { id: 'kk', label: 'קולות קוראים' }
     ] },
@@ -82,9 +81,9 @@
 
   // הרשאות: admin רואה הכל; secretary רק מרכז למידה
   var ROLE_VIEWS = {
-    admin: ['dash', 'status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'budget', 'bdash', 'bsearch', 'kk', 'safety', 'base', 'users', 'settings'],
+    admin: ['dash', 'status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'budget', 'bsearch', 'kk', 'safety', 'base', 'users', 'settings'],
     // הנהלה — כל הגיליונות למעט הגדרות ונתוני בסיס
-    manager: ['dash', 'status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'budget', 'bdash', 'bsearch', 'kk', 'safety'],
+    manager: ['dash', 'status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'budget', 'bsearch', 'kk', 'safety'],
     secretary: ['lc']
   };
   function roleKey() { return Store.currentRole(); }
