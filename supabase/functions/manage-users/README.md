@@ -26,13 +26,16 @@ supabase functions deploy manage-users
 או דרך הדשבורד: Edge Functions → Deploy a new function → שם `manage-users` → להדביק את
 תוכן `index.ts` → Deploy.
 
-## Secrets נדרשים
-| Secret | חובה? | הערה |
+## Secrets
+שלושת המפתחות שהפונקציה צריכה הם **Default secrets** של Supabase ("Reserved secrets available
+in every project") ומוזרקים אוטומטית לכל פונקציה — **אין מה להגדיר ידנית**:
+
+| Secret | מצב | הערה |
 |---|---|---|
-| `SUPABASE_URL` | אוטומטי | מוזרק על ידי Supabase |
-| `SUPABASE_ANON_KEY` | אוטומטי | מוזרק על ידי Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | **כן** | Settings → API → service_role. בלעדיו מוחזר `missing service role key` |
-| `ADMIN_EMAILS` | לא | מיילים מופרדים בפסיקים. אם לא מוגדר — נופלים ל-`FALLBACK_ADMINS` שבקוד |
+| `SUPABASE_URL` | מוזרק אוטומטית | — |
+| `SUPABASE_ANON_KEY` | מוזרק אוטומטית | מסומן `DEPRECATED` אצל Supabase אך פעיל |
+| `SUPABASE_SERVICE_ROLE_KEY` | מוזרק אוטומטית | מסומן `DEPRECATED` אצל Supabase אך פעיל |
+| `ADMIN_EMAILS` | רשות | מיילים מופרדים בפסיקים. אם לא מוגדר — נופלים ל-`FALLBACK_ADMINS` שבקוד |
 
 ## CORS
 `ALLOWED_ORIGINS` בקוד חייב להכיל את כתובת האתר שקורא לפונקציה. כרגע:
@@ -43,7 +46,7 @@ supabase functions deploy manage-users
 | מה רואים במסך ההרשאות | המשמעות |
 |---|---|
 | `Failed to send a request to the Edge Function` | הפונקציה לא פרוסה בכלל, או ה-Origin נחסם ב-CORS |
-| `missing service role key` | הפונקציה פרוסה אבל חסר ה-secret |
+| `missing service role key` | נדיר — המפתח מוזרק אוטומטית; אם קרה, להוסיף אותו ידנית כ-Secret |
 | `forbidden — admins only` | הפונקציה עובדת; המייל המחובר אינו ברשימת האדמינים |
 
 קביעת ההרשאות בטבלה **אינה** תלויה בפונקציה וממשיכה לעבוד גם כשהיא לא זמינה —
