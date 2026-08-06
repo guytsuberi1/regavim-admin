@@ -212,7 +212,14 @@
     }
 
     var pending = subs.filter(function (s) { return s.status === 'pending'; });
-    var handled = subs.filter(function (s) { return s.status !== 'pending'; });
+    // "דיווחים שטופלו" = רק של החודש הנוכחי — אחרת הרשימה מצטברת בלי סוף.
+    // הנפילה לתאריך הדיווח היא לרשומות ישנות שנטפלו לפני שנשמר handled_at.
+    var thisMonth = App.currentMonth();
+    var handled = subs.filter(function (s) {
+      if (s.status === 'pending') return false;
+      var when = String(s.handled_at || s.created_at || '');
+      return when.slice(0, 7) === thisMonth;
+    });
 
     if (!pending.length) {
       view.appendChild(U.el('div', { class: 'empty' }, 'אין דיווחים שממתינים לאישור'));
@@ -223,11 +230,16 @@
     if (handled.length) {
       var toggle = U.el('button', {
         class: 'btn secondary', style: 'margin-top:8px;',
-        text: (showHandled ? 'הסתרת' : 'הצגת') + ' דיווחים שטופלו (' + handled.length + ')',
+        text: (showHandled ? 'הסתרת' : 'הצגת') + ' דיווחים שטופלו החודש (' + handled.length + ')',
+        title: 'מוצגים רק דיווחים שטופלו בחודש ' + U.monthLabel(thisMonth),
         onclick: function () { showHandled = !showHandled; App.render(); }
       });
       view.appendChild(toggle);
-      if (showHandled) handled.slice(0, 50).forEach(function (s) { view.appendChild(card(s)); });
+      if (showHandled) {
+        view.appendChild(U.el('div', { class: 'muted', style: 'font-size:12px;margin:8px 0 4px;',
+          text: 'דיווחים שטופלו בחודש ' + U.monthLabel(thisMonth) + ' · לחודש אחר — החליפו חודש בלוח השכר.' }));
+        handled.slice(0, 50).forEach(function (s) { view.appendChild(card(s)); });
+      }
     }
   }
 

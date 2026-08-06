@@ -41,6 +41,13 @@
             'נחשון טכנולוגיה', 'עמיאל דהן', 'עדי תקשורת', 'ש.א.ג', 'מישה רואה'];
   }
 
+  // מרשם הספקים בנתוני בסיס — נזרע משמות הקבלנים, ומכאן נערך כטבלה מלאה
+  function defaultSuppliers() {
+    return defaultContractors().map(function (n) {
+      return { id: uid(), name: n, field: '', phone: '', email: '', taxId: '', note: '' };
+    });
+  }
+
   // ---------- ברירות מחדל: תכנון אירועים וטיולים ----------
   // תפקידים קבועים בתפעול אירוע — ממופים לעובד מהמצבת (בהגדרות). empId ריק עד שממפים.
   function defaultEventRoles() {
@@ -102,6 +109,7 @@
         taskDomains: defaultTaskDomains(),
         taskOwners: defaultTaskOwners(),
         contractors: defaultContractors(),
+        suppliers: defaultSuppliers(),   // מרשם הספקים המלא (נתוני בסיס)
         eventRoles: defaultEventRoles(),
         taskCatalog: defaultTaskCatalog(),
         eventTypes: defaultEventTypes(),
@@ -177,6 +185,12 @@
     if (!core.settings.taskCatalog || !core.settings.taskCatalog.length) core.settings.taskCatalog = defaultTaskCatalog();
     if (!core.settings.eventTypes || !core.settings.eventTypes.length) core.settings.eventTypes = defaultEventTypes();
     if (!Array.isArray(core.settings.classes)) core.settings.classes = [];
+    // ספקים — מרשם מלא בנתוני בסיס; נזרע פעם אחת משמות הקבלנים הקיימים כדי לא להתחיל מריק
+    if (!Array.isArray(core.settings.suppliers)) {
+      core.settings.suppliers = (core.settings.contractors || []).map(function (n) {
+        return { id: uid(), name: n, field: '', phone: '', email: '', taxId: '', note: '' };
+      });
+    }
     if (!core.settings.consentText) core.settings.consentText = defaultConsentText();
     if (!Array.isArray(core.settings.taskColumns)) core.settings.taskColumns = [];
     return core;
@@ -1010,6 +1024,21 @@
     if (now >= e) return 1;
     return (now - s) / (e - s);
   }
+  // קטגוריות של שנת כספים מסוימת.
+  // המודל: state.categories = הקטגוריות של השנה הפעילה (מה שאפליקציית התקציב עובדת איתו),
+  // ו-state.fyCats[<שנה>] = צילום הקטגוריות של כל שנה אחרת. שינוי בשנה אחת לא נוגע באחרת.
+  function budgetCategoriesFor(year) {
+    var st = budgetState();
+    if (!st) return [];
+    var active = budgetCurrentFy().year;
+    if (String(year) === String(active)) return (st.categories || []).slice();
+    var map = st.fyCats || {};
+    return (map[year] || []).slice();
+  }
+  function budgetIsActiveFy(year) {
+    return String(year) === String(budgetCurrentFy().year);
+  }
+
   // רשימת שנות הכספים שיש להן נתונים — נגזרת מתאריכי התנועות (שנה מתחילה ב-1/9)
   function budgetFyOf(dateISO) {
     var d = String(dateISO || '');
@@ -1023,6 +1052,8 @@
       var y = budgetFyOf(t.date);
       if (y) set[y] = 1;
     });
+    var st = budgetState();
+    if (st && st.fyCats) Object.keys(st.fyCats).forEach(function (y) { if (y) set[y] = 1; });
     var cur = budgetFyOf(budgetFiscalYear().start) || budgetFyOf(new Date().toISOString().slice(0, 10));
     if (cur) set[cur] = 1;
     return Object.keys(set).map(Number).sort(function (a, b) { return b - a; })
@@ -1667,6 +1698,8 @@
     budgetFyMonths: budgetFyMonths,
     budgetFyFraction: budgetFyFraction,
     budgetFyYears: budgetFyYears,
+    budgetCategoriesFor: budgetCategoriesFor,
+    budgetIsActiveFy: budgetIsActiveFy,
     budgetCurrentFy: budgetCurrentFy,
     budgetSubscribe: budgetSubscribe,
     budgetPatch: budgetPatch,

@@ -98,6 +98,35 @@
     return months[parseInt(p[1], 10) - 1] + ' ' + p[0];
   }
 
+  // ---------- שדה סכום עם פסיקים ----------
+  // מציג 2,202,709 כשלא בעריכה; בפוקוס חוזר למספר נקי כדי שיהיה נוח להקליד.
+  function fmtNum(n) {
+    var v = parseFloat(n);
+    if (isNaN(v)) return '';
+    return new Intl.NumberFormat('he-IL', { maximumFractionDigits: 2 }).format(v);
+  }
+  function parseNum(str) {
+    var v = parseFloat(String(str == null ? '' : str).replace(/[^\d.\-]/g, ''));
+    return isNaN(v) ? 0 : v;
+  }
+  // opts: { value, placeholder, style, onSave(num), empty (מותר ריק) }
+  function moneyInput(opts) {
+    opts = opts || {};
+    var raw = (opts.value === '' || opts.value == null) ? '' : parseNum(opts.value);
+    var i = el('input', { value: raw === '' ? '' : fmtNum(raw), placeholder: opts.placeholder || '',
+      inputmode: 'decimal', autocomplete: 'off', style: opts.style || '' });
+    i.addEventListener('focus', function () { i.value = raw === '' ? '' : String(raw); i.select(); });
+    i.addEventListener('blur', function () { i.value = raw === '' ? '' : fmtNum(raw); });
+    i.addEventListener('change', function () {
+      var t = i.value.trim();
+      if (t === '' && opts.empty !== false) { raw = ''; if (opts.onSave) opts.onSave(''); return; }
+      raw = parseNum(t);
+      i.value = String(raw);
+      if (opts.onSave) opts.onSave(raw);
+    });
+    return i;
+  }
+
   // ---------- תגיות עובד צבעוניות (משותף למצבת ולוח השבועי) ----------
   var TAG_CLASS = { 'מורה': 'tg-a', 'פנימיה': 'tg-b', 'מנהלה': 'tg-c', 'מתגבר': 'tg-d' };
   function tagClass(name) { return TAG_CLASS[name] || 'tg-x'; }
@@ -484,6 +513,7 @@
     num: num, WA_SVG: WA_SVG, XLS_SVG: XLS_SVG,
     toast: toast, dateChip: dateChip, actionMenu: actionMenu, openPicker: openPicker,
     tagChip: tagChip, tagClass: tagClass,
+    fmtNum: fmtNum, parseNum: parseNum, moneyInput: moneyInput,
     trendChart: trendChart, waNumber: waNumber
   };
 })(window);

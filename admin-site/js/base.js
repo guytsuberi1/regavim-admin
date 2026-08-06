@@ -1,6 +1,8 @@
-/* base.js — גיליון "נתוני בסיס": טבלת תלמידים אחת (שם · כיתה · הערות).
-   הכיתות נגזרות מהטבלה — כל שם כיתה שמופיע אצל תלמיד הוא כיתה קיימת.
-   באחסון נשמר המבנה ההיסטורי settings.classes=[{name,students[]}] כדי שאישורי ההורים ימשיכו לעבוד. */
+/* base.js — גיליון "נתוני בסיס": שני מרשמים עצמאיים —
+   תלמידים (שם · כיתה · הערות) וספקים (שם · תחום · טלפון · אימייל · ח.פ · הערות).
+   הכיתות נגזרות מטבלת התלמידים — כל שם כיתה שמופיע אצל תלמיד הוא כיתה קיימת.
+   באחסון נשמר המבנה ההיסטורי settings.classes=[{name,students[]}] כדי שאישורי ההורים ימשיכו לעבוד.
+   לכל טבלה ייבוא אקסל וקובץ לדוגמה משלה. */
 (function (global) {
   'use strict';
   var U = global.U;
@@ -66,23 +68,18 @@
     return el;
   }
 
-  // ---------- אקסל ----------
-  var SAMPLE = [['שם מלא', 'כיתה', 'הערות'],
-    ['ישראל ישראלי', 'ט1', ''],
-    ['משה כהן', 'ט1', 'אלרגיה לבוטנים'],
-    ['דוד לוי', 'י2', '']];
-
-  function downloadSample() {
+  // ---------- אקסל: תשתית משותפת, מרשם נפרד לכל טבלה ----------
+  function saveXlsx(aoa, cols, sheetName, fileName) {
     try {
       var wb = XLSX.utils.book_new();
-      var ws = XLSX.utils.aoa_to_sheet(SAMPLE);
-      ws['!cols'] = [{ wch: 24 }, { wch: 10 }, { wch: 30 }];
-      XLSX.utils.book_append_sheet(wb, ws, 'תלמידים');
-      XLSX.writeFile(wb, 'תלמידים-לדוגמה.xlsx');
+      var ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = cols.map(function (w) { return { wch: w }; });
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      XLSX.writeFile(wb, fileName);
     } catch (e) { U.toast('יצירת הקובץ נכשלה: ' + e.message, 'error'); }
   }
-
-  function importExcel(file) {
+  // קריאת הגיליון המלא ביותר בקובץ + איתור שורת הכותרת לפי מפת ביטויים
+  function readSheet(file, matchers, requiredKey, onRows) {
     var reader = new FileReader();
     reader.onload = function () {
       try {
@@ -96,36 +93,17 @@
         });
         if (!rows.length) { U.toast('הקובץ ריק', 'error'); return; }
 
-        // שורת כותרת: מחפשים "שם" ו"כיתה" בעשר השורות הראשונות
         var head = -1, col = {};
         for (var i = 0; i < Math.min(rows.length, 10) && head === -1; i++) {
           var map = {};
           rows[i].forEach(function (h, ci) {
             h = String(h).trim();
-            if (/^שם/.test(h)) map.name = ci;
-            else if (/כיתה|שכבה/.test(h)) map.cls = ci;
-            else if (/הער/.test(h)) map.note = ci;
+            for (var key in matchers) { if (map[key] == null && matchers[key].test(h)) { map[key] = ci; return; } }
           });
-          if (map.name != null) { head = i; col = map; }
+          if (map[requiredKey] != null) { head = i; col = map; }
         }
-        if (head === -1) { U.toast('לא נמצאה עמודת "שם מלא" בקובץ', 'error'); return; }
-
-        var have = {};
-        flatRows().forEach(function (r) { have[r.st.name + '|' + (r.cls.name || '')] = true; });
-        var added = 0, skipped = 0;
-        for (var r2 = head + 1; r2 < rows.length; r2++) {
-          var row = rows[r2];
-          var nm = col.name != null ? String(row[col.name] || '').trim() : '';
-          if (!nm) continue;
-          var cl = col.cls != null ? String(row[col.cls] || '').trim() : '';
-          if (have[nm + '|' + cl]) { skipped++; continue; }
-          have[nm + '|' + cl] = true;
-          addStudent(nm, cl, col.note != null ? row[col.note] : '');
-          added++;
-        }
-        Store.saveClasses();
-        U.toast('יובאו ' + added + ' תלמידים' + (skipped ? ' · ' + skipped + ' דילוגים (כבר קיימים)' : ''));
-        App.render();
+        if (head === -1) { U.toast('לא נמצאה עמודת החובה בקובץ', 'error'); return; }
+        onRows(rows.slice(head + 1), col);
       } catch (e) {
         console.error(e);
         U.toast('שגיאה בקריאת הקובץ: ' + e.message, 'error');
@@ -133,12 +111,84 @@
     };
     reader.readAsArrayBuffer(file);
   }
-  function pickFile() {
+  function pickFile(handler) {
     var inp = U.el('input', { type: 'file', accept: '.xlsx,.xls', style: 'display:none;' });
-    inp.addEventListener('change', function () { if (inp.files[0]) importExcel(inp.files[0]); });
+    inp.addEventListener('change', function () { if (inp.files[0]) handler(inp.files[0]); });
     document.body.appendChild(inp);
     inp.click();
     setTimeout(function () { document.body.removeChild(inp); }, 500);
+  }
+
+  // --- תלמידים ---
+  function downloadStudentSample() {
+    saveXlsx([['שם מלא', 'כיתה', 'הערות'],
+      ['ישראל ישראלי', 'ט1', ''],
+      ['משה כהן', 'ט1', 'אלרגיה לבוטנים'],
+      ['דוד לוי', 'י2', '']],
+      [24, 10, 30], 'תלמידים', 'תלמידים-לדוגמה.xlsx');
+  }
+  function importStudents(file) {
+    readSheet(file, { name: /^שם/, cls: /כיתה|שכבה/, note: /הער/ }, 'name', function (rows, col) {
+      var have = {};
+      flatRows().forEach(function (r) { have[r.st.name + '|' + (r.cls.name || '')] = true; });
+      var added = 0, skipped = 0;
+      rows.forEach(function (row) {
+        var nm = col.name != null ? String(row[col.name] || '').trim() : '';
+        if (!nm) return;
+        var cl = col.cls != null ? String(row[col.cls] || '').trim() : '';
+        if (have[nm + '|' + cl]) { skipped++; return; }
+        have[nm + '|' + cl] = true;
+        addStudent(nm, cl, col.note != null ? row[col.note] : '');
+        added++;
+      });
+      Store.saveClasses();
+      U.toast('יובאו ' + added + ' תלמידים' + (skipped ? ' · ' + skipped + ' דילוגים (כבר קיימים)' : ''));
+      App.render();
+    });
+  }
+
+  // --- ספקים ---
+  function suppliers() {
+    var s = Store.settings();
+    if (!Array.isArray(s.suppliers)) s.suppliers = [];
+    return s.suppliers;
+  }
+  function addSupplier(rec) {
+    var name = String(rec.name || '').trim();
+    if (!name) return null;
+    var r = { id: Store.uid(), name: name, field: String(rec.field || '').trim(),
+      phone: String(rec.phone || '').trim(), email: String(rec.email || '').trim(),
+      taxId: String(rec.taxId || '').trim(), note: String(rec.note || '').trim() };
+    suppliers().push(r);
+    return r;
+  }
+  function downloadSupplierSample() {
+    saveXlsx([['שם הספק', 'תחום', 'טלפון', 'אימייל', 'ח.פ / ע.מ', 'הערות'],
+      ['מגן אש', 'כיבוי אש', '02-1234567', 'info@example.co.il', '512345678', 'ביקורת שנתית'],
+      ['אוראל ברזל', 'מסגרות', '050-1234567', '', '', '']],
+      [22, 16, 16, 24, 14, 30], 'ספקים', 'ספקים-לדוגמה.xlsx');
+  }
+  function importSuppliers(file) {
+    readSheet(file, { name: /^שם/, field: /תחום|סוג|עיסוק/, phone: /טלפון|נייד/, email: /מייל|אימייל|דוא/,
+      taxId: /ח\.?פ|ע\.?מ|עוסק|מזהה/, note: /הער/ }, 'name', function (rows, col) {
+      var have = {};
+      suppliers().forEach(function (s) { have[String(s.name).trim()] = true; });
+      var added = 0, skipped = 0;
+      rows.forEach(function (row) {
+        var nm = col.name != null ? String(row[col.name] || '').trim() : '';
+        if (!nm) return;
+        if (have[nm]) { skipped++; return; }
+        have[nm] = true;
+        addSupplier({ name: nm,
+          field: col.field != null ? row[col.field] : '', phone: col.phone != null ? row[col.phone] : '',
+          email: col.email != null ? row[col.email] : '', taxId: col.taxId != null ? row[col.taxId] : '',
+          note: col.note != null ? row[col.note] : '' });
+        added++;
+      });
+      Store.saveSettings();
+      U.toast('יובאו ' + added + ' ספקים' + (skipped ? ' · ' + skipped + ' דילוגים (כבר קיימים)' : ''));
+      App.render();
+    });
   }
 
   // ---------- טבלת התלמידים ----------
@@ -178,6 +228,64 @@
     ])]);
   }
 
+  // ---------- טבלת הספקים ----------
+  function supplierRow(s) {
+    function inp(field, ph, style) {
+      var i = bare(U.el('input', { value: s[field] || '', placeholder: ph, autocomplete: 'off',
+        style: (style || 'width:100%;') }));
+      i.addEventListener('change', function () { s[field] = i.value.trim(); Store.saveSettings(); });
+      return i;
+    }
+    var del = U.el('button', { class: 'btn secondary small', html: U.ICO.trash, title: 'הסרת ספק', onclick: function () {
+      Modal.confirm({ title: 'הסרת ספק', text: 'להסיר את "' + (s.name || '') + '" מרשימת הספקים?', okLabel: 'הסרה', danger: true }, function () {
+        var arr = suppliers(), ix = arr.indexOf(s);
+        if (ix > -1) arr.splice(ix, 1);
+        Store.saveSettings();
+        App.render();
+      });
+    } });
+    var waBtn = s.phone && U.waNumber(s.phone)
+      ? U.el('a', { class: 'btn secondary small', href: 'https://wa.me/' + U.waNumber(s.phone),
+          target: '_blank', rel: 'noopener', html: U.WA_SVG, title: 'וואטסאפ לספק' })
+      : null;
+    return U.el('tr', null, [
+      U.el('td', { style: 'min-width:150px;' }, inp('name', 'שם הספק', 'width:100%;font-weight:500;')),
+      U.el('td', { style: 'min-width:110px;' }, inp('field', 'תחום')),
+      U.el('td', { style: 'min-width:120px;' }, inp('phone', 'טלפון', 'width:100%;direction:ltr;text-align:right;')),
+      U.el('td', { style: 'min-width:150px;' }, inp('email', 'אימייל', 'width:100%;direction:ltr;text-align:right;')),
+      U.el('td', { style: 'min-width:100px;' }, inp('taxId', 'ח.פ / ע.מ', 'width:100%;direction:ltr;text-align:right;')),
+      U.el('td', { style: 'min-width:150px;' }, inp('note', 'הערות', 'width:100%;font-size:13px;color:var(--muted);')),
+      U.el('td', { style: 'white-space:nowrap;' }, [waBtn, waBtn ? document.createTextNode(' ') : null, del].filter(Boolean))
+    ]);
+  }
+  function suppliersTable(list) {
+    return U.el('div', { class: 'tbl-scroll' }, [U.el('table', { class: 'grid' }, [
+      U.el('thead', null, U.el('tr', null, ['שם הספק', 'תחום', 'טלפון', 'אימייל', 'ח.פ / ע.מ', 'הערות', '']
+        .map(function (h) { return U.el('th', { text: h }); }))),
+      U.el('tbody', null, list.map(supplierRow))
+    ])]);
+  }
+
+  var focusSup = false, supFilter = '';
+  function supplierQuickAdd(view) {
+    var name = U.el('input', { placeholder: '+ ספק חדש — שם ולחיצה על Enter', style: 'flex:2 1 180px;min-width:0;font-size:15px;' });
+    var field = U.el('input', { placeholder: 'תחום', style: 'flex:1;min-width:110px;' });
+    var phone = U.el('input', { placeholder: 'טלפון', style: 'flex:1;min-width:110px;direction:ltr;text-align:right;' });
+    function add() {
+      if (!name.value.trim()) { name.focus(); return; }
+      addSupplier({ name: name.value, field: field.value, phone: phone.value });
+      Store.saveSettings();
+      focusSup = true;
+      App.render();
+    }
+    [name, field, phone].forEach(function (i) {
+      i.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+    });
+    view.appendChild(U.el('div', { class: 'card', style: 'padding:10px;margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;' },
+      [name, field, phone, U.el('button', { class: 'btn', text: 'הוסף', onclick: add })]));
+    if (focusSup) { focusSup = false; setTimeout(function () { name.focus(); }, 0); }
+  }
+
   var focusAdd = false;
   function quickAdd(view) {
     var name = U.el('input', { placeholder: '+ תלמיד/ה חדש/ה — שם מלא ולחיצה על Enter', style: 'flex:2;min-width:200px;font-size:15px;' });
@@ -214,12 +322,7 @@
     var rows = flatRows();
     var names = classNames();
 
-    view.appendChild(U.el('div', { class: 'page-head' }, [
-      U.el('h2', { text: 'נתוני בסיס' }),
-      U.el('span', { class: 'spacer' }),
-      U.el('button', { class: 'btn secondary', html: U.XLS_SVG + ' ייבוא מאקסל', onclick: pickFile }),
-      U.el('button', { class: 'btn secondary', html: U.ICO.upload + ' קובץ לדוגמה', title: 'הורדת קובץ אקסל לדוגמה לייבוא', onclick: downloadSample })
-    ]));
+    view.appendChild(U.el('div', { class: 'page-head' }, [U.el('h2', { text: 'נתוני בסיס' })]));
 
     // אנשי צוות — מנוהלים בגיליון ניהול עובדים
     view.appendChild(U.el('div', { class: 'card m-card', style: 'margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;' }, [
@@ -231,8 +334,14 @@
       U.el('button', { class: 'btn secondary', text: 'למצבת העובדים ›', onclick: function () { App.setView('emp'); } })
     ]));
 
-    view.appendChild(U.el('div', { class: 'page-head', style: 'margin-top:8px;' },
-      [U.el('h3', { text: 'תלמידים', style: 'font-size:17px;color:var(--brand-dark);' })]));
+    view.appendChild(U.el('div', { class: 'page-head', style: 'margin-top:8px;' }, [
+      U.el('h3', { text: 'תלמידים', style: 'font-size:17px;color:var(--brand-dark);' }),
+      U.el('span', { class: 'spacer' }),
+      U.el('button', { class: 'btn secondary', html: U.XLS_SVG + ' ייבוא תלמידים',
+        title: 'ייבוא רשימת תלמידים מקובץ אקסל', onclick: function () { pickFile(importStudents); } }),
+      U.el('button', { class: 'btn secondary', html: U.ICO.upload + ' קובץ לדוגמה',
+        title: 'הורדת קובץ אקסל לדוגמה לייבוא תלמידים', onclick: downloadStudentSample })
+    ]));
     view.appendChild(U.el('div', { class: 'kpi-grid' }, [
       kpi(rows.length, 'תלמידים'),
       kpi(names.length, 'כיתות', 'kpi-info')
@@ -246,22 +355,65 @@
         U.el('div', { class: 'muted', style: 'font-size:13px;margin-top:6px;' },
           'אפשר להוסיף ידנית למעלה, או להוריד את הקובץ לדוגמה, למלא אותו ולייבא.')
       ]));
-      return;
+    } else {
+      view.appendChild(studentsTable(rows));
+
+      // מונה לכל כיתה — הכיתות נגזרות מהטבלה
+      var byClass = {};
+      rows.forEach(function (r) { var k = r.cls.name || ''; byClass[k] = (byClass[k] || 0) + 1; });
+      view.appendChild(U.el('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center;' },
+        [U.el('span', { class: 'muted', style: 'font-size:12px;', text: 'כיתות:' })].concat(
+          Object.keys(byClass).sort(function (a, b) { return a.localeCompare(b, 'he'); }).map(function (k) {
+            return U.el('span', { class: 'tag', text: k + ' · ' + byClass[k] });
+          }))));
+      view.appendChild(U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:8px;',
+        text: 'הכיתות נגזרות אוטומטית מעמודת הכיתה — שינוי הכיתה של תלמיד מעביר אותו, וכיתה שנשארה ריקה נעלמת. הרשימות משמשות למעקב "מי חתם / מי חסר" באישורי הורים.' }));
     }
 
-    view.appendChild(studentsTable(rows));
+    // ---------- ספקים ----------
+    var sup = suppliers();
+    view.appendChild(U.el('div', { class: 'page-head', style: 'margin-top:24px;' }, [
+      U.el('h3', { text: 'ספקים', style: 'font-size:17px;color:var(--brand-dark);' }),
+      U.el('span', { class: 'spacer' }),
+      U.el('button', { class: 'btn secondary', html: U.XLS_SVG + ' ייבוא ספקים',
+        title: 'ייבוא רשימת ספקים מקובץ אקסל', onclick: function () { pickFile(importSuppliers); } }),
+      U.el('button', { class: 'btn secondary', html: U.ICO.upload + ' קובץ לדוגמה',
+        title: 'הורדת קובץ אקסל לדוגמה לייבוא ספקים', onclick: downloadSupplierSample })
+    ]));
 
-    // מונה לכל כיתה — הכיתות נגזרות מהטבלה
-    var byClass = {};
-    rows.forEach(function (r) { var k = r.cls.name || ''; byClass[k] = (byClass[k] || 0) + 1; });
-    view.appendChild(U.el('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center;' },
-      [U.el('span', { class: 'muted', style: 'font-size:12px;', text: 'כיתות:' })].concat(
-        Object.keys(byClass).sort(function (a, b) { return a.localeCompare(b, 'he'); }).map(function (k) {
-          return U.el('span', { class: 'tag', text: k + ' · ' + byClass[k] });
-        }))));
-    view.appendChild(U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:8px;',
-      text: 'הכיתות נגזרות אוטומטית מעמודת הכיתה — שינוי הכיתה של תלמיד מעביר אותו, וכיתה שנשארה ריקה נעלמת. הרשימות משמשות למעקב "מי חתם / מי חסר" באישורי הורים.' }));
+    var supQ = U.el('input', { value: supFilter, placeholder: 'חיפוש ספק — שם, תחום, טלפון…', style: 'flex:1 1 200px;min-width:0;' });
+    supQ.addEventListener('input', function () { supFilter = supQ.value; renderSupTable(); });
+    view.appendChild(U.el('div', { style: 'display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;' }, [supQ]));
+
+    supplierQuickAdd(view);
+
+    var supWrap = U.el('div');
+    view.appendChild(supWrap);
+    function renderSupTable() {
+      U.clear(supWrap);
+      var q = supFilter.trim().toLowerCase();
+      var list = q ? sup.filter(function (s) {
+        return [s.name, s.field, s.phone, s.email, s.taxId, s.note]
+          .some(function (v) { return String(v || '').toLowerCase().indexOf(q) > -1; });
+      }) : sup.slice();
+      list.sort(function (a, b) { return String(a.name || '').localeCompare(String(b.name || ''), 'he'); });
+      if (!sup.length) {
+        supWrap.appendChild(U.el('div', { class: 'empty' }, [
+          'עדיין אין ספקים ברשימה.',
+          U.el('div', { class: 'muted', style: 'font-size:13px;margin-top:6px;' },
+            'אפשר להוסיף ידנית למעלה, או להוריד את הקובץ לדוגמה, למלא אותו ולייבא.')
+        ]));
+        return;
+      }
+      if (!list.length) { supWrap.appendChild(U.el('div', { class: 'empty' }, 'אין ספק שתואם את החיפוש.')); return; }
+      supWrap.appendChild(suppliersTable(list));
+      supWrap.appendChild(U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:8px;',
+        text: 'מוצגים ' + list.length + ' מתוך ' + sup.length + ' ספקים · הרשימה משמשת גם כבורר "מבצע" בגיליון הפרויקטים.' }));
+    }
+    renderSupTable();
   }
 
-  global.BaseView = { render: render, importFile: importExcel };
+  global.BaseView = { render: render, importFile: importStudents, supplierNames: function () {
+    return suppliers().map(function (s) { return s.name; }).filter(Boolean);
+  } };
 })(window);
