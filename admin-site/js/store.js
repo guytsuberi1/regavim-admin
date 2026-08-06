@@ -1010,6 +1010,33 @@
     if (now >= e) return 1;
     return (now - s) / (e - s);
   }
+  // רשימת שנות הכספים שיש להן נתונים — נגזרת מתאריכי התנועות (שנה מתחילה ב-1/9)
+  function budgetFyOf(dateISO) {
+    var d = String(dateISO || '');
+    if (d.length < 7) return null;
+    var y = parseInt(d.slice(0, 4), 10), m = parseInt(d.slice(5, 7), 10);
+    return (m >= 9) ? y : y - 1;
+  }
+  function budgetFyYears() {
+    var set = {};
+    budgetTransactions().forEach(function (t) {
+      var y = budgetFyOf(t.date);
+      if (y) set[y] = 1;
+    });
+    var cur = budgetFyOf(budgetFiscalYear().start) || budgetFyOf(new Date().toISOString().slice(0, 10));
+    if (cur) set[cur] = 1;
+    return Object.keys(set).map(Number).sort(function (a, b) { return b - a; })
+      .map(function (y) {
+        return { year: y, label: y + '/' + String(y + 1).slice(2),
+          start: y + '-09-01', end: (y + 1) + '-08-31' };
+      });
+  }
+  // שנת הכספים הפעילה כרגע (לפי ההגדרה באפליקציית התקציב)
+  function budgetCurrentFy() {
+    var y = budgetFyOf(budgetFiscalYear().start) || budgetFyOf(new Date().toISOString().slice(0, 10));
+    return { year: y, label: y + '/' + String(y + 1).slice(2), start: y + '-09-01', end: (y + 1) + '-08-31' };
+  }
+
   // עדכון בזמן אמת — המזכירה מזינה חשבונית והמסך כאן מתעדכן
   var budgetChannel = null;
   function budgetSubscribe(onChange) {
@@ -1639,6 +1666,8 @@
     budgetTransactions: budgetTransactions,
     budgetFyMonths: budgetFyMonths,
     budgetFyFraction: budgetFyFraction,
+    budgetFyYears: budgetFyYears,
+    budgetCurrentFy: budgetCurrentFy,
     budgetSubscribe: budgetSubscribe,
     budgetPatch: budgetPatch,
     budgetLoadError: budgetLoadError,

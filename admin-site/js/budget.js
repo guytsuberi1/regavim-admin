@@ -273,9 +273,37 @@
     view.appendChild(U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:6px;',
       text: 'אפשר לערוך כאן שם, תקציב שנתי, אחראי, הערה ופיזור חודשי — השינוי נשמר ישירות בנתוני התקציב ומופיע גם אצל המזכירה. ' +
             'הסמן בפס מציין כמה מהשנה חלף (' + pct(frac) + ') — פס שעבר אותו הוא קצב חריג.' }));
+
+    // תוכנן מול בפועל לפי חודש
+    var planned = months.map(function () { return 0; });
+    var actualM = months.map(function () { return 0; });
+    cats.filter(function (c) { return !mainFilter || c.main === mainFilter; }).forEach(function (c) {
+      var plan = monthlyPlanOf(c, months.length);
+      plan.forEach(function (v, i) { planned[i] += v; });
+      var am = amSub[c.main + '||' + c.sub] || {};
+      months.forEach(function (ym, i) { actualM[i] += (am[ym] || 0); });
+    });
+    var maxV = Math.max.apply(null, [1].concat(planned).concat(actualM));
+    view.appendChild(U.el('div', { class: 'card m-card', style: 'margin-top:16px;' }, [
+      U.el('h3', { style: 'margin:0 0 10px;font-size:16px;', text: 'תוכנן מול בפועל — לפי חודש' }),
+      U.el('div', { class: 'b-chart' }, months.map(function (ym, i) {
+        return U.el('div', { class: 'b-bar-col', title: monthLabel(ym) + ': תוכנן ' + ils(planned[i]) + ' · בפועל ' + ils(actualM[i]) }, [
+          U.el('div', { class: 'b-bars' }, [
+            U.el('div', { class: 'b-bar plan', style: 'height:' + (planned[i] / maxV * 100).toFixed(1) + '%;' }),
+            U.el('div', { class: 'b-bar act' + (actualM[i] > planned[i] ? ' over' : ''), style: 'height:' + (actualM[i] / maxV * 100).toFixed(1) + '%;' })
+          ]),
+          U.el('div', { class: 'b-bar-lbl', text: monthLabel(ym) })
+        ]);
+      })),
+      U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:8px;' }, [
+        U.el('span', { class: 'b-key plan' }), ' תוכנן   ',
+        U.el('span', { class: 'b-key act' }), ' בפועל'
+      ])
+    ]));
+
   }
 
-  // ---------- תקציב מול ביצוע ----------
+  // ---------- תקציב מול ביצוע (הורד מהניווט לבקשת גיא — נשמר למקרה שנחזיר) ----------
   function dashView(view) {
     var cats = Store.budgetCategories();
     var frac = Store.budgetFyFraction(), actual = actualBySub(), months = Store.budgetFyMonths();
@@ -496,6 +524,6 @@
     return { render: function (view) { subTab = mode; render(view); } };
   }
   global.BudgetView = viewFor('sheet');
-  global.BudgetDashView = viewFor('dash');
+  global.BudgetDashView = viewFor('dash');   // לא בניווט כרגע
   global.BudgetSearchView = viewFor('search');
 })(window);
