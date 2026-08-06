@@ -75,16 +75,16 @@
     return i;
   }
   function cellMoney(r, field, rerender) {
-    var i = bare(U.el('input', { value: r[field] != null && r[field] !== '' ? r[field] : '',
-      placeholder: '0', inputmode: 'numeric', style: 'max-width:104px;text-align:right;font-weight:600;' }));
-    i.addEventListener('change', function () {
-      var v = i.value.trim() === '' ? '' : U.num(i.value);
-      if (v !== r[field]) r.amountManual = true;      // ערך ידני לא נדרס בסנכרון מהתקציב
-      r[field] = v;
-      saveKk(r);
-      if (rerender) App.render();
-    });
-    return i;
+    return bare(U.moneyInput({
+      value: r[field] != null && r[field] !== '' ? r[field] : '',
+      placeholder: '0', style: 'max-width:104px;text-align:right;font-weight:600;',
+      onSave: function (v) {
+        if (v !== r[field]) r.amountManual = true;    // ערך ידני לא נדרס בסנכרון מהתקציב
+        r[field] = v;
+        saveKk(r);
+        if (rerender) App.render();
+      }
+    }));
   }
   // בורר סטטוס צבוע-מלא — שינוי ישירות מהטבלה, בלי להיכנס לעריכה
   function cellStatus(r) {

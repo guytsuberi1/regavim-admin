@@ -107,6 +107,14 @@
     return sel;
   }
 
+  var q = '';
+  function matches(e) {
+    var s = q.trim().toLowerCase();
+    if (!s) return true;
+    return [Store.empName(e), e.email, e.jobTitle, (e.tags || []).join(' ')]
+      .some(function (v) { return String(v || '').toLowerCase().indexOf(s) > -1; });
+  }
+
   function buildTable(emps, accounts, unknown) {
     var rows = emps.map(function (e) {
       var email = (e.email || '').trim();
@@ -158,7 +166,8 @@
       U.el('thead', null, U.el('tr', null, ['עובד', 'אימייל התחברות', 'חשבון', 'הרשאה', 'פעולות']
         .map(function (h) { return U.el('th', { text: h }); }))),
       U.el('tbody', null, rows.length ? rows
-        : [U.el('tr', null, U.el('td', { colspan: '5', class: 'center muted', text: 'אין עובדים פעילים במצבת.' }))])
+        : [U.el('tr', null, U.el('td', { colspan: '5', class: 'center muted',
+            text: q.trim() ? 'אין עובד שתואם את החיפוש.' : 'אין עובדים פעילים במצבת.' }))])
     ])]);
   }
 
@@ -180,29 +189,56 @@
       ])
     ]));
 
-    var emps = Store.employees().slice().sort(function (a, b) {
+    var all = Store.employees().slice().sort(function (a, b) {
       return Store.empName(a).localeCompare(Store.empName(b), 'he');
     });
+
+    // חיפוש — הטבלה נבנית מחדש בלי App.render() כדי לא לאבד פוקוס תוך כדי הקלדה
+    var qi = U.el('input', { value: q, placeholder: 'חיפוש עובד — שם, אימייל, תפקיד…', style: 'flex:1;min-width:0;' });
+    var count = U.el('span', { class: 'muted', style: 'font-size:12px;white-space:nowrap;' });
+    view.appendChild(U.el('div', { style: 'display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;' }, [
+      qi, count,
+      U.el('button', { class: 'btn secondary small', text: 'ניקוי',
+        onclick: function () { q = ''; qi.value = ''; redraw(); } })
+    ]));
 
     var wrap = U.el('div');
     view.appendChild(wrap);
     wrap.appendChild(U.el('div', { class: 'card', text: 'טוען חשבונות…' }));
 
+    var accountsMap = null, unknownAcc = false;
+    function redraw() {
+      var emps = all.filter(matches);
+      count.textContent = 'מוצגים ' + emps.length + ' מתוך ' + all.length;
+      U.clear(wrap);
+      wrap.appendChild(buildTable(emps, accountsMap || {}, unknownAcc));
+    }
+    qi.addEventListener('input', function () { q = qi.value; if (accountsMap || unknownAcc) redraw(); });
+
     Store.manageUsers({ action: 'list' }).then(function (res) {
       var accounts = {};
       (res.users || []).forEach(function (u) { if (u.email) accounts[String(u.email).toLowerCase()] = true; });
-      U.clear(wrap);
-      wrap.appendChild(buildTable(emps, accounts, false));
+      accountsMap = accounts;
+      redraw();
     }).catch(function (e) {
       // הפונקציה אינה זמינה — קביעת ההרשאות עצמה לא תלויה בשרת וממשיכה לעבוד
-      U.clear(wrap);
-      wrap.appendChild(U.el('div', { class: 'card', style: 'border-color:#d97706;background:#fffbeb;margin-bottom:10px;' }, [
+      unknownAcc = true;
+      var msg = (e && e.message) ? e.message : 'פונקציית manage-users לא נענתה';
+      var net = /Failed to send|Failed to fetch|NetworkError|CORS/i.test(msg);
+      view.insertBefore(U.el('div', { class: 'card', style: 'border-color:#d97706;background:#fffbeb;margin-bottom:10px;' }, [
         U.el('div', { style: 'font-weight:600;', text: 'יצירת חשבונות ואיפוס סיסמאות אינם זמינים כרגע' }),
-        U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:4px;',
-          text: 'הסיבה: ' + (e && e.message ? e.message : 'פונקציית manage-users לא נענתה') +
-                ' · קביעת ההרשאות למטה עובדת כרגיל.' })
-      ]));
-      wrap.appendChild(buildTable(emps, {}, true));
+        U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:4px;', text: 'הסיבה מהשרת: ' + msg }),
+        U.el('div', { style: 'font-size:12px;margin-top:6px;line-height:1.8;' }, [
+          U.el('div', { style: 'font-weight:600;', text: 'מה עושים:' }),
+          U.el('div', null, net
+            ? '1. פונקציית manage-users צריכה להיות פרוסה בפרויקט ה-Supabase (היא משותפת עם אפליקציית החקלאות).'
+            : '1. בדקו את הרשאות הפונקציה בפרויקט ה-Supabase.'),
+          U.el('div', null, '2. בפרויקט: Edge Functions ← manage-users ← Deploy (הקוד יושב ב-regavim-agriculture/supabase/functions/manage-users).'),
+          U.el('div', null, '3. לוודא שכתובת האתר הזה מופיעה ברשימת ה-CORS של הפונקציה.'),
+          U.el('div', { class: 'muted' }, 'עד שזה נפרס — קביעת ההרשאות בטבלה למטה עובדת כרגיל; רק פתיחת חשבון/איפוס סיסמה חסומים.')
+        ])
+      ]), wrap);
+      redraw();
     });
   }
 

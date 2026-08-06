@@ -67,6 +67,19 @@
     i.addEventListener('change', function () { obj[field] = i.value.trim() === '' ? '' : U.num(i.value); saveProj(p); if (onChange) onChange(); });
     return i;
   }
+  // בורר "מבצע" = מרשם הספקים בנתוני בסיס + שמות ותיקים שנשמרו כאן
+  function supplierList() {
+    var s = Store.settings(), out = [], seen = {};
+    (s.suppliers || []).forEach(function (x) {
+      var n = String(x.name || '').trim();
+      if (n && !seen[n]) { seen[n] = 1; out.push(n); }
+    });
+    (s.contractors || []).forEach(function (n) {
+      n = String(n || '').trim();
+      if (n && !seen[n]) { seen[n] = 1; out.push(n); }
+    });
+    return out.sort(function (a, b) { return a.localeCompare(b, 'he'); });
+  }
   function rememberContractor(v) {
     v = (v || '').trim(); if (!v) return;
     var s = Store.settings(); if (!s.contractors) s.contractors = [];
@@ -184,7 +197,7 @@
     saveProj(p); App.render();
   }
   function itemsTable(p) {
-    var contractors = Store.settings().contractors || [];
+    var contractors = supplierList();
     var owners = Store.settings().taskOwners || [];
     var tbody = U.el('tbody', null, (p.items || []).map(function (it) {
       var grip = U.el('td', { style: 'width:24px;text-align:center;color:#94a3b8;cursor:grab;user-select:none;', title: 'גרור לשינוי סדר', text: '⠿' });
