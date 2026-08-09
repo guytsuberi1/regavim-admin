@@ -3,13 +3,35 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
   <title>תפעול — ישיבת רגבים בנימין</title>
+  <script>
+    // ---- בדיקת גרסה עצמית ----
+    // ה-?v=N מונע cache על ה-JS/CSS, אבל index.html עצמו נשמר ב-cache של הדפדפן,
+    // ולכן המשתמש ממשיך לטעון את הגרסה הישנה גם אחרי שהפריסה עברה.
+    // כאן קוראים את version.json בלי cache ומרעננים פעם אחת אם הגרסה החיה שונה.
+    (function () {
+      var LOCAL = 122;                       // חייב להיות זהה ל-?v= בכל התגיות למטה
+      window.APP_VERSION = LOCAL;
+      if (location.protocol === 'file:') return;
+      fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          if (!j || !j.v || j.v === LOCAL) { sessionStorage.removeItem('vreload'); return; }
+          if (sessionStorage.getItem('vreload') === String(j.v)) return;  // כבר ניסינו — לא ללולאה
+          sessionStorage.setItem('vreload', String(j.v));
+          location.reload();
+        })
+        .catch(function () { /* אין רשת — ממשיכים עם מה שיש */ });
+    })();
+  </script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💼</text></svg>" />
   <!-- פונטים בסגנון Monday: Figtree (לטיני/מספרים) + Noto Sans Hebrew (עברית) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Noto+Sans+Hebrew:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=121" />
+  <link rel="stylesheet" href="styles.css?v=122" />
   <style>
     /* תג "ממתינים לאישור" על טאב בתפריט */
     .tab-badge {
@@ -94,29 +116,29 @@
   <!-- ספריות ומודולים (סקריפטים קלאסיים — עובד גם מ-file://) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="vendor/xlsx.full.min.js"></script>
-  <script src="js/util.js?v=121"></script>
-  <script src="js/store.js?v=121"></script>
-  <script src="js/emp.js?v=121"></script>
-  <script src="js/week.js?v=121"></script>
-  <script src="js/recruit.js?v=121"></script>
-  <script src="js/queue.js?v=121"></script>
-  <script src="js/status.js?v=121"></script>
-  <script src="js/lc.js?v=121"></script>
-  <script src="js/sub.js?v=121"></script>
-  <script src="js/abs.js?v=121"></script>
-  <script src="js/sign.js?v=121"></script>
-  <script src="js/pdf.js?v=121"></script>
-  <script src="js/tasks.js?v=121"></script>
-  <script src="js/projects.js?v=121"></script>
-  <script src="js/events.js?v=121"></script>
-  <script src="js/budget.js?v=121"></script>
-  <script src="js/kk.js?v=121"></script>
-  <script src="js/safety.js?v=121"></script>
-  <script src="js/base.js?v=121"></script>
-  <script src="js/users.js?v=121"></script>
-  <script src="js/settings.js?v=121"></script>
-  <script src="js/dash.js?v=121"></script>
-  <script src="js/app.js?v=121"></script>
+  <script src="js/util.js?v=122"></script>
+  <script src="js/store.js?v=122"></script>
+  <script src="js/emp.js?v=122"></script>
+  <script src="js/week.js?v=122"></script>
+  <script src="js/recruit.js?v=122"></script>
+  <script src="js/queue.js?v=122"></script>
+  <script src="js/status.js?v=122"></script>
+  <script src="js/lc.js?v=122"></script>
+  <script src="js/sub.js?v=122"></script>
+  <script src="js/abs.js?v=122"></script>
+  <script src="js/sign.js?v=122"></script>
+  <script src="js/pdf.js?v=122"></script>
+  <script src="js/tasks.js?v=122"></script>
+  <script src="js/projects.js?v=122"></script>
+  <script src="js/events.js?v=122"></script>
+  <script src="js/budget.js?v=122"></script>
+  <script src="js/kk.js?v=122"></script>
+  <script src="js/safety.js?v=122"></script>
+  <script src="js/base.js?v=122"></script>
+  <script src="js/users.js?v=122"></script>
+  <script src="js/settings.js?v=122"></script>
+  <script src="js/dash.js?v=122"></script>
+  <script src="js/app.js?v=122"></script>
   <script>
     (function () {
       var sb = document.getElementById('sidebar'), tg = document.getElementById('sbToggle');
