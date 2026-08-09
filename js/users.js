@@ -224,21 +224,25 @@
       // הפונקציה אינה זמינה — קביעת ההרשאות עצמה לא תלויה בשרת וממשיכה לעבוד
       unknownAcc = true;
       var msg = (e && e.message) ? e.message : 'פונקציית manage-users לא נענתה';
-      var net = /Failed to send|Failed to fetch|NetworkError|CORS/i.test(msg);
+      var diag = U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:6px;', text: 'בודק מה בדיוק קרה…' });
       view.insertBefore(U.el('div', { class: 'card', style: 'border-color:#d97706;background:#fffbeb;margin-bottom:10px;' }, [
         U.el('div', { style: 'font-weight:600;', text: 'יצירת חשבונות ואיפוס סיסמאות אינם זמינים כרגע' }),
-        U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:4px;', text: 'הסיבה מהשרת: ' + msg }),
-        U.el('div', { style: 'font-size:12px;margin-top:6px;line-height:1.8;' }, [
-          U.el('div', { style: 'font-weight:600;', text: 'מה עושים:' }),
-          U.el('div', null, net
-            ? '1. פונקציית manage-users צריכה להיות פרוסה בפרויקט ה-Supabase (היא משותפת עם אפליקציית החקלאות).'
-            : '1. בדקו את הרשאות הפונקציה בפרויקט ה-Supabase.'),
-          U.el('div', null, '2. בפרויקט: Edge Functions ← manage-users ← Deploy (הקוד יושב ב-regavim-agriculture/supabase/functions/manage-users).'),
-          U.el('div', null, '3. לוודא שכתובת האתר הזה מופיעה ברשימת ה-CORS של הפונקציה.'),
-          U.el('div', { class: 'muted' }, 'עד שזה נפרס — קביעת ההרשאות בטבלה למטה עובדת כרגיל; רק פתיחת חשבון/איפוס סיסמה חסומים.')
-        ])
+        U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:4px;', text: 'ההודעה מהספרייה: ' + msg }),
+        diag,
+        U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:6px;',
+          text: 'קביעת ההרשאות בטבלה למטה עובדת כרגיל — רק פתיחת חשבון, איפוס סיסמה ומחיקה חסומים.' })
       ]), wrap);
       redraw();
+      // ההודעה של supabase-js זהה לשלוש תקלות שונות לגמרי — קריאה ישירה מגלה איזו מהן
+      if (Store.manageUsersDiagnose) {
+        Store.manageUsersDiagnose().then(function (d) {
+          U.clear(diag);
+          diag.appendChild(U.el('div', { style: 'font-weight:600;font-size:12px;color:var(--text);',
+            text: 'הסיבה האמיתית' + (d.status ? ' (קוד ' + d.status + ')' : '') + ':' }));
+          diag.appendChild(U.el('div', { style: 'font-size:12px;color:var(--text);', text: d.hint }));
+          if (d.body) diag.appendChild(U.el('div', { style: 'font-size:11px;direction:ltr;text-align:right;margin-top:2px;', text: d.body }));
+        });
+      }
     });
   }
 

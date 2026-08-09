@@ -318,6 +318,30 @@
       return res.data || {};
     });
   }
+  // אבחון: supabase-js מחזיר "Failed to send a request" גם כשהפונקציה לא קיימת,
+  // גם כשהיא נפלה בהפעלה וגם כשה-CORS חסם — שלושה דברים שונים לגמרי.
+  // קריאה ישירה מחזירה את קוד ה-HTTP האמיתי ומאפשרת להגיד מה באמת קרה.
+  function manageUsersDiagnose() {
+    var url = SB_URL + '/functions/v1/manage-users';
+    return Promise.resolve(sb ? sb.auth.getSession() : null).then(function (s) {
+      var token = (s && s.data && s.data.session && s.data.session.access_token) || SB_KEY;
+      return fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: SB_KEY, Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ action: 'ping' })
+      });
+    }).then(function (r) {
+      return r.text().then(function (body) {
+        if (r.status === 404) return { kind: 'missing', status: 404, hint: 'הפונקציה אינה קיימת בפרויקט בשם manage-users.' };
+        if (r.status === 503 || r.status === 500) return { kind: 'boot', status: r.status, hint: 'הפונקציה קיימת אך נפלה בהפעלה. הסיבה נמצאת בלשונית Logs שלה.', body: body.slice(0, 200) };
+        if (r.status === 401) return { kind: 'auth', status: 401, hint: 'הפונקציה עונה, אך לא זיהתה את המשתמש המחובר. נסו להתנתק ולהתחבר מחדש.' };
+        return { kind: 'reachable', status: r.status, hint: 'הפונקציה עונה (' + r.status + ').', body: body.slice(0, 200) };
+      });
+    }).catch(function () {
+      return { kind: 'blocked', status: 0,
+        hint: 'הבקשה לא הגיעה לשרת בכלל — הפונקציה אינה פרוסה, או שכתובת האתר חסומה ב-CORS שלה.' };
+    });
+  }
   function currentRole() {
     if (!cloudMode) return 'admin'; // מצב מקומי (פיתוח בלבד)
     return sessionUser ? roleOf(currentEmail()) : 'secretary';
@@ -1727,6 +1751,7 @@
     roleOf: roleOf,
     setUserRole: setUserRole,
     manageUsers: manageUsers,
+    manageUsersDiagnose: manageUsersDiagnose,
     ROLES: ROLES,
     ADMIN_EMAILS: ADMIN_EMAILS
   };
