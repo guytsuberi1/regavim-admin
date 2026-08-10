@@ -403,6 +403,12 @@ Storage: `admin-approvals` (אישורי מחלה/3010) · `meeting-audio` (הק
 - **מיקום גלילה** — כל `App.render()` בונה מחדש את ה-DOM ומאפס `scrollLeft`; בטבלת RTL
   זה "קופץ ימינה". נפתר מרכזית ב-`app.js` (`snapshotScroll`/`restoreScroll` על
   `.tbl-scroll, .kb-board, .m-toolbar, .subtabs, .kpi-row`) — אין צורך לטפל בזה בכל גיליון.
+- **דגל "שמירה בעבודה" שחוסם עריכה = איבוד נתון בשקט.** `if (saving) return` בגיליון התקציב
+  זרק כל עריכה שנעשתה בזמן ששמירה קודמת רצה, והרינדור שאחריה החזיר את הערך הישן —
+  המשתמש ראה "עדכנתי וזה לא נשמר". הפתרון הוא **תור** (`saveQueue`), לא חסימה.
+  כתיבות שחייבות להיות בטור (read-modify-write כמו `budgetPatch`) — לשרשר, לא לזרוק.
+- **`App.render()` באמצע הקלדה גונב פוקוס.** אחרי שמירה אוטומטית, לרנדר רק כשהתור התרוקן
+  ו-`document.activeElement` אינו שדה קלט (`renderWhenIdle` ב-budget.js).
 - **רענון חלקי לא מספיק** — פונקציית `refresh()` שמרעננת רק את הטבלה משאירה סרגלי כלים
   וצ'יפים מיושנים. לקרוא ל-`App.render()`.
 - **מיזוג ענן (`mergeIncoming` ב-store.js)** — שורה חדשה ברמת-רשומה (tasks/projects/events)
