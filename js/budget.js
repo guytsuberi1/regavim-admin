@@ -145,22 +145,38 @@
   // ---------- עריכה ----------
   // כל שינוי נכתב דרך Store.budgetPatch: קריאה טרייה → שינוי נקודתי → כתיבה.
   // כך שינוי כאן לא דורס חשבונית שהמזכירה הזינה שנייה קודם.
-  var saving = false;
+  // תור שמירות: כל עריכה ממתינה לקודמתה במקום להיזרק.
+  // budgetPatch עושה קריאה-שינוי-כתיבה, ולכן חייבים לסדר אותן בטור —
+  // אבל *לזרוק* עריכה זה איבוד נתון בשקט (קרה: הקלדת סכום ומעבר מיד לשדה הבא
+  // שמר רק את הראשון, והמסך החזיר את הערך הישן).
+  var saveQueue = Promise.resolve(), pendingSaves = 0;
+  // רינדור מחדש באמצע הקלדה גונב את הפוקוס — ממתינים שהמשתמש יסיים
+  function renderWhenIdle() {
+    var el = document.activeElement;
+    if (el && /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) {
+      el.addEventListener('blur', function once() {
+        el.removeEventListener('blur', once);
+        setTimeout(function () { if (!pendingSaves) App.render(); }, 0);
+      });
+      return;
+    }
+    App.render();
+  }
   function patchCat(catId, apply, okMsg) {
-    if (saving) return;
-    saving = true;
-    Store.budgetPatch(function (st) {
-      var c = (st.categories || []).filter(function (x) { return x.id === catId; })[0];
-      if (!c) throw new Error('הקטגוריה לא נמצאה בנתוני התקציב');
-      apply(c, st);
+    pendingSaves++;
+    saveQueue = saveQueue.then(function () {
+      return Store.budgetPatch(function (st) {
+        var c = (st.categories || []).filter(function (x) { return x.id === catId; })[0];
+        if (!c) throw new Error('הקטגוריה לא נמצאה בנתוני התקציב');
+        apply(c, st);
+      }).then(function () {
+        U.toast(okMsg || 'נשמר');
+      }).catch(function (e) {
+        U.toast('השמירה נכשלה: ' + (e && e.message ? e.message : ''), 'error');
+      });
     }).then(function () {
-      saving = false;
-      U.toast(okMsg || 'נשמר');
-      App.render();
-    }).catch(function (e) {
-      saving = false;
-      U.toast('השמירה נכשלה: ' + (e && e.message ? e.message : ''), 'error');
-      App.render();
+      pendingSaves--;
+      if (!pendingSaves) renderWhenIdle();
     });
   }
   function bare(el) {
