@@ -15,15 +15,26 @@
   var year = null;                 // השנה הנערכת (null = הראשונה ברשימה)
   var saveQueue = Promise.resolve(), pending = 0;
 
-  function activeYear() {
-    var f = Store.budgetCurrentFy ? Store.budgetCurrentFy() : null;
-    return f ? f.year : new Date().getFullYear();
+  // ---- איזו שנה באמת רצה עכשיו ----
+  // **לפי הלוח, לא לפי ההגדרה שבנתונים.** שנת התקציב מתחילה ב-1/9, ולכן
+  // ב-9/8/2026 השנה הרצה היא 2025/26 ו-2026/27 עדיין לא התחילה.
+  // (קרה: הסתמכתי על state.fiscalYear, שהיה מוגדר מראש ל-1/9/26,
+  // והמסך הכריז על 26/27 כ"פעילה" בזמן שהיא עוד לא.)
+  function runningYear() {
+    var d = new Date(), y = d.getFullYear(), m = d.getMonth() + 1;
+    return m >= 9 ? y : y - 1;
   }
+  // השנה שההגדרות בנתוני התקציב מצביעות עליה — ממנה מעתיקים מבנה
+  function settingsYear() {
+    var f = Store.budgetCurrentFy ? Store.budgetCurrentFy() : null;
+    return f && f.year ? f.year : runningYear();
+  }
+  function activeYear() { return runningYear(); }
   function label(y) { return y + '/' + String(y + 1).slice(2); }
   // רק שנים שטרם התחילו — שנתיים קדימה מספיקות בפועל
   function planYears() {
-    var a = activeYear();
-    return [a + 1, a + 2];
+    var r = runningYear();
+    return [r + 1, r + 2];
   }
   function curYear() {
     var ys = planYears();
@@ -52,7 +63,7 @@
   // apply מקבל את מערך הקטגוריות של השנה ומחזיר מערך חדש
   function patchYear(apply, okMsg) {
     var y = curYear();
-    if (y <= activeYear()) { U.toast('שנה שכבר התחילה — לא ניתנת לעריכה', 'error'); return; }
+    if (y <= runningYear()) { U.toast('שנה שכבר התחילה — לא ניתנת לעריכה', 'error'); return; }
     pending++;
     saveQueue = saveQueue.then(function () {
       return Store.budgetPatch(function (st) {
@@ -68,7 +79,7 @@
 
   // ---------- פעולות ----------
   function startPlanning(copyFrom, zero) {
-    var src = copyFrom ? (Store.budgetCategoriesFor(activeYear()) || []) : [];
+    var src = copyFrom ? (Store.budgetCategoriesFor(settingsYear()) || []) : [];
     patchYear(function () {
       return src.map(function (c) {
         return { id: uid(), main: c.main, sub: c.sub, owner: c.owner || '', note: c.note || '',
@@ -280,7 +291,7 @@
     view.appendChild(U.el('div', { class: 'card m-card', style: 'margin-bottom:14px;' }, [
       U.el('div', { class: 'muted', style: 'font-size:13px;line-height:1.8;' }, [
         U.el('div', null, 'כאן מתכננים את מבנה הקטגוריות של שנה שעוד לא התחילה.'),
-        U.el('div', null, '· שנת ' + label(act) + ' (הפעילה) ושנים שעברו אינן ניתנות לעריכה — אסור לשנות סיווג בדיעבד.'),
+        U.el('div', null, '· שנת ' + label(act) + ' רצה עכשיו, ולכן היא ושנים שלפניה אינן ניתנות לעריכה — אסור לשנות סיווג בדיעבד.'),
         U.el('div', null, '· ב-1 בספטמבר, כשתעביר את השנה הפעילה בגיליון ניהול התקציב, התכנון הזה ייכנס לתוקף.'),
         U.el('div', null, '· טופס הזנת החשבוניות אצל המזכירה נגזר מתאריך החשבונית, ולכן הוא מסונכרן לבד.')
       ])
@@ -299,9 +310,9 @@
       view.appendChild(U.el('div', { class: 'card m-card' }, [
         U.el('div', { style: 'font-weight:600;margin-bottom:6px;', text: 'עדיין אין תכנון לשנת ' + label(y) }),
         U.el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:12px;',
-          text: 'אפשר להתחיל מהמבנה של השנה הפעילה (' + label(act) + ') ולערוך אותו, או להתחיל מדף ריק.' }),
+          text: 'אפשר להתחיל מהמבנה שבתוקף כרגע (' + label(settingsYear()) + ') ולערוך אותו, או להתחיל מדף ריק.' }),
         U.el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;' }, [
-          U.el('button', { class: 'btn', text: 'העתקה מ-' + label(act) + ' עם הסכומים',
+          U.el('button', { class: 'btn', text: 'העתקה מ-' + label(settingsYear()) + ' עם הסכומים',
             onclick: function () { startPlanning(true, false); } }),
           U.el('button', { class: 'btn secondary', text: 'העתקה בלי סכומים',
             onclick: function () { startPlanning(true, true); } }),

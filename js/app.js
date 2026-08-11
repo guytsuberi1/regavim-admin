@@ -237,6 +237,20 @@
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
   })();
   function currentMonth() { return month; }
+
+  // ---------- שנת כספים משותפת ----------
+  // גיליון ניהול התקציב וקולות קוראים הם תת-גיליונות של אותו גיליון, ולכן הם חולקים
+  // בורר שנה אחד: החלפה באחד מהם מחליפה גם בשני. null = לפי השנה הפעילה שבנתוני התקציב.
+  var fyKey = null;
+  function currentFy() {
+    var cur = (Store.budgetCurrentFy ? Store.budgetCurrentFy() : {}).year;
+    return fyKey || cur || null;
+  }
+  function setFy(y) { fyKey = y ? parseInt(y, 10) : null; render(); }
+  function fyLabel(y) {
+    y = y || currentFy();
+    return y ? (y + '/' + String(y + 1).slice(2)) : '';
+  }
   function setMonth(m) { month = m; render(); }
   function monthHeader(title, extraNodes) {
     var input = U.el('input', { type: 'month', value: month, style: 'position:absolute;opacity:0;pointer-events:none;width:0;height:0;' });
@@ -310,5 +324,6 @@
     document.addEventListener('DOMContentLoaded', init);
   } else { init(); }
 
-  global.App = { setTab: setTab, setView: setView, render: render, currentMonth: currentMonth, setMonth: setMonth, monthHeader: monthHeader };
+  global.App = { setTab: setTab, setView: setView, render: render, currentMonth: currentMonth, setMonth: setMonth, monthHeader: monthHeader,
+                 currentFy: currentFy, setFy: setFy, fyLabel: fyLabel };
 })(window);

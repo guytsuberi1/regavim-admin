@@ -176,12 +176,40 @@
     });
   }
 
+  // שנת הכספים המוצגת משותפת עם גיליון ניהול התקציב (App.currentFy) —
+  // החלפת שנה שם מחליפה גם כאן, ולהפך.
   function fyLabel() {
+    if (App.fyLabel) {
+      var l = App.fyLabel();
+      if (l) return l;
+    }
     var fy = Store.budgetFiscalYear();
     if (fy && fy.start) return fy.start.slice(0, 4) + '/' + String(parseInt(fy.start.slice(0, 4), 10) + 1).slice(2);
     var t = U.todayISO(), y = parseInt(t.slice(0, 4), 10);
     if (parseInt(t.slice(5, 7), 10) < 9) y--;   // שנת הישיבה: 1/9 עד 31/8
     return y + '/' + String(y + 1).slice(2);
+  }
+  // רשומה שייכת לשנה המוצגת? רשומה ישנה בלי שנה נחשבת לשנה הפעילה,
+  // אחרת היא הייתה נעלמת מהמסך בלי שאיש ביקש.
+  function activeLabel() {
+    var f = Store.budgetCurrentFy ? Store.budgetCurrentFy() : null;
+    return f ? (f.year + '/' + String(f.year + 1).slice(2)) : '';
+  }
+  function inShownFy(rec) {
+    var shown = fyLabel();
+    var y = String(rec.year || '').trim();
+    if (!y) return shown === activeLabel();
+    return y === shown;
+  }
+  // בורר שנה זהה לזה שבגיליון הניהול — אותו מצב, אותה התנהגות
+  function fySelect() {
+    var years = Store.budgetFyYears ? Store.budgetFyYears() : [];
+    if (!years.length) return null;
+    var sel = U.el('select', { style: 'max-width:150px;', title: 'שנת כספים (1/9–31/8)' },
+      years.map(function (y) { return U.el('option', { value: String(y.year), text: 'שנת ' + y.label }); }));
+    sel.value = String(App.currentFy ? App.currentFy() : '');
+    sel.addEventListener('change', function () { App.setFy(sel.value); });
+    return sel;
   }
 
   // ---------- פס הכסף: נוצל · מתוכנן · ללא תכנון ----------
@@ -314,7 +342,7 @@
     if (!isFunded(rec)) {
       view.appendChild(U.el('div', { class: 'card' }, [
         U.el('div', { class: 'muted' }, 'תמונת הכסף תיפתח אחרי שהקול הקורא יסומן "התקבל הקצבה" ויוזן סכום ההקצבה.')
-      ]));
+      ].filter(Boolean)));
     } else {
       view.appendChild(U.el('div', { class: 'card', style: 'margin-bottom:12px;' }, [moneyCard(rec)]));
       view.appendChild(U.el('div', { class: 'card', style: 'margin-bottom:12px;' }, [
@@ -366,7 +394,9 @@
 
   // ---------- מבט על — שורה לכל קול קורא ----------
   function overview(view) {
-    var recs = Store.kkAll();
+    // מסונן לשנת הכספים המוצגת — אותה שנה שנבחרה בגיליון ניהול התקציב
+    var all = Store.kkAll();
+    var recs = all.filter(inShownFy);
     // הכול בטבלה אחת; ק"ק שדווח ונסגר או שאינו רלוונטי יורד לתחתית הטבלה ומוצג בעמעום
     function isDone(r) { return r.status === 'closed' || r.status === 'rejected'; }
     var openRecs = recs.filter(function (r) { return !isDone(r); });
@@ -540,8 +570,10 @@
     }
     var pendingCount = Store.kkPendingInvoices().length;
 
+    var ySel = fySelect();
     view.appendChild(U.el('div', { class: 'page-head' }, [
       U.el('h2', { text: 'קולות קוראים' }),
+      ySel || null,
       U.el('span', { class: 'spacer' }),
       U.el('button', { class: 'btn secondary', html: U.ICO.refresh + ' רענון מהתקציב', onclick: function () {
         Store.budgetLoad(true).then(function () {
