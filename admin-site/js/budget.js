@@ -6,7 +6,8 @@
   var U = global.U;
 
   var subTab = 'sheet';                 // 'sheet' | 'dash' | 'search'
-  var fyKey = null;                     // שנת הכספים המוצגת (null = השנה הפעילה)
+  // שנת הכספים המוצגת מנוהלת מרכזית ב-app.js (App.currentFy/App.setFy),
+  // כדי שגיליון הניהול וקולות קוראים יחלקו את אותו בורר.
   var openRows = {};                    // פיזור חודשי פתוח לפי מזהה קטגוריה
   var mainFilter = '';
   var q = '', qMain = '', qFrom = '', qTo = '', qKind = '';
@@ -26,8 +27,9 @@
   // כי הן ממשיכות לספור את החשבוניות של השנה שעברה.
   function fy() {
     var years = Store.budgetFyYears ? Store.budgetFyYears() : [];
-    if (fyKey) {
-      var hit = years.filter(function (y) { return String(y.year) === String(fyKey); })[0];
+    var key = App.currentFy && App.currentFy();
+    if (key) {
+      var hit = years.filter(function (y) { return String(y.year) === String(key); })[0];
       if (hit) return hit;
     }
     return Store.budgetCurrentFy ? Store.budgetCurrentFy() : { start: '', end: '', label: '' };
@@ -325,7 +327,7 @@
           st.fiscalYear.start = s0;
           st.fiscalYear.end = e0;
         }).then(function () {
-          fyKey = null;                       // חוזרים לצפייה בשנה הפעילה החדשה
+          App.setFy(null);                    // חוזרים לצפייה בשנה הפעילה החדשה
           close();
           U.toast('שנת התקציב עודכנה');
           App.render();
@@ -670,7 +672,7 @@
     var ySel = U.el('select', { style: 'max-width:150px;', title: 'שנת כספים (1/9–31/8)' },
       years.map(function (y) { return U.el('option', { value: String(y.year), text: 'שנת ' + y.label }); }));
     ySel.value = String(cur.year);
-    ySel.addEventListener('change', function () { fyKey = ySel.value; App.render(); });
+    ySel.addEventListener('change', function () { App.setFy(ySel.value); });
     view.appendChild(U.el('div', { class: 'page-head' }, [
       U.el('h2', { text: TITLES[subTab] || 'ניהול תקציב' }),
       years.length ? ySel : null,
