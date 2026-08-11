@@ -25,6 +25,7 @@
     bsearch: global.BudgetSearchView,
     safety: global.SafetyView,
     base: global.BaseView,
+    bcats: global.BudgetCatsView,
     users: global.UsersView,
     settings: global.SettingsView
   };
@@ -67,6 +68,7 @@
     ] },
     { id: 'base', label: 'נתוני בסיס', icon: 'base', subs: [
       { id: 'base', label: 'נתוני בסיס' },
+      { id: 'bcats', label: 'קטגוריות תקציב' },
       { id: 'users', label: 'הרשאות' }
     ] }
   ];
@@ -81,7 +83,7 @@
 
   // הרשאות: admin רואה הכל; secretary רק מרכז למידה
   var ROLE_VIEWS = {
-    admin: ['dash', 'status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'budget', 'bsearch', 'kk', 'safety', 'base', 'users', 'settings'],
+    admin: ['dash', 'status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'budget', 'bsearch', 'kk', 'safety', 'base', 'bcats', 'users', 'settings'],
     // הנהלה — כל הגיליונות למעט הגדרות ונתוני בסיס
     manager: ['dash', 'status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'budget', 'bsearch', 'kk', 'safety'],
     secretary: ['lc']
