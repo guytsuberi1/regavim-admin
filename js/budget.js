@@ -249,111 +249,6 @@
   }
 
 
-  // ---------- קביעת שנת התקציב הפעילה ----------
-  // השנה הפעילה נשמרת בנתוני התקציב (state.fiscalYear) ומשפיעה על שתי האפליקציות.
-  function fyStartYear(dateISO) {
-    var d = String(dateISO || '');
-    if (d.length < 7) return null;
-    var y = parseInt(d.slice(0, 4), 10), m = parseInt(d.slice(5, 7), 10);
-    return (m >= 9) ? y : y - 1;
-  }
-  function openFyModal() {
-    var f = Store.budgetFiscalYear();
-    var curStart = f.start || '', curEnd = f.end || '';
-    var nextY = curStart ? parseInt(curStart.slice(0, 4), 10) + 1 : new Date().getFullYear();
-    var nextStart = nextY + '-09-01', nextEnd = (nextY + 1) + '-09-01';
-
-    var startInp = U.el('input', { type: 'date', value: curStart });
-    var endInp = U.el('input', { type: 'date', value: curEnd });
-    var zeroCb = U.el('input', { type: 'checkbox' });
-    var err = U.el('div', { class: 'field-err' });
-    function fld(l, n, hint) {
-      return U.el('div', { class: 'field' }, [U.el('label', { text: l }), n,
-        hint ? U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:2px;', text: hint }) : null].filter(Boolean));
-    }
-
-    var body = U.el('div', null, [
-      U.el('div', { class: 'muted', style: 'font-size:13px;line-height:1.7;margin-bottom:10px;' },
-        'השנה הפעילה קובעת אילו חשבוניות נספרות בעמודת "נוצל" — בגיליון הזה וגם באפליקציית ' +
-        'ניהול התקציב של המזכירה. לכל שנת תקציב יש רשימת קטגוריות ותקציבים משלה: ' +
-        'במעבר לשנה חדשה הרשימה הנוכחית נשמרת כמו שהיא לשנה שיוצאת, והשנה החדשה מקבלת עותק ' +
-        'שאפשר לערוך בלי להשפיע על מה שהיה. שום נתון לא נמחק — תמיד אפשר לחזור ולצפות בשנה קודמת דרך בורר השנה.'),
-      U.el('div', { class: 'card m-card', style: 'margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;' }, [
-        U.el('div', null, [
-          U.el('div', { style: 'font-weight:600;', text: 'מעבר לשנת ' + nextY + '/' + String(nextY + 1).slice(2) }),
-          U.el('div', { class: 'muted', style: 'font-size:12px;', text: '1 בספטמבר ' + nextY + ' עד 31 באוגוסט ' + (nextY + 1) })
-        ]),
-        U.el('span', { class: 'spacer' }),
-        U.el('button', { class: 'btn', text: 'מעבר לשנה הבאה', onclick: function () {
-          startInp.value = nextStart; endInp.value = nextEnd;
-          err.style.color = 'var(--muted)';
-          err.textContent = 'התאריכים מולאו — לחצו "שמירה" כדי להחיל.';
-        } })
-      ]),
-      U.el('div', { class: 'row' }, [
-        fld('תחילת שנת התקציב', startInp, 'בדרך כלל 1 בספטמבר'),
-        fld('סוף שנת התקציב', endInp, 'בדרך כלל 1 בספטמבר של השנה שאחריה')
-      ]),
-      U.el('label', { style: 'display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px;cursor:pointer;' }, [
-        zeroCb, U.el('span', { text: 'לאפס את סכומי התקציב השנתי בשנה החדשה (הקטגוריות נשמרות)' })
-      ]),
-      err
-    ]);
-
-    Modal.open('שנת התקציב הפעילה', body, [
-      { label: 'ביטול', class: 'secondary' },
-      { label: 'שמירה', onClick: function (close) {
-        var s0 = startInp.value, e0 = endInp.value;
-        if (!s0 || !e0) { err.style.color = ''; err.textContent = 'נדרשים שני תאריכים'; return; }
-        if (e0 <= s0) { err.style.color = ''; err.textContent = 'תאריך הסיום חייב להיות אחרי ההתחלה'; return; }
-        var zero = zeroCb.checked;
-        Store.budgetPatch(function (st) {
-          if (!st.fiscalYear) st.fiscalYear = {};
-          var oldY = fyStartYear(st.fiscalYear.start), newY = fyStartYear(s0);
-          // כל שנה מחזיקה את הקטגוריות שלה: הישנה נשמרת ב-fyCats, החדשה מקבלת עותק עצמאי
-          if (oldY && newY && String(oldY) !== String(newY)) {
-            if (!st.fyCats) st.fyCats = {};
-            st.fyCats[oldY] = JSON.parse(JSON.stringify(st.categories || []));
-            var next = st.fyCats[newY];
-            st.categories = next
-              ? JSON.parse(JSON.stringify(next))
-              : (st.categories || []).map(function (c) {
-                  var n = JSON.parse(JSON.stringify(c));
-                  if (zero) { n.annualBudget = 0; delete n.monthlyPlan; }
-                  return n;
-                });
-            delete st.fyCats[newY];        // השנה הפעילה חיה ב-categories, לא בצילום
-          }
-          st.fiscalYear.start = s0;
-          st.fiscalYear.end = e0;
-        }).then(function () {
-          App.setFy(null);                    // חוזרים לצפייה בשנה הפעילה החדשה
-          close();
-          U.toast('שנת התקציב עודכנה');
-          App.render();
-        }).catch(function (e) {
-          err.style.color = '';
-          err.textContent = 'השמירה נכשלה: ' + (e && e.message ? e.message : '');
-        });
-      } }
-    ]);
-  }
-
-  // קטגוריות ראשיות שמנוהלות בתת-גיליון ייעודי — כאן מוצגת רק שורת הסיכום שלהן
-  var OWN_SHEET = {
-    'קולות קוראים': { view: 'kk' },
-    'גפן': { view: 'gefen' },
-    'גפ"ן': { view: 'gefen' }
-  };
-  function ownSheetLink(own) {
-    if (own.view === 'kk') {
-      return U.el('button', { class: 'b-link', style: 'font-size:12px;color:var(--brand);font-weight:600;',
-        title: 'הפירוט נמצא בתת-הגיליון "קולות קוראים"', text: 'לתת-הגיליון ›',
-        onclick: function () { App.setView('kk'); } });
-    }
-    return U.el('span', { class: 'muted', style: 'font-size:12px;', text: '· תת-גיליון ייעודי' });
-  }
-
   // ---------- גיליון ניהול ----------
   function sheetView(view) {
     var cats = fyCats();
@@ -676,10 +571,9 @@
     view.appendChild(U.el('div', { class: 'page-head' }, [
       U.el('h2', { text: TITLES[subTab] || 'ניהול תקציב' }),
       years.length ? ySel : null,
-      U.el('button', { class: 'btn secondary small', html: U.NAV_ICO.settings, title: 'שינוי שנת התקציב הפעילה',
-        onclick: openFyModal }),
       (String(cur.year) !== String((Store.budgetCurrentFy ? Store.budgetCurrentFy() : {}).year))
-        ? U.el('span', { class: 'tag', style: 'background:#fef3c7;color:#92400e;', text: 'שנה קודמת — לצפייה' }) : null,
+        ? U.el('span', { class: 'tag', style: 'background:#fef3c7;color:#92400e;',
+            text: (String(cur.year) > String((Store.budgetCurrentFy ? Store.budgetCurrentFy() : {}).year)) ? 'שנה עתידית — לצפייה' : 'שנה קודמת — לצפייה' }) : null,
       U.el('span', { class: 'spacer' }),
       U.el('button', { class: 'btn secondary', html: U.ICO.refresh + ' רענון', onclick: function () {
         Store.budgetLoad(true).then(function () { U.toast('הנתונים רועננו'); App.render(); });
