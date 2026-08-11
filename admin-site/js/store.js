@@ -1087,8 +1087,11 @@
       });
   }
   // שנת הכספים הפעילה כרגע (לפי ההגדרה באפליקציית התקציב)
+  // **שנת התקציב נקבעת לפי התאריך בלבד** — 1/9 עד 31/8. היא עובדה של הלוח,
+  // לא הגדרה שמישהו בוחר: 1/9/25–31/8/26 היא 25/26, ורק ב-1/9/26 היא הופכת ל-26/27.
+  // (בורר השנה במסכים הוא בורר *תצוגה* בלבד, לצורך צפייה ותכנון.)
   function budgetCurrentFy() {
-    var y = budgetFyOf(budgetFiscalYear().start) || budgetFyOf(new Date().toISOString().slice(0, 10));
+    var y = budgetFyOf(new Date().toISOString().slice(0, 10));
     return { year: y, label: y + '/' + String(y + 1).slice(2), start: y + '-09-01', end: (y + 1) + '-08-31' };
   }
 
