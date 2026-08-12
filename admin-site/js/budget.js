@@ -264,8 +264,43 @@
     return U.el('span', { class: 'muted', style: 'font-size:12px;', text: '· תת-גיליון ייעודי' });
   }
 
+  // ---------- שחזור צילום ----------
+  // כשקיים צילום שמור לשנה המוצגת, סימן שהרשימה החיה אינה שלה.
+  // מציגים את שני הסכומים ונותנים למשתמש להחליט — לא משחזרים על דעת עצמנו.
+  function restoreBanner(view) {
+    if (!Store.budgetSnapshotFor) return;
+    var y = fy().year;
+    var snap = Store.budgetSnapshotFor(y);
+    if (!snap || !snap.length) return;
+    var snapSum = Store.budgetSumOf(snap);
+    var liveSum = Store.budgetSumOf(fyCats());
+    view.appendChild(U.el('div', { class: 'card', style: 'border-inline-start:4px solid #d97706;background:#fffbeb;margin-bottom:12px;' }, [
+      U.el('div', { style: 'font-weight:700;margin-bottom:4px;', text: 'נמצא תקציב שמור לשנת ' + fy().label }),
+      U.el('div', { style: 'font-size:13px;line-height:1.8;' }, [
+        U.el('div', null, 'מוצג כרגע: ' + ils(liveSum) + ' · ' + fyCats().length + ' תתי-קטגוריות'),
+        U.el('div', null, 'בצילום השמור: ' + ils(snapSum) + ' · ' + snap.length + ' תתי-קטגוריות'),
+        U.el('div', { class: 'muted', style: 'margin-top:4px;' },
+          'הרשימה שמוצגת אינה זו שנשמרה לשנה הזו. שחזור יחזיר את הצילום, והרשימה הנוכחית תישמר לשנה שלה.')
+      ]),
+      U.el('div', { style: 'margin-top:10px;' },
+        U.el('button', { class: 'btn', text: 'שחזור התקציב של ' + fy().label, onclick: function () {
+          Modal.confirm({
+            title: 'שחזור תקציב ' + fy().label,
+            text: 'להחזיר את התקציב השמור (' + ils(snapSum) + ')?\n' +
+                  'הרשימה שמוצגת כרגע (' + ils(liveSum) + ') תישמר ולא תימחק.',
+            okLabel: 'שחזור'
+          }, function () {
+            Store.budgetRestoreYear(y)
+              .then(function () { U.toast('התקציב שוחזר'); App.render(); })
+              .catch(function (e) { U.toast('השחזור נכשל: ' + (e && e.message ? e.message : ''), 'error'); });
+          });
+        } }))
+    ]));
+  }
+
   // ---------- גיליון ניהול ----------
   function sheetView(view) {
+    restoreBanner(view);
     var cats = fyCats();
     if (!cats.length) { view.appendChild(U.el('div', { class: 'empty' }, 'לא נטענו קטגוריות מאפליקציית התקציב.')); return; }
     var frac = fyFraction(), actual = actualBySub(), months = fyMonths();

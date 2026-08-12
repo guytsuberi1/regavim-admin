@@ -1051,16 +1051,51 @@
   // קטגוריות של שנת כספים מסוימת.
   // המודל: state.categories = הקטגוריות של השנה הפעילה (מה שאפליקציית התקציב עובדת איתו),
   // ו-state.fyCats[<שנה>] = צילום הקטגוריות של כל שנה אחרת. שינוי בשנה אחת לא נוגע באחרת.
+  // לאיזו שנה שייכת הרשימה החיה (state.categories).
+  // **לא להניח שזו תמיד השנה הרצה** — כלי "מעבר שנה" ישן העביר את הרשימה קדימה
+  // והשאיר את הנתונים האמיתיים ב-fyCats, וכך הוצגה רשימה של שנה אחרת תחת שם השנה הרצה.
+  function budgetCategoriesYear() {
+    var st = budgetState();
+    if (st && st.categoriesYear != null && String(st.categoriesYear) !== '') {
+      return parseInt(st.categoriesYear, 10);
+    }
+    return budgetCurrentFy().year;
+  }
   function budgetCategoriesFor(year) {
     var st = budgetState();
     if (!st) return [];
-    var active = budgetCurrentFy().year;
-    if (String(year) === String(active)) return (st.categories || []).slice();
-    var map = st.fyCats || {};
-    return (map[year] || []).slice();
+    if (String(year) === String(budgetCategoriesYear())) return (st.categories || []).slice();
+    return ((st.fyCats || {})[year] || []).slice();
   }
+  // עריכה מותרת רק בשנה הרצה, ורק כשהרשימה החיה באמת שייכת לה
   function budgetIsActiveFy(year) {
-    return String(year) === String(budgetCurrentFy().year);
+    return String(year) === String(budgetCurrentFy().year) &&
+           String(year) === String(budgetCategoriesYear());
+  }
+  // צילום שמור לשנה מסוימת — ממנו משחזרים
+  function budgetSnapshotFor(year) {
+    var st = budgetState();
+    return ((st && st.fyCats) || {})[year] || null;
+  }
+  function budgetSumOf(list) {
+    return (list || []).reduce(function (a, c) { return a + knum(c.annualBudget); }, 0);
+  }
+  // שחזור: הצילום של השנה חוזר להיות הרשימה החיה, והרשימה שהייתה נשמרת לשנה שלה
+  function budgetRestoreYear(year) {
+    return budgetPatch(function (st) {
+      var snap = (st.fyCats || {})[year];
+      if (!snap || !snap.length) throw new Error('לא נמצא צילום שמור לשנה ' + year);
+      var had = (st.categoriesYear != null && String(st.categoriesYear) !== '')
+        ? parseInt(st.categoriesYear, 10) : null;
+      if (!st.fyCats) st.fyCats = {};
+      if (had != null && String(had) !== String(year)) {
+        st.fyCats[had] = JSON.parse(JSON.stringify(st.categories || []));
+      }
+      st.categories = JSON.parse(JSON.stringify(snap));
+      delete st.fyCats[year];
+      st.categoriesYear = year;
+      st.fiscalYear = { start: year + '-09-01', end: (year + 1) + '-09-01' };
+    });
   }
 
   // רשימת שנות הכספים שיש להן נתונים — נגזרת מתאריכי התנועות (שנה מתחילה ב-1/9)
@@ -1726,6 +1761,10 @@
     budgetFyFraction: budgetFyFraction,
     budgetFyYears: budgetFyYears,
     budgetCategoriesFor: budgetCategoriesFor,
+    budgetCategoriesYear: budgetCategoriesYear,
+    budgetSnapshotFor: budgetSnapshotFor,
+    budgetSumOf: budgetSumOf,
+    budgetRestoreYear: budgetRestoreYear,
     budgetIsActiveFy: budgetIsActiveFy,
     budgetCurrentFy: budgetCurrentFy,
     budgetSubscribe: budgetSubscribe,
