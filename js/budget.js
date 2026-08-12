@@ -249,6 +249,21 @@
   }
 
 
+  // קטגוריות ראשיות שמנוהלות בתת-גיליון ייעודי — כאן מוצגת רק שורת הסיכום שלהן
+  var OWN_SHEET = {
+    'קולות קוראים': { view: 'kk' },
+    'גפן': { view: 'gefen' },
+    'גפ"ן': { view: 'gefen' }
+  };
+  function ownSheetLink(own) {
+    if (own.view === 'kk') {
+      return U.el('button', { class: 'b-link', style: 'font-size:12px;color:var(--brand);font-weight:600;',
+        title: 'הפירוט נמצא בתת-הגיליון "קולות קוראים"', text: 'לתת-הגיליון ›',
+        onclick: function () { App.setView('kk'); } });
+    }
+    return U.el('span', { class: 'muted', style: 'font-size:12px;', text: '· תת-גיליון ייעודי' });
+  }
+
   // ---------- גיליון ניהול ----------
   function sheetView(view) {
     var cats = fyCats();
