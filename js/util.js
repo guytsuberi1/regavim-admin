@@ -98,6 +98,46 @@
     return months[parseInt(p[1], 10) - 1] + ' ' + p[0];
   }
 
+  // ---------- נרמול שמות ספקים ----------
+  // אותו ספק נכתב אחרת בכל חשבונית: "מגן אש" / "מגן אש בע\"מ" / "מגן-אש" / "חברת מגן אש".
+  // מורידים כל מה שלא מבדיל, וממיינים את המילים כדי ש"אש מגן" יתאים ל"מגן אש".
+  // אותו עיקרון שעבד בהתאמת שמות המורים בסדין.
+  // \b של JS לא עובד על עברית, ולכן מסננים מילים אחרי פירוק ולא בביטוי רגולרי
+  var SUP_NOISE = { 'בעמ': 1, 'חברת': 1, 'חברה': 1, 'עוסק': 1, 'מורשה': 1, 'עמותת': 1,
+                    'ltd': 1, 'inc': 1, 'llc': 1, 'co': 1 };
+  function normSupplier(name) {
+    var t = String(name == null ? '' : name).toLowerCase();
+    t = t.replace(/["'׳״`]/g, '');                     // גרשיים — "בע\"מ" הופך ל"בעמ"
+    t = t.replace(/[^\u0590-\u05FFa-z0-9]+/g, ' ');    // כל השאר מפריד
+    var words = t.split(/\s+/).filter(function (w) { return w && !SUP_NOISE[w]; });
+    return words.sort().join(' ');                     // סדר מילים לא משנה
+  }
+  // מרחק עריכה — לזיהוי שגיאות כתיב ("בן זכירה" מול "בן זכריה")
+  function editDist(a, b) {
+    a = String(a || ''); b = String(b || '');
+    if (a === b) return 0;
+    if (!a.length) return b.length;
+    if (!b.length) return a.length;
+    var prev = [], cur = [], i, j;
+    for (j = 0; j <= b.length; j++) prev[j] = j;
+    for (i = 1; i <= a.length; i++) {
+      cur[0] = i;
+      for (j = 1; j <= b.length; j++) {
+        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      }
+      prev = cur.slice();
+    }
+    return prev[b.length];
+  }
+  // 0..1 — כמה שני שמות דומים אחרי נרמול
+  function supplierSimilarity(a, b) {
+    var x = normSupplier(a), y = normSupplier(b);
+    if (!x || !y) return 0;
+    if (x === y) return 1;
+    var max = Math.max(x.length, y.length);
+    return max ? (1 - editDist(x, y) / max) : 0;
+  }
+
   // ---------- שדה סכום עם פסיקים ----------
   // מציג 2,202,709 כשלא בעריכה; בפוקוס חוזר למספר נקי כדי שיהיה נוח להקליד.
   function fmtNum(n) {
@@ -514,6 +554,7 @@
     toast: toast, dateChip: dateChip, actionMenu: actionMenu, openPicker: openPicker,
     tagChip: tagChip, tagClass: tagClass,
     fmtNum: fmtNum, parseNum: parseNum, moneyInput: moneyInput,
+    normSupplier: normSupplier, supplierSimilarity: supplierSimilarity,
     trendChart: trendChart, waNumber: waNumber
   };
 })(window);

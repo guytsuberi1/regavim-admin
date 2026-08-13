@@ -1130,6 +1130,171 @@
     return { year: y, label: y + '/' + String(y + 1).slice(2), start: y + '-09-01', end: (y + 1) + '-08-31' };
   }
 
+  // ---------- מרשם ספקים מאוחד ----------
+  // **מקור אמת אחד**: state.suppliers שבנתוני התקציב. אפליקציית התקציב כבר קוראת ממנו
+  // (הבורר של המזכירה), ונתוני בסיס עורכים אותו דרך budgetPatch. אין שני מאגרים.
+  // לכל ספק aliases[] — כל הכתיבים שראינו בחשבוניות. החשבוניות עצמן לא משתנות.
+  function suppliersAll() {
+    var st = budgetState();
+    return (st && st.suppliers) ? st.suppliers.slice() : [];
+  }
+  function supKey(n) { return (global.U && U.normSupplier) ? U.normSupplier(n) : String(n || '').trim(); }
+  // כל הכתיבים של ספק — שמו וכינוייו
+  function supAllNames(sup) {
+    return [sup.name].concat(sup.aliases || []).filter(Boolean);
+  }
+  function supplierByName(name) {
+    var k = supKey(name);
+    if (!k) return null;
+    return suppliersAll().filter(function (s) {
+      return supAllNames(s).some(function (n) { return supKey(n) === k; });
+    })[0] || null;
+  }
+  // שמות הספקים שמופיעים בחשבוניות
+  function invoiceSupplierNames() {
+    var seen = {}, out = [];
+    budgetTransactions().forEach(function (t) {
+      var n = String(t.supplier || '').trim();
+      if (n && !seen[n]) { seen[n] = 1; out.push(n); }
+    });
+    return out;
+  }
+  // ספקים מהחשבוניות שעוד אינם במרשם — עם הצעת התאמה כשיש דמיון גבוה.
+  // **הדמיון הוא הצעה בלבד.** איחוד אוטומטי לפי דמיון מאחד בסוף שני ספקים שונים באמת.
+  function suppliersPending(minSim) {
+    minSim = minSim || 0.8;
+    var regs = suppliersAll();
+    return invoiceSupplierNames().filter(function (n) { return !supplierByName(n); })
+      .map(function (n) {
+        var best = null, bestSim = 0;
+        regs.forEach(function (s) {
+          supAllNames(s).forEach(function (rn) {
+            var sim = (global.U && U.supplierSimilarity) ? U.supplierSimilarity(n, rn) : 0;
+            if (sim > bestSim) { bestSim = sim; best = s; }
+          });
+        });
+        var count = budgetTransactions().filter(function (t) { return String(t.supplier || '').trim() === n; }).length;
+        return { name: n, invoices: count,
+                 suggestion: bestSim >= minSim ? best : null,
+                 similarity: bestSim >= minSim ? bestSim : 0 };
+      })
+      .sort(function (a, b) { return b.invoices - a.invoices; });
+  }
+  function newSupplier(name) {
+    return { id: uid(), name: String(name || '').trim(), field: '', phone: '', email: '',
+             taxId: '', note: '', aliases: [] };
+  }
+  // איחוד אוטומטי — **רק התאמה ודאית** של המפתח המנורמל. שום ניחוש.
+  function suppliersAutoMerge() {
+    var added = 0;
+    return budgetPatch(function (st) {
+      if (!st.suppliers) st.suppliers = [];
+      var names = {}, out = [];
+      (st.transactions || []).forEach(function (t) {
+        var n = String(t.supplier || '').trim();
+        if (n && !names[n]) { names[n] = 1; out.push(n); }
+      });
+      out.forEach(function (n) {
+        var k = supKey(n);
+        if (!k) return;
+        var hit = st.suppliers.filter(function (s) {
+          return [s.name].concat(s.aliases || []).filter(Boolean)
+            .some(function (rn) { return supKey(rn) === k; });
+        })[0];
+        if (!hit) return;                       // לא מוכר — הולך למגש, לא נכנס לבד
+        if (hit.name === n) return;             // כבר השם הראשי
+        if (!hit.aliases) hit.aliases = [];
+        if (hit.aliases.indexOf(n) === -1) { hit.aliases.push(n); added++; }
+      });
+    }).then(function () { return added; });
+  }
+  function supplierAddFromInvoice(name) {
+    return budgetPatch(function (st) {
+      if (!st.suppliers) st.suppliers = [];
+      st.suppliers.push(newSupplier(name));
+    });
+  }
+  function supplierMergeAlias(supplierId, alias) {
+    return budgetPatch(function (st) {
+      var s = (st.suppliers || []).filter(function (x) { return x.id === supplierId; })[0];
+      if (!s) throw new Error('הספק לא נמצא במרשם');
+      if (!s.aliases) s.aliases = [];
+      if (s.aliases.indexOf(alias) === -1) s.aliases.push(alias);
+    });
+  }
+  function supplierSave(supplierId, field, value) {
+    return budgetPatch(function (st) {
+      var s = (st.suppliers || []).filter(function (x) { return x.id === supplierId; })[0];
+      if (!s) throw new Error('הספק לא נמצא במרשם');
+      s[field] = value;
+    });
+  }
+  function supplierDelete(supplierId) {
+    return budgetPatch(function (st) {
+      st.suppliers = (st.suppliers || []).filter(function (x) { return x.id !== supplierId; });
+    });
+  }
+  // ייבוא מרובה — פעולת כתיבה אחת, ודילוג על שמות שכבר מוכרים
+  function suppliersBulkAdd(list) {
+    var added = 0, skipped = 0;
+    return budgetPatch(function (st) {
+      if (!st.suppliers) st.suppliers = [];
+      (list || []).forEach(function (rec) {
+        var n = String(rec.name || '').trim();
+        if (!n) return;
+        var k = supKey(n);
+        var hit = st.suppliers.filter(function (s) {
+          return [s.name].concat(s.aliases || []).filter(Boolean)
+            .some(function (rn) { return supKey(rn) === k; });
+        })[0];
+        if (hit) { skipped++; return; }
+        var s2 = newSupplier(n);
+        ['field', 'phone', 'email', 'taxId', 'note'].forEach(function (f) { s2[f] = String(rec[f] || '').trim(); });
+        st.suppliers.push(s2);
+        added++;
+      });
+    }).then(function () { return { added: added, skipped: skipped }; });
+  }
+  function supplierCreate(rec) {
+    return budgetPatch(function (st) {
+      if (!st.suppliers) st.suppliers = [];
+      var s = newSupplier(rec.name);
+      s.field = rec.field || ''; s.phone = rec.phone || '';
+      st.suppliers.push(s);
+    });
+  }
+  // הגירה חד-פעמית: המרשם הישן שבהגדרות התפעול נמזג למרשם המאוחד
+  function suppliersMigrateLocal() {
+    var local = (settings().suppliers || []).filter(function (s) { return (s.name || '').trim(); });
+    if (!local.length) return Promise.resolve(0);
+    var moved = 0;
+    return budgetPatch(function (st) {
+      if (!st.suppliers) st.suppliers = [];
+      local.forEach(function (l) {
+        var k = supKey(l.name);
+        var hit = st.suppliers.filter(function (s) {
+          return [s.name].concat(s.aliases || []).filter(Boolean)
+            .some(function (rn) { return supKey(rn) === k; });
+        })[0];
+        if (hit) {
+          ['field', 'phone', 'email', 'taxId', 'note'].forEach(function (f) {
+            if (!hit[f] && l[f]) hit[f] = l[f];
+          });
+        } else {
+          var s = newSupplier(l.name);
+          ['field', 'phone', 'email', 'taxId', 'note'].forEach(function (f) { s[f] = l[f] || ''; });
+          st.suppliers.push(s);
+          moved++;
+        }
+      });
+    }).then(function () {
+      var core = settings();
+      core.suppliersMigrated = true;
+      saveSettings();
+      return moved;
+    });
+  }
+
   // עדכון בזמן אמת — המזכירה מזינה חשבונית והמסך כאן מתעדכן
   var budgetChannel = null;
   function budgetSubscribe(onChange) {
@@ -1769,6 +1934,12 @@
     budgetCurrentFy: budgetCurrentFy,
     budgetSubscribe: budgetSubscribe,
     budgetPatch: budgetPatch,
+    suppliersAll: suppliersAll, supplierByName: supplierByName, supAllNames: supAllNames,
+    suppliersPending: suppliersPending, suppliersAutoMerge: suppliersAutoMerge,
+    supplierAddFromInvoice: supplierAddFromInvoice, supplierMergeAlias: supplierMergeAlias,
+    supplierSave: supplierSave, supplierDelete: supplierDelete, supplierCreate: supplierCreate,
+    suppliersBulkAdd: suppliersBulkAdd,
+    suppliersMigrateLocal: suppliersMigrateLocal, invoiceSupplierNames: invoiceSupplierNames,
     budgetLoadError: budgetLoadError,
     approvalFileUrl: approvalFileUrl,
     uploadApproval: uploadApproval,

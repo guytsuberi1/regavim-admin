@@ -148,19 +148,11 @@
   }
 
   // --- ספקים ---
-  function suppliers() {
-    var s = Store.settings();
-    if (!Array.isArray(s.suppliers)) s.suppliers = [];
-    return s.suppliers;
-  }
-  function addSupplier(rec) {
-    var name = String(rec.name || '').trim();
-    if (!name) return null;
-    var r = { id: Store.uid(), name: name, field: String(rec.field || '').trim(),
-      phone: String(rec.phone || '').trim(), email: String(rec.email || '').trim(),
-      taxId: String(rec.taxId || '').trim(), note: String(rec.note || '').trim() };
-    suppliers().push(r);
-    return r;
+  // המרשם המאוחד יושב בנתוני התקציב — אותו מאגר שהמזכירה בוחרת ממנו.
+  function suppliers() { return Store.suppliersAll ? Store.suppliersAll() : []; }
+  function supSave(sup, field, val) {
+    Store.supplierSave(sup.id, field, val)
+      .catch(function (e) { U.toast('השמירה נכשלה: ' + (e && e.message ? e.message : ''), 'error'); });
   }
   function downloadSupplierSample() {
     saveXlsx([['שם הספק', 'תחום', 'טלפון', 'אימייל', 'ח.פ / ע.מ', 'הערות'],
@@ -171,61 +163,76 @@
   function importSuppliers(file) {
     readSheet(file, { name: /^שם/, field: /תחום|סוג|עיסוק/, phone: /טלפון|נייד/, email: /מייל|אימייל|דוא/,
       taxId: /ח\.?פ|ע\.?מ|עוסק|מזהה/, note: /הער/ }, 'name', function (rows, col) {
-      var have = {};
-      suppliers().forEach(function (s) { have[String(s.name).trim()] = true; });
-      var added = 0, skipped = 0;
-      rows.forEach(function (row) {
-        var nm = col.name != null ? String(row[col.name] || '').trim() : '';
-        if (!nm) return;
-        if (have[nm]) { skipped++; return; }
-        have[nm] = true;
-        addSupplier({ name: nm,
-          field: col.field != null ? row[col.field] : '', phone: col.phone != null ? row[col.phone] : '',
-          email: col.email != null ? row[col.email] : '', taxId: col.taxId != null ? row[col.taxId] : '',
-          note: col.note != null ? row[col.note] : '' });
-        added++;
-      });
-      Store.saveSettings();
-      U.toast('יובאו ' + added + ' ספקים' + (skipped ? ' · ' + skipped + ' דילוגים (כבר קיימים)' : ''));
-      App.render();
+      var list = rows.map(function (row) {
+        return {
+          name: col.name != null ? row[col.name] : '',
+          field: col.field != null ? row[col.field] : '',
+          phone: col.phone != null ? row[col.phone] : '',
+          email: col.email != null ? row[col.email] : '',
+          taxId: col.taxId != null ? row[col.taxId] : '',
+          note: col.note != null ? row[col.note] : ''
+        };
+      }).filter(function (r) { return String(r.name || '').trim(); });
+      Store.suppliersBulkAdd(list).then(function (res) {
+        U.toast('יובאו ' + res.added + ' ספקים' + (res.skipped ? ' · ' + res.skipped + ' כבר קיימים' : ''));
+        App.render();
+      }).catch(function (e) { U.toast('הייבוא נכשל: ' + (e && e.message ? e.message : ''), 'error'); });
     });
   }
 
-  // ---------- טבלת התלמידים ----------
-  function studentsTable(rows) {
-    var names = classNames();
-    var body = rows.map(function (r) {
-      var nameInp = bare(U.el('input', { value: r.st.name || '', placeholder: 'שם מלא', style: 'width:100%;font-weight:500;' }));
-      nameInp.addEventListener('change', function () { r.st.name = nameInp.value.trim(); Store.saveClasses(); });
+  // ---------- מגש "ספקים לאישור" ----------
+  // ספק שהמזכירה הקלידה בחשבונית ואינו מוכר במרשם — לא נכנס לבד.
+  // התאמה ודאית (מפתח מנורמל זהה) כבר אוחדה אוטומטית; כאן נשאר רק מה שדורש הכרעה.
+  // **הצעת הדמיון היא הצעה בלבד.** "אלי איטח" ו"אלי איטן" מקבלים אותו ציון דמיון
+  // כמו "נחשון טכנולוגיה" ו"נחשון טכנולוגיות" — אחד אותו ספק והשני לא. רק אתה יודע.
+  function pendingTray(view) {
+    if (!Store.suppliersPending) return;
+    var pend = Store.suppliersPending();
+    if (!pend.length) return;
 
-      var clsW = U.dataListInput(r.cls.name || '', names, 'כיתה');
-      bare(clsW._input);
-      clsW._input.style.maxWidth = '110px';
-      clsW._input.addEventListener('change', function () { moveStudent(r.st, r.cls, clsW.get()); });
-
-      var noteInp = bare(U.el('input', { value: r.st.note || '', placeholder: 'רגישות / מידע רלוונטי', style: 'width:100%;font-size:13px;color:var(--muted);' }));
-      noteInp.addEventListener('change', function () { r.st.note = noteInp.value.trim(); Store.saveClasses(); });
-
-      var del = U.el('button', { class: 'btn secondary small', html: U.ICO.trash, title: 'הסרת תלמיד/ה', onclick: function () {
-        Modal.confirm({ title: 'הסרת תלמיד/ה', text: 'להסיר את "' + (r.st.name || '') + '" מהרשימה?', okLabel: 'הסרה', danger: true }, function () {
-          r.cls.students = r.cls.students.filter(function (x) { return x !== r.st; });
-          dropEmptyClasses();
-          Store.saveClasses();
-          App.render();
-        });
-      } });
+    var rows = pend.map(function (p) {
+      var actions = U.el('td', { style: 'white-space:nowrap;' });
+      if (p.suggestion) {
+        actions.appendChild(U.el('button', { class: 'btn', text: 'אותו ספק', 
+          title: 'השם יישמר ככינוי של "' + p.suggestion.name + '"', onclick: function () {
+            Store.supplierMergeAlias(p.suggestion.id, p.name)
+              .then(function () { U.toast('אוחד עם ' + p.suggestion.name); App.render(); })
+              .catch(function (e) { U.toast('נכשל: ' + (e && e.message ? e.message : ''), 'error'); });
+          } }));
+        actions.appendChild(document.createTextNode(' '));
+      }
+      actions.appendChild(U.el('button', { class: 'btn secondary', text: 'ספק חדש', onclick: function () {
+        Store.supplierAddFromInvoice(p.name)
+          .then(function () { U.toast('נוסף למרשם'); App.render(); })
+          .catch(function (e) { U.toast('נכשל: ' + (e && e.message ? e.message : ''), 'error'); });
+      } }));
 
       return U.el('tr', null, [
-        U.el('td', { style: 'min-width:170px;' }, nameInp),
-        U.el('td', null, clsW),
-        U.el('td', { style: 'min-width:200px;' }, noteInp),
-        U.el('td', null, del)
+        U.el('td', null, [
+          U.el('strong', { text: p.name }),
+          U.el('div', { class: 'muted', style: 'font-size:12px;', text: p.invoices + ' חשבוניות' })
+        ]),
+        U.el('td', null, p.suggestion
+          ? U.el('div', null, [
+              U.el('span', { text: p.suggestion.name }),
+              U.el('span', { class: 'tag', style: 'margin-inline-start:6px;background:#fef3c7;color:#92400e;',
+                text: Math.round(p.similarity * 100) + '% דומה' })
+            ])
+          : U.el('span', { class: 'muted', text: 'אין דומה במרשם' })),
+        actions
       ]);
     });
-    return U.el('div', { class: 'tbl-scroll' }, [U.el('table', { class: 'grid' }, [
-      U.el('thead', null, U.el('tr', null, ['שם מלא', 'כיתה', 'הערות', ''].map(function (h) { return U.el('th', { text: h }); }))),
-      U.el('tbody', null, body)
-    ])]);
+
+    view.appendChild(U.el('div', { class: 'card', style: 'border-inline-start:4px solid #d97706;background:#fffbeb;margin-bottom:14px;' }, [
+      U.el('div', { style: 'font-weight:700;margin-bottom:4px;', text: 'ספקים לאישור (' + pend.length + ')' }),
+      U.el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:10px;' },
+        'שמות שהוזנו בחשבוניות ואינם במרשם. החלטה אחת לכל שם — והיא נשמרת לתמיד. ' +
+        'החשבוניות עצמן לא משתנות: איחוד רק שומר את השם ככינוי של הספק הקיים.'),
+      U.el('div', { class: 'tbl-scroll' }, [U.el('table', { class: 'grid' }, [
+        U.el('thead', null, U.el('tr', null, ['שם מהחשבונית', 'הצעה', ''].map(function (h) { return U.el('th', { text: h }); }))),
+        U.el('tbody', null, rows)
+      ])])
+    ]));
   }
 
   // ---------- טבלת הספקים ----------
@@ -233,15 +240,18 @@
     function inp(field, ph, style) {
       var i = bare(U.el('input', { value: s[field] || '', placeholder: ph, autocomplete: 'off',
         style: (style || 'width:100%;') }));
-      i.addEventListener('change', function () { s[field] = i.value.trim(); Store.saveSettings(); });
+      i.addEventListener('change', function () {
+        if (i.value.trim() === (s[field] || '')) return;
+        s[field] = i.value.trim();
+        supSave(s, field, s[field]);
+      });
       return i;
     }
     var del = U.el('button', { class: 'btn secondary small', html: U.ICO.trash, title: 'הסרת ספק', onclick: function () {
-      Modal.confirm({ title: 'הסרת ספק', text: 'להסיר את "' + (s.name || '') + '" מרשימת הספקים?', okLabel: 'הסרה', danger: true }, function () {
-        var arr = suppliers(), ix = arr.indexOf(s);
-        if (ix > -1) arr.splice(ix, 1);
-        Store.saveSettings();
-        App.render();
+      Modal.confirm({ title: 'הסרת ספק', text: 'להסיר את "' + (s.name || '') + '" מרשימת הספקים?\n' +
+        'החשבוניות הקיימות אינן משתנות.', okLabel: 'הסרה', danger: true }, function () {
+        Store.supplierDelete(s.id).then(function () { U.toast('הספק הוסר'); App.render(); })
+          .catch(function (e) { U.toast('ההסרה נכשלה: ' + (e && e.message ? e.message : ''), 'error'); });
       });
     } });
     var waBtn = s.phone && U.waNumber(s.phone)
@@ -266,17 +276,16 @@
     ])]);
   }
 
-  var focusSup = false, supFilter = '';
+  var focusSup = false, supFilter = '', supSynced = false;
   function supplierQuickAdd(view) {
     var name = U.el('input', { placeholder: '+ ספק חדש — שם ולחיצה על Enter', style: 'flex:2 1 180px;min-width:0;font-size:15px;' });
     var field = U.el('input', { placeholder: 'תחום', style: 'flex:1;min-width:110px;' });
     var phone = U.el('input', { placeholder: 'טלפון', style: 'flex:1;min-width:110px;direction:ltr;text-align:right;' });
     function add() {
       if (!name.value.trim()) { name.focus(); return; }
-      addSupplier({ name: name.value, field: field.value, phone: phone.value });
-      Store.saveSettings();
-      focusSup = true;
-      App.render();
+      Store.supplierCreate({ name: name.value.trim(), field: field.value.trim(), phone: phone.value.trim() })
+        .then(function () { focusSup = true; U.toast('הספק נוסף'); App.render(); })
+        .catch(function (e) { U.toast('ההוספה נכשלה: ' + (e && e.message ? e.message : ''), 'error'); });
     }
     [name, field, phone].forEach(function (i) {
       i.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); add(); } });
@@ -371,6 +380,15 @@
     }
 
     // ---------- ספקים ----------
+    // איחוד ודאי + הגירת המרשם הישן — פעם אחת, בשקט, לפני שמציגים
+    if (!supSynced) {
+      supSynced = true;
+      var chain = (Store.settings().suppliersMigrated || !Store.suppliersMigrateLocal)
+        ? Promise.resolve(0) : Store.suppliersMigrateLocal();
+      chain.then(function () { return Store.suppliersAutoMerge ? Store.suppliersAutoMerge() : 0; })
+        .then(function (merged) { if (merged) { U.toast(merged + ' כתיבים אוחדו אוטומטית'); } App.render(); })
+        .catch(function () { /* אין חיבור — המסך עדיין עובד */ });
+    }
     var sup = suppliers();
     view.appendChild(U.el('div', { class: 'page-head', style: 'margin-top:24px;' }, [
       U.el('h3', { text: 'ספקים', style: 'font-size:17px;color:var(--brand-dark);' }),
@@ -385,6 +403,7 @@
     supQ.addEventListener('input', function () { supFilter = supQ.value; renderSupTable(); });
     view.appendChild(U.el('div', { style: 'display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;' }, [supQ]));
 
+    pendingTray(view);
     supplierQuickAdd(view);
 
     var supWrap = U.el('div');
