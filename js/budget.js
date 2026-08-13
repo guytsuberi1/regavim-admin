@@ -85,9 +85,11 @@
   function fyCats() {
     return Store.budgetCategoriesFor ? Store.budgetCategoriesFor(fy().year) : Store.budgetCategories();
   }
-  function editable() {
-    return Store.budgetIsActiveFy ? Store.budgetIsActiveFy(fy().year) : true;
-  }
+  // **גיליון ניהול התקציב הוא לצפייה בלבד** (החלטת גיא).
+  // כל עריכה של קטגוריות, תקציבים, אחראים ופיזור חודשי נעשית במקום אחד:
+  // נתוני בסיס ← קטגוריות תקציב. כך אין שני מקומות שעורכים את אותו דבר,
+  // ואין חוסר עקביות שבו שנה אחת ניתנת לעריכה כאן ואחרת לא.
+  function editable() { return false; }
   function mainOrder() {
     var seen = [];
     fyCats().forEach(function (c) { if (seen.indexOf(c.main) === -1) seen.push(c.main); });
@@ -402,9 +404,7 @@
       U.el('tbody', null, body)
     ])]));
     view.appendChild(U.el('div', { class: 'muted', style: 'font-size:12px;margin-top:6px;',
-      text: (editable()
-        ? 'אפשר לערוך כאן שם, תקציב שנתי, אחראי, הערה ופיזור חודשי — השינוי נשמר ישירות בנתוני התקציב ומופיע גם אצל המזכירה. '
-        : 'שנה קודמת — לצפייה בלבד. העריכה פתוחה רק בשנת התקציב הפעילה. ') +
+      text: 'הגיליון הזה הוא לצפייה בלבד. עריכת קטגוריות, תקציבים ואחראים נעשית ב"נתוני בסיס ← קטגוריות תקציב". ' +
         'הסמן בפס מציין כמה מהשנה חלף (' + pct(frac) + ') — פס שעבר אותו הוא קצב חריג.' }));
 
     // תוכנן מול בפועל לפי חודש
