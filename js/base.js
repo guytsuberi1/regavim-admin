@@ -180,46 +180,6 @@
     });
   }
 
-  // ---------- כלי ניקוי: ייצוא הרשימה, והדבקת תוכנית איחוד ----------
-  function cleanupTools(view) {
-    var ta = U.el('textarea', { rows: 5, placeholder:
-      'שם קנוני < כתיב | כתיב אחר\nשורה שמתחילה ב-! = לא ספק',
-      style: 'width:100%;font-family:monospace;font-size:13px;direction:rtl;' });
-    var box = U.el('div', { style: 'display:none;margin-top:10px;' }, [
-      ta,
-      U.el('div', { style: 'margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;' }, [
-        U.el('button', { class: 'btn', text: 'החלת התוכנית', onclick: function () {
-          if (!ta.value.trim()) { U.toast('אין מה להחיל', 'error'); return; }
-          Store.suppliersApplyPlan(ta.value).then(function (r) {
-            U.toast('אוחדו ' + r.merged + ' כתיבים · נוצרו ' + r.created + ' · סומנו "לא ספק" ' + r.ignored);
-            ta.value = ''; App.render();
-          }).catch(function (e) { U.toast('נכשל: ' + (e && e.message ? e.message : ''), 'error'); });
-        } })
-      ])
-    ]);
-
-    view.appendChild(U.el('div', { class: 'card m-card', style: 'margin-bottom:12px;' }, [
-      U.el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;' }, [
-        U.el('strong', { style: 'font-size:14px;', text: 'ניקוי כפילויות' }),
-        U.el('span', { class: 'spacer' }),
-        U.el('button', { class: 'btn secondary', html: U.ICO.copy + ' העתקת הרשימה',
-          title: 'העתקת המרשם והממתינים — להדבקה בצ׳אט', onclick: function () {
-            var txt = Store.suppliersExportText();
-            navigator.clipboard.writeText(txt)
-              .then(function () { U.toast('הרשימה הועתקה — אפשר להדביק'); })
-              .catch(function () {
-                Modal.open('רשימת הספקים', U.el('textarea', { rows: 16,
-                  style: 'width:100%;font-family:monospace;font-size:12px;' }, txt),
-                  [{ label: 'סגירה', class: 'secondary' }], { wide: true });
-              });
-          } }),
-        U.el('button', { class: 'btn secondary', text: 'הדבקת תוכנית איחוד',
-          onclick: function () { box.style.display = box.style.display === 'none' ? 'block' : 'none'; } })
-      ]),
-      box
-    ]));
-  }
-
   // ---------- כפילויות בתוך המרשם ----------
   function dupGroups(view) {
     if (!Store.supplierDupGroups) return;
@@ -483,7 +443,6 @@
     view.appendChild(U.el('div', { style: 'display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;' }, [supQ]));
 
     dupGroups(view);
-    cleanupTools(view);
     pendingTray(view);
     supplierQuickAdd(view);
 
