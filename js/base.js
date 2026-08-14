@@ -206,6 +206,14 @@
           .then(function () { U.toast('נוסף למרשם'); App.render(); })
           .catch(function (e) { U.toast('נכשל: ' + (e && e.message ? e.message : ''), 'error'); });
       } }));
+      actions.appendChild(document.createTextNode(' '));
+      // למשל שם עובד שהוזן בטעות בשדה הספק — יורד מהמגש לתמיד
+      actions.appendChild(U.el('button', { class: 'btn secondary', text: 'לא ספק',
+        title: 'לא ייכנס למרשם ולא יופיע כאן שוב', onclick: function () {
+          Store.supplierIgnore(p.name)
+            .then(function () { U.toast('"' + p.name + '" לא ייחשב ספק'); App.render(); })
+            .catch(function (e) { U.toast('נכשל: ' + (e && e.message ? e.message : ''), 'error'); });
+        } }));
 
       return U.el('tr', null, [
         U.el('td', null, [
@@ -226,8 +234,8 @@
     view.appendChild(U.el('div', { class: 'card', style: 'border-inline-start:4px solid #d97706;background:#fffbeb;margin-bottom:14px;' }, [
       U.el('div', { style: 'font-weight:700;margin-bottom:4px;', text: 'ספקים לאישור (' + pend.length + ')' }),
       U.el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:10px;' },
-        'שמות שהוזנו בחשבוניות ואינם במרשם. החלטה אחת לכל שם — והיא נשמרת לתמיד. ' +
-        'החשבוניות עצמן לא משתנות: איחוד רק שומר את השם ככינוי של הספק הקיים.'),
+        'שמות שהוזנו בחשבוניות ספק ואינם במרשם. החלטה אחת לכל שם — והיא נשמרת לתמיד. ' +
+        'החזרים לעובדים אינם מופיעים כאן. החשבוניות עצמן לא משתנות: איחוד רק שומר את השם ככינוי של הספק הקיים.'),
       U.el('div', { class: 'tbl-scroll' }, [U.el('table', { class: 'grid' }, [
         U.el('thead', null, U.el('tr', null, ['שם מהחשבונית', 'הצעה', ''].map(function (h) { return U.el('th', { text: h }); }))),
         U.el('tbody', null, rows)
