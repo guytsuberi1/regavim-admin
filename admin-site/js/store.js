@@ -1150,14 +1150,35 @@
       return supAllNames(s).some(function (n) { return supKey(n) === k; });
     })[0] || null;
   }
-  // שמות הספקים שמופיעים בחשבוניות
-  function invoiceSupplierNames() {
-    var seen = {}, out = [];
-    budgetTransactions().forEach(function (t) {
+  // **פונקציה טהורה** — מקבלת תנועות ורשימת התעלמות ומחזירה שמות ספקים.
+  // מוצאת החוצה כדי שאפשר יהיה לבדוק אותה באמת, בלי תלות במצב פנימי.
+  // החזר לעובד (kind='reimburse') הוא לא ספק — "רז גרולמן(שכר)" לא אמור להגיע למרשם.
+  function supplierNamesFrom(txs, notSuppliers) {
+    var skip = {}, seen = {}, out = [];
+    (notSuppliers || []).forEach(function (n) { skip[supKey(n)] = 1; });
+    (txs || []).forEach(function (t) {
+      if ((t.kind || 'invoice') !== 'reimburse') return;
+      var e = String(t.employee || t.supplier || '').trim();
+      if (e) skip[supKey(e)] = 1;                     // מי שקיבל החזר — לא ספק, בשום כתיב
+    });
+    (txs || []).forEach(function (t) {
+      if ((t.kind || 'invoice') === 'reimburse') return;
       var n = String(t.supplier || '').trim();
-      if (n && !seen[n]) { seen[n] = 1; out.push(n); }
+      if (!n || seen[n] || skip[supKey(n)]) return;
+      seen[n] = 1; out.push(n);
     });
     return out;
+  }
+  function invoiceSupplierNames() {
+    var st = budgetState();
+    return supplierNamesFrom(budgetTransactions(), (st && st.notSuppliers) || []);
+  }
+  // סימון "לא ספק" — למשל שם עובד שהוזן בטעות בשדה הספק
+  function supplierIgnore(name) {
+    return budgetPatch(function (st) {
+      if (!st.notSuppliers) st.notSuppliers = [];
+      if (st.notSuppliers.indexOf(name) === -1) st.notSuppliers.push(name);
+    });
   }
   // ספקים מהחשבוניות שעוד אינם במרשם — עם הצעת התאמה כשיש דמיון גבוה.
   // **הדמיון הוא הצעה בלבד.** איחוד אוטומטי לפי דמיון מאחד בסוף שני ספקים שונים באמת.
@@ -1189,11 +1210,7 @@
     var added = 0;
     return budgetPatch(function (st) {
       if (!st.suppliers) st.suppliers = [];
-      var names = {}, out = [];
-      (st.transactions || []).forEach(function (t) {
-        var n = String(t.supplier || '').trim();
-        if (n && !names[n]) { names[n] = 1; out.push(n); }
-      });
+      var out = supplierNamesFrom(st.transactions, st.notSuppliers);
       out.forEach(function (n) {
         var k = supKey(n);
         if (!k) return;
@@ -1938,7 +1955,8 @@
     suppliersPending: suppliersPending, suppliersAutoMerge: suppliersAutoMerge,
     supplierAddFromInvoice: supplierAddFromInvoice, supplierMergeAlias: supplierMergeAlias,
     supplierSave: supplierSave, supplierDelete: supplierDelete, supplierCreate: supplierCreate,
-    suppliersBulkAdd: suppliersBulkAdd,
+    suppliersBulkAdd: suppliersBulkAdd, supplierIgnore: supplierIgnore,
+    supplierNamesFrom: supplierNamesFrom,
     suppliersMigrateLocal: suppliersMigrateLocal, invoiceSupplierNames: invoiceSupplierNames,
     budgetLoadError: budgetLoadError,
     approvalFileUrl: approvalFileUrl,
