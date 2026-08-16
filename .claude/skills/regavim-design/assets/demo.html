@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>שפת העיצוב — רגבים בנימין</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Noto+Sans+Hebrew:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="base.css" />
+<link rel="stylesheet" href="components.css" />
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-logo">💼</span>
+      <span class="brand-txt">שפת העיצוב<small>רגבים בנימין</small></span>
+    </div>
+    <nav class="tabs">
+      <div class="nav-sec">דוגמה</div>
+      <button class="active">כל הרכיבים</button>
+      <button>מסך שני</button>
+    </nav>
+  </aside>
+  <div class="content">
+    <header class="topbar">
+      <button class="sb-toggle">☰</button>
+      <span class="spacer"></span>
+      <div class="status">
+        <span>נשמר</span>
+        <button class="btn secondary small" onclick="document.body.classList.toggle('dark')">🌙 מצב חשוך</button>
+      </div>
+    </header>
+    <main>
+      <div class="page-head">
+        <h2>כל הרכיבים</h2>
+        <span class="spacer"></span>
+        <button class="btn secondary">ייצוא</button>
+        <button class="btn">➕ פריט</button>
+      </div>
+
+      <div class="subtabs">
+        <button class="active">רכיבים</button>
+        <button>טפסים</button>
+        <button>טבלאות</button>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi kpi-bad"><div class="kpi-ic"></div><div class="kpi-body">
+          <div class="kpi-row"><div class="kpi-val">3</div><span class="kpi-badge down">-2</span></div>
+          <div class="kpi-lbl">אישורים שפגו</div><div class="kpi-sub">הכי דחוף: כבאות</div></div></div>
+        <div class="kpi kpi-warn"><div class="kpi-ic"></div><div class="kpi-body">
+          <div class="kpi-row"><div class="kpi-val">12</div></div>
+          <div class="kpi-lbl">ממתין לאישור</div></div></div>
+        <div class="kpi kpi-good"><div class="kpi-ic"></div><div class="kpi-body">
+          <div class="kpi-row"><div class="kpi-val">86%</div><span class="kpi-badge up">+4</span></div>
+          <div class="kpi-lbl">ניצול תקציב</div></div></div>
+        <div class="kpi kpi-info"><div class="kpi-ic"></div><div class="kpi-body">
+          <div class="kpi-row"><div class="kpi-val">1,240</div></div>
+          <div class="kpi-lbl">חשבוניות בשנה</div></div></div>
+      </div>
+
+      <div class="card m-card" style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span class="m-cdot" style="background:#16a34a"></span>
+          <h3 style="margin:0;font-size:16px">כפתורים ושדות</h3>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+          <button class="btn">ראשי</button>
+          <button class="btn secondary">משני</button>
+          <button class="btn accent">משלים</button>
+          <button class="btn danger">מחיקה</button>
+          <button class="btn small">קטן</button>
+          <button class="btn" disabled>מנוטרל</button>
+        </div>
+        <div class="row">
+          <div class="field"><label>שם הספק</label><input placeholder="שם מלא" /></div>
+          <div class="field"><label>תחום</label><select><option>חשמל</option><option>אינסטלציה</option></select></div>
+          <div class="field"><label>סכום</label><input value="12,400" /></div>
+          <div class="field"><label>שדה שגוי</label><input class="invalid" value="---" /><div class="field-err">ערך לא תקין</div></div>
+        </div>
+      </div>
+
+      <div class="m-toolbar">
+        <input class="m-search" placeholder="חיפוש…" />
+        <button class="btn secondary m-popbtn on">סינון <span class="m-badge">2</span></button>
+        <button class="btn secondary m-popbtn">מיון</button>
+        <button class="btn secondary m-popbtn">קיבוץ</button>
+      </div>
+      <div class="m-chiprow"><span class="m-fchip">סטטוס: פתוח ✕</span><span class="m-fchip">אחראי: גיא ✕</span></div>
+
+      <button class="m-group">
+        <span style="color:var(--muted);font-size:12px">▾</span>
+        <span class="m-gbar" style="background:#1d4e89"></span>
+        <span class="m-gname" style="color:#1d4e89">בתהליך</span>
+        <span class="m-gcount">3 משימות · 2 פתוחות</span>
+      </button>
+
+      <div class="tbl-scroll">
+        <table class="grid">
+          <thead><tr><th></th><th class="sortable">משימה</th><th>אחראי</th><th>יעד</th><th>סכום</th><th>סטטוס</th><th></th></tr></thead>
+          <tbody>
+            <tr>
+              <td style="width:28px"><button class="m-chev has open">▾</button></td>
+              <td>חידוש אישור כבאות
+                <span class="m-rollup">3/5 <span class="m-rbar"><span style="width:60%;background:#16a34a"></span></span></span>
+              </td>
+              <td><span class="m-owner"><span class="m-avatar" style="background:#7c3aed">ג״צ</span><span class="m-oname">גיא צוברי</span></span></td>
+              <td><span class="tl tl-orange">בעוד 12 יום</span></td>
+              <td>4,200</td>
+              <td><select class="m-status" style="background:#0d9488"><option>בתהליך</option></select></td>
+              <td class="actions"><span class="m-actions"><button class="m-iconbtn">✏️</button><button class="m-iconbtn">🗑️</button></span></td>
+            </tr>
+            <tr class="m-subrow"><td colspan="7">
+              <div class="m-subwrap"><table class="grid m-subgrid">
+                <thead><tr><th>תת-משימה</th><th>סטטוס</th></tr></thead>
+                <tbody><tr><td>תיאום ביקורת</td><td><span class="tl tl-green">בוצע</span></td></tr>
+                <tr><td>תשלום אגרה</td><td><span class="tl tl-none">טרם</span></td></tr></tbody>
+              </table></div>
+            </td></tr>
+            <tr>
+              <td></td><td>סקר עצים</td>
+              <td><span class="m-owner empty">ללא אחראי</span></td>
+              <td><span class="tl tl-red">באיחור</span></td>
+              <td>18,000</td>
+              <td><select class="m-status" style="background:#c62828"><option>תקוע</option></select></td>
+              <td class="actions"><span class="m-actions"><button class="m-iconbtn">✏️</button></span></td>
+            </tr>
+            <tr>
+              <td></td><td>ביטוח צד ג'</td>
+              <td><span class="m-owner"><span class="m-avatar" style="background:#1d4e89">א״מ</span><span class="m-oname">אבישי מעודה</span></span></td>
+              <td><span class="tl tl-green">בתוקף</span></td>
+              <td>7,950</td>
+              <td><select class="m-status" style="background:#16a34a"><option>הושלם</option></select></td>
+              <td class="actions"><span class="m-actions"><button class="m-iconbtn">✏️</button></span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="m-addrow"><input class="m-addinput" placeholder="＋ הוסף משימה — כתוב ולחץ Enter" /></div>
+
+      <div style="margin:20px 0 8px">
+        <span class="tag">מורה</span> <span class="tag">פנימיה</span>
+        <span class="tl tl-green">בתוקף</span> <span class="tl tl-orange">עומד לפוג</span>
+        <span class="tl tl-red">פג</span> <span class="tl tl-none">חסר</span>
+      </div>
+
+      <div class="card m-card"><div class="empty">אין רשומות להצגה</div></div>
+    </main>
+  </div>
+</div>
+
+<div class="modal-bg" style="position:static;background:none;padding:24px 0;display:block">
+  <div class="modal" style="margin:0 auto">
+    <div class="modal-head"><h3>עריכת ספק</h3><button class="x">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>שם</label><input value="נחשון טכנולוגיות" /></div>
+      <div class="field"><label>הערה</label><textarea rows="2"></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn">שמירה</button><button class="btn secondary">ביטול</button></div>
+  </div>
+</div>
+
+<div class="toast-wrap" style="position:static;padding:0 24px 24px">
+  <div class="toast toast-success show"><span class="toast-ic">✓</span>נשמר</div>
+  <div class="toast toast-error show"><span class="toast-ic">!</span>העלאת הקובץ נכשלה — שם הקובץ חייב להיות באנגלית</div>
+</div>
+</body>
+</html>

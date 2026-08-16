@@ -306,6 +306,11 @@ Storage: `admin-approvals` (אישורי מחלה/3010) · `meeting-audio` (הק
 
 ## שפת העיצוב של האפליקציה הזו — בסגנון Monday
 
+**שפת העיצוב ארוזה כסקיל: `.claude/skills/regavim-design/`** — `SKILL.md` (הכללים ותהליך
+ההמרה) · `assets/base.css` + `assets/components.css` (הקוד עצמו, מועתק מהאפליקציה החיה) ·
+`assets/demo.html` (כל הרכיבים בעמוד אחד) · `references/components.md` (ה-HTML של כל רכיב).
+לעדכן את הסקיל כשמשנים רכיב בסיס, ולסנכרן את התיקייה לשאר הריפואים.
+
 עיקרון 2 קובע את המבנה; **הפלטה והטיפוגרפיה כאן הן של Monday**, לפי בקשת גיא
 ("זה נראה מאושן ולא מספיק אינטואיטיבי"). התקנים נלקחו מ-`mondaycom/monday-ui-style`:
 
