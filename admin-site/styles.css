@@ -1112,14 +1112,27 @@ tr.b-grand td { background: var(--bg); font-weight: 700; border-top: 2px solid v
 .bpb.pb-red .bpb-fill { background: #dc2626; }
 .bpb-marker { position: absolute; top: -2px; width: 2px; height: 20px; background: var(--text); opacity: .55; }
 .bpb-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
-/* פיזור חודשי */
-.b-months { display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); }
-.b-month { border: 1px solid var(--border); border-radius: var(--r-s, 4px); padding: 6px 8px; font-size: 12px; }
+/* פיזור חודשי — 12 חודשים בשש עמודות (חצי שנה בכל שורה), כך שהרשת תמיד יוצאת שלמה.
+   auto-fill נתן 9 עמודות ועוד שורה של 3 יתומים, וזה נראה שבור. */
+.b-months { display: grid; gap: 8px; grid-template-columns: repeat(6, 1fr); }
+@media (max-width: 1180px) { .b-months { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 820px)  { .b-months { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 560px)  { .b-months { grid-template-columns: repeat(2, 1fr); } }
+.b-month {
+  border: 1px solid var(--border); border-radius: var(--r-m, 8px);
+  background: var(--card); padding: 8px 8px 7px; font-size: 12px; text-align: center;
+}
 .b-month.over { border-color: #dc2626; background: #fef2f2; }
 body.dark .b-month.over { background: #3a1f22; }
-.b-month-lbl { font-weight: 600; margin-bottom: 2px; }
-.b-month-plan { color: var(--muted); }
-.b-month-act { font-weight: 600; }
+.b-month-lbl { font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 3px; }
+/* התכנון — המספר הראשי בריבוע */
+.b-month-plan { font-size: 15px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+/* פס דק: כמה מהתכנון כבר נוצל באותו חודש */
+.b-mbar { height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; margin: 6px 0 5px; }
+.b-mbar > span { display: block; height: 100%; border-radius: 2px; background: var(--brand); }
+.b-month.over .b-mbar > span { background: #dc2626; }
+.b-month-act { font-size: 11px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+.b-month.over .b-month-act { color: #b91c1c; font-weight: 600; }
 /* גרף תוכנן מול בפועל */
 .b-chart { display: flex; gap: 6px; align-items: flex-end; height: 170px; overflow-x: auto; padding-bottom: 4px; }
 .b-bar-col { flex: 1 1 42px; min-width: 42px; display: flex; flex-direction: column; align-items: center; height: 100%; }
@@ -1135,6 +1148,5 @@ body.dark .b-month.over { background: #3a1f22; }
 .b-chevbtn { background: none; border: 0; padding: 2px 4px; cursor: pointer; color: var(--muted); }
 .b-chevbtn:hover { color: var(--brand); }
 tr.b-add td { background: var(--bg); padding: 4px 0; }
-.b-month .b-month-plan { color: var(--muted); }
 tr.b-add button { display: inline-flex; align-items: center; gap: 6px; }
 tr.b-add button svg { width: 14px; height: 14px; }

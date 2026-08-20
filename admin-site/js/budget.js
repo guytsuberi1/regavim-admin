@@ -217,7 +217,7 @@
   }
   function monthCell(c, idx, n) {
     var plan = monthlyPlanOf(c, n);
-    if (!editable()) return U.el('div', { style: 'font-weight:600;text-align:center;', text: U.fmtNum(Math.round(plan[idx])) });
+    if (!editable()) return U.el('div', { class: 'b-month-plan', text: U.fmtNum(Math.round(plan[idx])) });
     return bare(U.moneyInput({
       value: Math.round(plan[idx]) || '',
       style: 'width:100%;text-align:center;font-weight:600;',
@@ -327,7 +327,6 @@
           : U.el('span', { text: main })),
         U.el('td', { text: ils(mB) }),
         U.el('td'),
-        U.el('td'),
         U.el('td', { text: ils(mA) }),
         U.el('td', { style: mB - mA < 0 ? 'color:#b91c1c;' : '', text: ils(mB - mA) }),
         U.el('td', null, progressBar(mA, mB, frac)),
@@ -351,7 +350,6 @@
           nameCell,
           U.el('td', null, moneyCell(c)),
           U.el('td', null, textCell(c, 'owner', 'אחראי', 100)),
-          U.el('td', null, textCell(c, 'note', 'הערה', 140)),
           U.el('td', { text: a ? ils(a) : '—' }),
           U.el('td', { style: annual - a < 0 ? 'color:#b91c1c;font-weight:600;' : '', text: ils(annual - a) }),
           U.el('td', null, progressBar(a, annual, frac)),
@@ -361,16 +359,20 @@
           var plan = monthlyPlanOf(c, months.length);
           var am = amSub[c.main + '||' + c.sub] || {};
           var grid = U.el('div', { class: 'b-months' }, months.map(function (ym, i) {
-            var act = am[ym] || 0;
-            return U.el('div', { class: 'b-month' + (act > plan[i] && plan[i] > 0 ? ' over' : '') }, [
+            var act = am[ym] || 0, pl = plan[i] || 0;
+            var over = pl > 0 && act > pl;
+            // פס דק שמראה את הביצוע מול התכנון — כך רואים בסקירה אחת איפה חרגנו
+            var w = pl > 0 ? Math.min(100, Math.round(act / pl * 100)) : (act > 0 ? 100 : 0);
+            return U.el('div', { class: 'b-month' + (over ? ' over' : ''), title: monthLabel(ym) + ' · תוכנן ' + ils(pl) + ' · בפועל ' + ils(act) }, [
               U.el('div', { class: 'b-month-lbl', text: monthLabel(ym) }),
               monthCell(c, i, months.length),
-              U.el('div', { class: 'b-month-act', text: 'בפועל ' + ils(act) })
+              U.el('div', { class: 'b-mbar' }, U.el('span', { style: 'width:' + w + '%;' })),
+              U.el('div', { class: 'b-month-act', text: act ? 'בפועל ' + ils(act) : 'ללא ביצוע' })
             ]);
           }));
-          body.push(U.el('tr', null, U.el('td', { colspan: '8' }, [
+          body.push(U.el('tr', null, U.el('td', { colspan: '7' }, [
             U.el('div', { style: 'display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;' }, [
-              U.el('span', { class: 'muted', style: 'font-size:12px;', text: 'פיזור חודשי — ' + c.sub + ' · המספר בכל חודש הוא התכנון, מתחתיו הביצוע בפועל' }),
+              U.el('span', { class: 'muted', style: 'font-size:12px;', text: 'פיזור חודשי — ' + c.sub + ' · למעלה התכנון, מתחת לפס הביצוע בפועל' }),
               U.el('span', { class: 'spacer' }),
               editable() ? U.el('button', { class: 'btn secondary small', text: 'פזר שווה',
                 title: 'חלוקת התקציב השנתי שווה בשווה בין החודשים',
@@ -381,7 +383,7 @@
         }
       });
       if (editable()) {
-        body.push(U.el('tr', { class: 'b-add' }, U.el('td', { colspan: '8' },
+        body.push(U.el('tr', { class: 'b-add' }, U.el('td', { colspan: '7' },
           U.el('button', { class: 'b-link', style: 'font-size:13px;color:var(--brand);padding-inline-start:12px;',
             html: U.ICO.plus + ' תת-קטגוריה ל"' + main + '"',
             onclick: function () { addSub(main); } }))));
@@ -391,7 +393,6 @@
       U.el('td', { text: 'סה"כ כללי' }),
       U.el('td', { text: ils(gB) }),
       U.el('td'),
-      U.el('td'),
       U.el('td', { text: ils(gA) }),
       U.el('td', { style: gB - gA < 0 ? 'color:#b91c1c;' : '', text: ils(gB - gA) }),
       U.el('td', null, progressBar(gA, gB, frac)),
@@ -399,7 +400,7 @@
     ]));
 
     view.appendChild(U.el('div', { class: 'tbl-scroll' }, [U.el('table', { class: 'grid b-sheet' }, [
-      U.el('thead', null, U.el('tr', null, ['קטגוריה', 'תקציב שנתי', 'אחראי', 'הערות', 'נוצל', 'יתרה', 'ניצול מול קצב השנה', 'תחזית לסוף השנה']
+      U.el('thead', null, U.el('tr', null, ['קטגוריה', 'תקציב שנתי', 'אחראי', 'נוצל', 'יתרה', 'ניצול מול קצב השנה', 'תחזית לסוף השנה']
         .map(function (h) { return U.el('th', { text: h }); }))),
       U.el('tbody', null, body)
     ])]));
