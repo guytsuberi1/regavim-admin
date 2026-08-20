@@ -1199,3 +1199,19 @@ body.dark .kk-step.done .kk-step-n { background: #17281c; color: #4ade80; }
 .kk-strip-l { font-size: 12px; color: var(--muted); }
 .kk-chip { cursor: pointer; border: 1px solid var(--brand); background: var(--brand-light); color: var(--brand-dark); font-family: inherit; text-decoration: none; }
 .kk-chip:hover { filter: brightness(.97); }
+/* ידית גרירה למשימות קול קורא — גרירה חיה, לכן touch-action:none כדי שהעמוד לא יגלול */
+.kk-grip {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 24px; flex: 0 0 auto; color: var(--muted);
+  cursor: grab; opacity: .45; touch-action: none;
+}
+.kk-grip:hover { opacity: 1; color: var(--brand); }
+.kk-grip svg { width: 16px; height: 16px; }
+.kk-task.kk-dragging {
+  background: var(--brand-light); border-radius: var(--r-s, 4px);
+  box-shadow: var(--sh-s); position: relative; z-index: 2;
+}
+.kk-task.kk-dragging .kk-grip { cursor: grabbing; opacity: 1; color: var(--brand); }
+/* אייקון עזרה שכבר יש מאחוריו תוכן */
+.m-iconbtn.has { color: var(--brand); }
+.m-iconbtn svg { width: 16px; height: 16px; }
