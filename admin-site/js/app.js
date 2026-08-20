@@ -37,8 +37,9 @@
     ] },
     { id: 'budget', label: 'ניהול תקציב', icon: 'budget', subs: [
       { id: 'budget', label: 'גיליון ניהול' },
-      { id: 'bsearch', label: 'חיפוש חכם' },
-      { id: 'kk', label: 'קולות קוראים' }
+      { id: 'kk', label: 'קולות קוראים' },
+      // גפ"ן ייכנס כאן, בין קולות קוראים לחיפוש חכם, כשהגיליון ייבנה
+      { id: 'bsearch', label: 'חיפוש חכם' }
     ] },
     { id: 'payroll', label: 'דוחות שכר', icon: 'payroll', subs: [
       { id: 'status', label: 'לוח שכר' },
