@@ -23,6 +23,7 @@
     budget: global.BudgetView,
     bdash: global.BudgetDashView,
     bsearch: global.BudgetSearchView,
+    gefen: global.GefenView,
     safety: global.SafetyView,
     base: global.BaseView,
     bcats: global.BudgetCatsView,
@@ -38,7 +39,7 @@
     { id: 'budget', label: 'ניהול תקציב', icon: 'budget', subs: [
       { id: 'budget', label: 'גיליון ניהול' },
       { id: 'kk', label: 'קולות קוראים' },
-      // גפ"ן ייכנס כאן, בין קולות קוראים לחיפוש חכם, כשהגיליון ייבנה
+      { id: 'gefen', label: 'גפ"ן' },
       { id: 'bsearch', label: 'חיפוש חכם' }
     ] },
     { id: 'payroll', label: 'דוחות שכר', icon: 'payroll', subs: [
@@ -84,9 +85,9 @@
 
   // הרשאות: admin רואה הכל; secretary רק מרכז למידה
   var ROLE_VIEWS = {
-    admin: ['dash', 'status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'budget', 'bsearch', 'kk', 'safety', 'base', 'bcats', 'users', 'settings'],
+    admin: ['dash', 'status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'budget', 'bsearch', 'kk', 'gefen', 'safety', 'base', 'bcats', 'users', 'settings'],
     // הנהלה — כל הגיליונות למעט הגדרות ונתוני בסיס
-    manager: ['dash', 'status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'budget', 'bsearch', 'kk', 'safety'],
+    manager: ['dash', 'status', 'queue', 'lc', 'sub', 'abs', 'pdf', 'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events', 'budget', 'bsearch', 'kk', 'gefen', 'safety'],
     secretary: ['lc']
   };
   function roleKey() { return Store.currentRole(); }

@@ -7,7 +7,7 @@ const { chromium } = require('/opt/node22/lib/node_modules/playwright');
 const VIEWS = [
   'dash', 'status', 'queue', 'lc', 'sub', 'abs', 'pdf',
   'emp', 'week', 'cand', 'pos', 'tasks', 'projects', 'events',
-  'budget', 'bsearch', 'kk', 'safety', 'base', 'bcats', 'users', 'settings'
+  'budget', 'bsearch', 'kk', 'gefen', 'safety', 'base', 'bcats', 'users', 'settings'
 ];
 
 (async () => {
