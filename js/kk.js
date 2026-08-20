@@ -10,14 +10,56 @@
     { key: 'submitted', label: 'הוגש', color: '#2563eb' },
     { key: 'approved', label: 'התקבל הקצבה', color: '#16a34a' },
     { key: 'spending', label: 'מימוש', color: '#0d9488' },
+    { key: 'reporting', label: 'בדיווח', color: '#7c3aed' },
     { key: 'closed', label: 'דווח ונסגר', color: '#475569' },
     { key: 'rejected', label: 'לא אושר / לא רלוונטי', color: '#b91c1c' }
   ];
+
+  // המסלול: שלושה שלבי-על. הצ'ק-ליסט תלוי בשלב ולא בסטטוס המדויק,
+  // כדי שהזזת סטטוס בתוך אותו שלב (למשל "פורסם"→"בהכנה") לא תחליף רשימה.
+  var STAGES = [
+    { key: 'submit', label: 'הגשה',  statuses: ['published', 'prep', 'submitted'] },
+    { key: 'spend',  label: 'מימוש', statuses: ['approved', 'spending'] },
+    { key: 'report', label: 'דיווח', statuses: ['reporting', 'closed'] }
+  ];
+  function stageOf(rec) {
+    var st = (rec && rec.status) || 'published';
+    for (var i = 0; i < STAGES.length; i++) if (STAGES[i].statuses.indexOf(st) !== -1) return STAGES[i].key;
+    return '';                       // "לא אושר" — מחוץ למסלול
+  }
+  function stageIdx(key) {
+    for (var i = 0; i < STAGES.length; i++) if (STAGES[i].key === key) return i;
+    return -1;
+  }
+  // רשימת המשימות של שלב, עם יצירה עצלה כדי שרשומות ותיקות לא ייפלו
+  function stepsOf(rec, stage) {
+    if (!rec.steps) rec.steps = {};
+    if (!rec.steps[stage]) rec.steps[stage] = [];
+    return rec.steps[stage];
+  }
+  function stepCount(rec, stage) {
+    var l = stepsOf(rec, stage);
+    return { total: l.length, done: l.filter(function (t) { return t.done; }).length };
+  }
+  // רשימת פתיחה גנרית — כשאין מסמך רשמי, כדי שהשלב לא יהיה מסך ריק
+  var DEFAULT_STEPS = {
+    submit: ['הורדת טופס הבקשה מאתר הגוף המממן', 'מילוי פרטי המוסד והפעילות',
+             'אישור ניהול תקין / ניהול ספרים', 'אישור רישוי המוסד', 'תקציב מוצע לפעילות',
+             'חתימת מורשי חתימה', 'הגשה במערכת המקוונת', 'שמירת אישור ההגשה'],
+    report: ['איסוף כל החשבוניות והקבלות', 'התאמת ההוצאות לסעיפי התקציב שאושרו',
+             'מילוי טופס דיווח ביצוע', 'אישור רו"ח / מנהל כספים',
+             'תמונות ותיעוד הפעילות', 'הגשת הדיווח במערכת', 'שמירת אישור הדיווח']
+  };
+  function newStep(title, help, form, link) {
+    return { id: 'st' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+             title: title, help: help || '', form: form || '', link: link || '',
+             file: null, done: false, note: '' };
+  }
   // סטטוס שורת תכנון — במילים של האקסל
   var PLAN_STATUS = ['תכנון', 'בביצוע'];
   function stDef(k) { return STATUSES.filter(function (s) { return s.key === k; })[0] || STATUSES[0]; }
   // שלבים שבהם הכסף כבר אושר — רק להם יש משמעות לתמונת הניצול
-  function isFunded(rec) { return ['approved', 'spending', 'closed'].indexOf(rec.status) !== -1; }
+  function isFunded(rec) { return ['approved', 'spending', 'reporting', 'closed'].indexOf(rec.status) !== -1; }
 
   var subTab = 'list';      // 'list' (מבט על) | 'inbox'
   var selectedId = null;    // קול קורא פתוח בפירוט
@@ -316,6 +358,337 @@
     ]);
   }
 
+  // שורת כסף מצומצמת לשלב הדיווח — המספרים שצריך כדי לדווח, בלי דף הניהול המלא
+  function moneyStrip(rec) {
+    var m = Store.kkMoney(rec);
+    function cell(lbl, val, style) {
+      return U.el('div', { class: 'kk-strip-c' }, [
+        U.el('div', { class: 'kk-strip-v', style: style || '', text: ils(val) }),
+        U.el('div', { class: 'kk-strip-l', text: lbl })
+      ]);
+    }
+    var open = false;
+    var full = U.el('div', { style: 'display:none;margin-top:12px;' });
+    var toggle = U.el('button', { class: 'btn secondary small', text: 'פירוט החשבוניות' });
+    toggle.addEventListener('click', function () {
+      open = !open;
+      if (open && !full.childElementCount) full.appendChild(invoicesTable(rec));
+      full.style.display = open ? '' : 'none';
+      toggle.textContent = open ? 'סגירת הפירוט' : 'פירוט החשבוניות';
+    });
+    return U.el('div', { class: 'card m-card', style: 'margin-bottom:12px;' }, [
+      U.el('div', { class: 'kk-strip' }, [
+        cell('אושר', m.approved),
+        cell('נוצל', m.used),
+        cell('יתרה', m.approved - m.used, (m.approved - m.used) < 0 ? 'color:#b91c1c;' : ''),
+        U.el('span', { class: 'spacer' }),
+        toggle
+      ]),
+      full
+    ]);
+  }
+
+  // ---------- המסלול: פס השלבים בראש הכרטיס ----------
+  function stepper(rec) {
+    var cur = stageOf(rec), idx = stageIdx(cur);
+    if (!cur) {
+      return U.el('div', { class: 'card m-card', style: 'margin-bottom:12px;' },
+        U.el('div', { class: 'muted', text: 'הקול הקורא סומן "לא אושר / לא רלוונטי" — אין לו מסלול פעיל.' }));
+    }
+    return U.el('div', { class: 'kk-steps' }, STAGES.map(function (st, i) {
+      var c = stepCount(rec, st.key);
+      var cls = 'kk-step' + (i === idx ? ' cur' : (i < idx ? ' done' : ''));
+      return U.el('div', { class: cls }, [
+        U.el('span', { class: 'kk-step-n', text: i < idx ? '✓' : String(i + 1) }),
+        U.el('div', { class: 'kk-step-txt' }, [
+          U.el('div', { class: 'kk-step-lbl', text: st.label }),
+          U.el('div', { class: 'kk-step-sub',
+            text: st.key === 'spend' ? 'ניהול הכסף'
+                : (c.total ? c.done + ' מתוך ' + c.total + ' משימות' : 'אין עדיין משימות') })
+        ])
+      ]);
+    }));
+  }
+
+  // ---------- צ'ק-ליסט של שלב ----------
+  function stepRow(rec, stage, t) {
+    var openHelp = false;
+    var row;
+    function save() { saveKk(rec); }
+
+    var cb = U.el('input', { type: 'checkbox' });
+    cb.checked = !!t.done;
+    cb.addEventListener('change', function () {
+      t.done = cb.checked;
+      t.doneAt = cb.checked ? U.todayISO() : '';
+      save(); App.render();
+    });
+
+    var title = U.el('input', { class: 'transp kk-task-title', value: t.title || '', placeholder: 'תיאור המשימה' });
+    title.addEventListener('change', function () { t.title = title.value.trim(); save(); });
+
+    var help = U.el('div', { class: 'kk-task-help', style: 'display:none;' });
+    function fillHelp() {
+      help.innerHTML = '';
+      var ta = U.el('textarea', { rows: 3, placeholder: 'מה צריך לעשות, איפה מורידים את הטופס, מי חותם…',
+        style: 'width:100%;font-size:13px;' });
+      ta.value = t.help || '';
+      ta.addEventListener('change', function () { t.help = ta.value.trim(); save(); });
+      var form = U.el('input', { value: t.form || '', placeholder: 'טופס/מסמך נדרש (לא חובה)', style: 'width:100%;' });
+      form.addEventListener('change', function () { t.form = form.value.trim(); save(); refreshChips(); });
+      var link = U.el('input', { value: t.link || '', placeholder: 'https://…  קישור לטופס או לעמוד הקול הקורא',
+        style: 'width:100%;direction:ltr;text-align:left;' });
+      link.addEventListener('change', function () { t.link = link.value.trim(); save(); refreshChips(); });
+
+      // קובץ מצורף — הטופס הריק/ההנחיות, כדי שלא לחפש אותו מחדש בכל שנה
+      var fInp = U.el('input', { type: 'file', style: 'display:none;' });
+      fInp.addEventListener('change', function () {
+        var f = fInp.files && fInp.files[0]; if (!f) return;
+        U.toast('מעלה…');
+        Store.uploadTaskFile(f).then(function (up) {
+          t.file = { path: up.path, name: up.name }; save(); U.toast('הקובץ צורף'); refreshChips(); fileRowBtn.textContent = 'החלפת הקובץ';
+        }).catch(function (e) { U.toast('ההעלאה נכשלה: ' + (e && e.message ? e.message : ''), 'error'); });
+      });
+      var fileRowBtn = U.el('button', { class: 'btn secondary small', text: t.file ? 'החלפת הקובץ' : '📎 צירוף טופס',
+        onclick: function () { fInp.click(); } });
+      var fileRow = U.el('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;' }, [
+        fileRowBtn,
+        t.file ? U.el('button', { class: 'btn secondary small', text: 'הסרה', onclick: function () {
+          var old = t.file && t.file.path;
+          t.file = null; save();
+          if (old) Store.deleteTaskFile(old).catch(function () {});
+          refreshChips(); fileRowBtn.textContent = '📎 צירוף טופס';
+        } }) : null,
+        fInp
+      ].filter(Boolean));
+
+      help.appendChild(U.el('div', { class: 'field' }, [U.el('label', { text: 'עזרה' }), ta]));
+      help.appendChild(U.el('div', { class: 'row' }, [
+        U.el('div', { class: 'field' }, [U.el('label', { text: 'טופס נדרש' }), form]),
+        U.el('div', { class: 'field' }, [U.el('label', { text: 'קישור' }), link])
+      ]));
+      help.appendChild(U.el('div', { class: 'field' }, [U.el('label', { text: 'קובץ מצורף' }), fileRow]));
+    }
+    // צ'יפים לפתיחה מהירה — בלי להיכנס לעריכה
+    function formChip() {
+      return t.form ? U.el('span', { class: 'tag kk-chip-s', title: 'טופס נדרש', text: t.form }) : null;
+    }
+    function linkChip() {
+      if (!t.link) return null;
+      return U.el('a', { class: 'tag kk-chip', href: t.link, target: '_blank', rel: 'noopener',
+        title: t.link, text: '🔗 קישור' });
+    }
+    function fileChip() {
+      if (!t.file || !t.file.path) return null;
+      var a = U.el('button', { class: 'tag kk-chip', title: t.file.name || 'קובץ', text: '📎 ' + (t.file.name || 'קובץ') });
+      a.addEventListener('click', function () {
+        Store.taskFileUrl(t.file.path).then(function (url) {
+          if (url) window.open(url, '_blank'); else U.toast('לא ניתן לפתוח את הקובץ', 'error');
+        });
+      });
+      return a;
+    }
+
+    var helpBtn = U.el('button', { class: 'm-iconbtn', title: 'עזרה, קישור וטופס', text: (t.help || t.form || t.link || t.file) ? 'ⓘ' : '＋' });
+    helpBtn.addEventListener('click', function () {
+      openHelp = !openHelp;
+      if (openHelp) fillHelp();
+      help.style.display = openHelp ? '' : 'none';
+      helpBtn.classList.toggle('on', openHelp);
+    });
+
+    var del = U.el('button', { class: 'm-iconbtn', title: 'מחיקת המשימה', html: U.ICO.trash });
+    del.addEventListener('click', function () {
+      var list = stepsOf(rec, stage), i = list.indexOf(t);
+      if (i !== -1) list.splice(i, 1);
+      save(); App.render();
+    });
+
+    var head = U.el('div', { class: 'kk-task-head' }, [
+      cb, title, formChip(), linkChip(), fileChip(),
+      U.el('span', { class: 'spacer' }),
+      helpBtn, del
+    ].filter(Boolean));
+    // רענון הצ'יפים במקום — App.render באמצע עריכה סוגר את פאנל העזרה וגונב את הפוקוס
+    function refreshChips() {
+      Array.prototype.slice.call(head.querySelectorAll('.kk-chip, .kk-chip-s')).forEach(function (n) { n.remove(); });
+      var sp = head.querySelector('.spacer');
+      [formChip(), linkChip(), fileChip()].filter(Boolean).forEach(function (n) { head.insertBefore(n, sp); });
+      helpBtn.textContent = (t.help || t.form || t.link || t.file) ? 'ⓘ' : '＋';
+    }
+
+    row = U.el('div', { class: 'kk-task' + (t.done ? ' done' : '') }, [
+      head,
+      t.help ? U.el('div', { class: 'kk-task-hint', text: t.help }) : null,
+      help
+    ].filter(Boolean));
+    return row;
+  }
+
+  function stepsCard(rec, stage, title) {
+    var list = stepsOf(rec, stage), c = stepCount(rec, stage);
+    var pct = c.total ? Math.round(c.done / c.total * 100) : 0;
+
+    var head = U.el('div', { class: 'kk-steps-head' }, [
+      U.el('h3', { style: 'margin:0;', text: title }),
+      U.el('span', { class: 'spacer' }),
+      c.total ? U.el('span', { class: 'muted', style: 'font-size:13px;', text: c.done + '/' + c.total }) : null,
+      c.total ? U.el('span', { class: 'kk-prog' }, U.el('span', { style: 'width:' + pct + '%;' })) : null
+    ].filter(Boolean));
+
+    var rows = U.el('div', { class: 'kk-tasks' }, list.map(function (t) { return stepRow(rec, stage, t); }));
+
+    var add = U.el('input', { class: 'm-addinput', placeholder: '＋ הוסף משימה — כתוב ולחץ Enter' });
+    add.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      var v = add.value.trim(); if (!v) return;
+      list.push(newStep(v));
+      saveKk(rec); App.render();
+    });
+
+    var body = [head, rows, U.el('div', { class: 'm-addrow' }, add)];
+    if (!list.length) {
+      body.splice(1, 0, U.el('div', { class: 'kk-empty' }, [
+        U.el('div', { class: 'muted', text: 'אין עדיין משימות לשלב הזה.' }),
+        U.el('div', { class: 'empty-actions' }, [
+          U.el('button', { class: 'btn secondary small', text: 'התחל מרשימת ברירת מחדל', onclick: function () {
+            (DEFAULT_STEPS[stage] || []).forEach(function (x) { list.push(newStep(x)); });
+            saveKk(rec); App.render();
+          } })
+        ])
+      ]));
+    }
+    return U.el('div', { class: 'card m-card', style: 'margin-bottom:12px;' }, body);
+  }
+
+  // ---------- המסמך הרשמי + בניית המשימות ממנו ----------
+  function docCard(rec) {
+    var has = !!(rec.doc && rec.doc.path);
+    var fileInp = U.el('input', { type: 'file', accept: '.pdf,.doc,.docx,.png,.jpg,.jpeg', style: 'display:none;' });
+    fileInp.addEventListener('change', function () {
+      var f = fileInp.files && fileInp.files[0]; if (!f) return;
+      U.toast('מעלה את המסמך…');
+      Store.uploadKkDoc(rec, f)
+        .then(function () { U.toast('המסמך נשמר'); App.render(); })
+        .catch(function (e) { U.toast('ההעלאה נכשלה: ' + (e && e.message ? e.message : ''), 'error'); });
+    });
+
+    var actions = [
+      U.el('button', { class: has ? 'btn secondary' : 'btn', text: has ? 'החלפת המסמך' : '📎 העלאת המסמך הרשמי',
+        onclick: function () { fileInp.click(); } })
+    ];
+    if (has) {
+      actions.unshift(U.el('button', { class: 'btn secondary', text: 'פתיחת המסמך', onclick: function () {
+        Store.kkDocUrl(rec).then(function (url) {
+          if (url) window.open(url, '_blank');
+          else U.toast('לא ניתן לפתוח את המסמך', 'error');
+        });
+      } }));
+      actions.push(U.el('button', { class: 'btn', text: '🤖 בנה משימות מהמסמך',
+        onclick: function () { runDocAI(rec); } }));
+      actions.push(U.el('button', { class: 'btn secondary small', title: 'הסרת המסמך', html: U.ICO.trash,
+        onclick: function () {
+          Modal.confirm({ title: 'הסרת המסמך', text: 'להסיר את "' + (rec.doc.name || 'המסמך') + '"?', okLabel: 'הסרה', danger: true },
+            function () { Store.removeKkDoc(rec).then(function () { App.render(); }); });
+        } }));
+    }
+
+    return U.el('div', { class: 'card m-card', style: 'margin-bottom:12px;' }, [
+      U.el('div', { style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;' }, [
+        U.el('div', { style: 'flex:1;min-width:200px;' }, [
+          U.el('div', { style: 'font-weight:600;', text: 'המסמך הרשמי של הקול הקורא' }),
+          U.el('div', { class: 'muted', style: 'font-size:13px;margin-top:2px;',
+            text: has ? (rec.doc.name || 'מסמך') + (rec.aiAt ? ' · המשימות נבנו ממנו ב-' + U.gregLabel(rec.aiAt.slice(0, 10)) : '')
+                      : 'המסמך שמפרט מה נדרש להגשה ולדיווח. אחרי ההעלאה אפשר לבקש מה-AI לבנות ממנו את המשימות.' })
+        ]),
+        U.el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;' }, actions)
+      ]),
+      fileInp
+    ]);
+  }
+
+  // חיווי חשיבה — דקה של שקט נראית כמו תקלה
+  function openThinking(messages) {
+    var spinner = U.el('div', { style: 'width:46px;height:46px;border:4px solid var(--brand-light);border-top-color:var(--brand);border-radius:50%;animation:spin .8s linear infinite;' });
+    var line = U.el('div', { style: 'font-size:15px;font-weight:600;color:var(--brand-dark);text-align:center;min-height:20px;', text: messages[0] });
+    var sub = U.el('div', { class: 'muted', style: 'font-size:12px;text-align:center;', text: 'זה עשוי לקחת עד כדקה — אפשר להשאיר את החלון פתוח.' });
+    var body = U.el('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:14px;padding:22px 8px;' }, [spinner, line, sub]);
+    var close = Modal.open('ה-AI קורא את המסמך…', body, []);
+    var i = 0;
+    var iv = setInterval(function () { if (i < messages.length - 1) { i++; line.textContent = messages[i]; } }, 5500);
+    return function () { clearInterval(iv); close(); };
+  }
+
+  function runDocAI(rec) {
+    var stop = openThinking(['מעלה את המסמך לניתוח…', 'קורא מה נדרש להגשה…', 'בונה את משימות הדיווח…', 'כמעט מוכן…']);
+    Store.kkDocToTasks({
+      bucket: 'task-files',
+      path: rec.doc.path,
+      fileName: rec.doc.name || '',
+      context: { name: rec.name || '', funder: rec.funder || '', today: U.todayISO() }
+    }).then(function (res) {
+      stop();
+      var sub = (res && res.submit) || [], rep = (res && res.report) || [];
+      if (!sub.length && !rep.length) { U.toast('ה-AI לא הצליח לחלץ משימות מהמסמך', 'error'); return; }
+      openDraftReview(rec, res);
+    }).catch(function (e) {
+      stop();
+      U.toast('הניתוח נכשל: ' + (e && e.message ? e.message : ''), 'error');
+    });
+  }
+
+  // טיוטה לאישור — אף פעם לא כותבים ישירות על הרשימות של גיא
+  function openDraftReview(rec, res) {
+    var picked = {};
+    function section(key, label, items) {
+      if (!items.length) return null;
+      var rows = items.map(function (t, i) {
+        var id = key + ':' + i;
+        picked[id] = true;
+        var cb = U.el('input', { type: 'checkbox' });
+        cb.checked = true;
+        cb.addEventListener('change', function () { picked[id] = cb.checked; });
+        return U.el('div', { class: 'kk-task' }, [
+          U.el('div', { class: 'kk-task-head' }, [
+            cb,
+            U.el('span', { style: 'font-weight:500;', text: t.title || '' }),
+            t.form ? U.el('span', { class: 'tag', text: t.form }) : null
+          ].filter(Boolean)),
+          t.help ? U.el('div', { class: 'kk-task-hint', text: t.help }) : null
+        ].filter(Boolean));
+      });
+      return U.el('div', { style: 'margin-bottom:14px;' }, [
+        U.el('div', { style: 'font-weight:600;margin-bottom:6px;', text: label + ' (' + items.length + ')' }),
+        U.el('div', { class: 'kk-tasks' }, rows)
+      ]);
+    }
+    var sub = (res.submit || []), rep = (res.report || []);
+    var replace = U.el('input', { type: 'checkbox' });
+    var body = U.el('div', null, [
+      res.summary ? U.el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:10px;', text: res.summary }) : null,
+      section('submit', 'משימות להגשה', sub),
+      section('report', 'משימות לדיווח', rep),
+      U.el('label', { style: 'display:flex;align-items:center;gap:8px;font-size:13px;' },
+        [replace, U.el('span', { text: 'להחליף את הרשימות הקיימות (במקום להוסיף אליהן)' })])
+    ].filter(Boolean));
+
+    Modal.open('טיוטת משימות מהמסמך', body, [
+      { label: 'ביטול', class: 'secondary' },
+      { label: 'הוספה לקול הקורא', onClick: function (close) {
+        if (replace.checked) { rec.steps.submit = []; rec.steps.report = []; }
+        sub.forEach(function (t, i) { if (picked['submit:' + i]) stepsOf(rec, 'submit').push(newStep(t.title, t.help, t.form, t.link)); });
+        rep.forEach(function (t, i) { if (picked['report:' + i]) stepsOf(rec, 'report').push(newStep(t.title, t.help, t.form, t.link)); });
+        if (res.funder && !rec.funder) rec.funder = res.funder;
+        if (res.deadline && !rec.deadline) rec.deadline = res.deadline;
+        rec.aiAt = new Date().toISOString();
+        saveKk(rec);
+        close();
+        U.toast('המשימות נוספו');
+        App.render();
+      } }
+    ]);
+  }
+
   // ---------- מסך פירוט של קול קורא בודד ----------
   function detail(view, rec) {
     var st = stDef(rec.status);
@@ -339,11 +712,17 @@
     ].filter(Boolean).join(' · ');
     if (meta) view.appendChild(U.el('div', { class: 'muted', style: 'margin:-8px 0 12px;font-size:13px;', text: meta }));
 
-    if (!isFunded(rec)) {
-      view.appendChild(U.el('div', { class: 'card' }, [
-        U.el('div', { class: 'muted' }, 'תמונת הכסף תיפתח אחרי שהקול הקורא יסומן "התקבל הקצבה" ויוזן סכום ההקצבה.')
-      ].filter(Boolean)));
-    } else {
+    // המסלול — פס השלבים, ומתחתיו רק מה ששייך לשלב הנוכחי
+    var stage = stageOf(rec);
+    view.appendChild(stepper(rec));
+
+    // המסמך הרשמי זמין בכל שלב — ממנו נבנות המשימות של ההגשה ושל הדיווח
+    if (stage) view.appendChild(docCard(rec));
+
+    if (stage === 'submit') {
+      view.appendChild(stepsCard(rec, 'submit', 'משימות להגשה'));
+    } else if (stage === 'spend') {
+      // שלב המימוש = דף ניהול התקציב של הקול הקורא (החלטת גיא)
       view.appendChild(U.el('div', { class: 'card', style: 'margin-bottom:12px;' }, [moneyCard(rec)]));
       view.appendChild(U.el('div', { class: 'card', style: 'margin-bottom:12px;' }, [
         U.el('h3', { style: 'margin-top:0;', text: 'חשבוניות שאושרו (מאפליקציית התקציב)' }),
@@ -353,6 +732,20 @@
         U.el('h3', { style: 'margin-top:0;', text: 'תכנון קדימה' }),
         plannedTable(rec)
       ]));
+    } else if (stage === 'report') {
+      // "בדיווח" — המשימות הן העיקר, ומעליהן שורת המספרים שצריך כדי לדווח.
+      // "דווח ונסגר" — דף הכסף נשאר פתוח לצפייה (בקשת גיא), מתחת למשימות.
+      if (rec.status === 'closed') {
+        view.appendChild(stepsCard(rec, 'report', 'משימות לדיווח'));
+        view.appendChild(U.el('div', { class: 'card', style: 'margin-bottom:12px;' }, [moneyCard(rec)]));
+        view.appendChild(U.el('div', { class: 'card', style: 'margin-bottom:12px;' }, [
+          U.el('h3', { style: 'margin-top:0;', text: 'חשבוניות שאושרו (מאפליקציית התקציב)' }),
+          invoicesTable(rec)
+        ]));
+      } else {
+        view.appendChild(moneyStrip(rec));
+        view.appendChild(stepsCard(rec, 'report', 'משימות לדיווח'));
+      }
     }
 
     if (rec.note) view.appendChild(U.el('div', { class: 'card' }, [U.el('div', { class: 'muted', text: rec.note })]));
