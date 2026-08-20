@@ -620,6 +620,18 @@
   }
 
   function runDocAI(rec) {
+    // Gemini קורא PDF ותמונות, אבל לא קובצי Word — עדיף להגיד את זה מראש
+    // מאשר לתת לו להיכשל עם שגיאה לא מובנת מהשרת.
+    var ext = String((rec.doc && rec.doc.name) || (rec.doc && rec.doc.path) || '').split('.').pop().toLowerCase();
+    if (ext === 'doc' || ext === 'docx') {
+      Modal.confirm({
+        title: 'המסמך הוא קובץ Word',
+        text: 'הקריאה האוטומטית עובדת על PDF ועל צילומים בלבד.\n' +
+              'פתחו את הקובץ ב-Word → "שמירה בשם" → PDF, והעלו את ה-PDF במקומו.',
+        okLabel: 'הבנתי'
+      }, function () {});
+      return;
+    }
     var stop = openThinking(['מעלה את המסמך לניתוח…', 'קורא מה נדרש להגשה…', 'בונה את משימות הדיווח…', 'כמעט מוכן…']);
     Store.kkDocToTasks({
       bucket: 'task-files',
