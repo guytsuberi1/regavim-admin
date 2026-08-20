@@ -149,6 +149,13 @@
       // { id, num:'S-001', name, group:'שנתי'|'5 שנים'|'לפי צורך'|'רישוי מוסד',
       //   issuedAt, expiresAt (מחושב מהנפקה+תדירות אלא אם expiryManual), issuer, owner,
       //   docPath, docName, status:'' (נגזר), na (לא רלוונטי), note, createdAt, updatedAt, deleted }
+      // דיווח גפ"ן. רשומה = מענה אחד: { id, num:'G-001', track (מסלול רכישה), code (קוד דיווח),
+      //   answerType (סוג מענה), answerName (שם מענה), supplier, invoiceNo, budget (תקצוב),
+      //   invStatus:'אין'|'הוגש'|'שולם', subStatus:''|'התקבל ע"י המזכירה'|'הוגש בכספים 2000'|'שויך',
+      //   due (תאריך יעד לדיווח), note, year (שנת כספים; ריק = הפעילה), createdAt, updatedAt, deleted }
+      // invoices — הכרעות על חשבוניות גפ"ן מאפליקציית התקציב: { txId: { status, rowId, at } }
+      // budget — סה"כ תקציב גפ"ן ידני לכל שנה: { '2025': 105886 }
+      gefen: { records: [], seq: 0, invoices: {}, budget: {}, meta: newMeta() },
       safety: { records: [], seq: 0, seeded: false, meta: newMeta() },
       tasks: { records: [], seq: 0, meta: newMeta() },
       // פרויקטים. רשומה: { id, num, name, domain, owner, status:'תכנון'|'בביצוע'|'הושלם',
@@ -229,6 +236,7 @@
     if (rowId === 'recruit') return data.recruit;
     if (rowId === 'events') return data.events;
     if (rowId === 'kk') return data.kk;
+    if (rowId === 'gefen') return data.gefen;
     if (rowId === 'safety') return data.safety;
     var p = rowId.split(':');
     if (MONTH_KINDS[p[0]] && p[1]) return data[p[0]][p[1]] || null;
@@ -241,12 +249,13 @@
     if (rowId === 'recruit') { data.recruit = obj; return; }
     if (rowId === 'events') { data.events = obj; return; }
     if (rowId === 'kk') { data.kk = obj; return; }
+    if (rowId === 'gefen') { data.gefen = obj; return; }
     if (rowId === 'safety') { data.safety = obj; return; }
     var p = rowId.split(':');
     if (MONTH_KINDS[p[0]] && p[1]) data[p[0]][p[1]] = obj;
   }
   function allRowIds() {
-    var ids = ['core', 'tasks', 'projects', 'recruit', 'events', 'kk', 'safety'];
+    var ids = ['core', 'tasks', 'projects', 'recruit', 'events', 'kk', 'gefen', 'safety'];
     Object.keys(MONTH_KINDS).forEach(function (kind) {
       Object.keys(data[kind] || {}).forEach(function (m) { ids.push(kind + ':' + m); });
     });
@@ -449,13 +458,17 @@
     var local = rowGet(rowId);
     var p = rowId.split(':');
 
-    if (rowId === 'tasks' || rowId === 'projects' || rowId === 'events' || rowId === 'kk' || rowId === 'safety') {
+    if (rowId === 'tasks' || rowId === 'projects' || rowId === 'events' || rowId === 'kk' || rowId === 'gefen' || rowId === 'safety') {
       var mt = {
         records: mergeRecords(local && local.records, incoming.records),
         seq: Math.max((local && local.seq) || 0, incoming.seq || 0),
         meta: metaTs(local) >= metaTs(incoming) ? (local && local.meta) || incoming.meta : incoming.meta
       };
       if (rowId === 'kk') mt.invoices = mergeKeyed(local && local.invoices, incoming.invoices);
+      if (rowId === 'gefen') {
+        mt.invoices = mergeKeyed(local && local.invoices, incoming.invoices);
+        mt.budget = Object.assign({}, (local && local.budget) || {}, incoming.budget || {});
+      }
       if (jsonEq(mt, local)) return false;
       rowSet(rowId, mt);
       if (!jsonEq(mt, incoming)) scheduleCloudSave(rowId);
@@ -956,6 +969,76 @@
       }
       if (res.data && res.data.error) throw new Error(res.data.error);
       return res.data || {};
+    });
+  }
+
+  // ---------- דיווח גפ"ן ----------
+  function gefenAll() {
+    return (data.gefen.records || []).filter(function (r) { return r && !r.deleted; });
+  }
+  function gefenById(id) {
+    return (data.gefen.records || []).filter(function (r) { return r.id === id; })[0] || null;
+  }
+  function nextGefenNum() {
+    data.gefen.seq = (data.gefen.seq || 0) + 1;
+    return 'G-' + String(data.gefen.seq).padStart(3, '0');
+  }
+  function upsertGefen(rec) {
+    if (!rec.id) { rec.id = uid(); rec.num = rec.num || nextGefenNum(); rec.createdAt = nowISO(); }
+    rec.updatedAt = nowISO();
+    var arr = data.gefen.records, found = false;
+    for (var i = 0; i < arr.length; i++) if (arr[i].id === rec.id) { arr[i] = rec; found = true; break; }
+    if (!found) arr.push(rec);
+    save('gefen');
+    return rec;
+  }
+  function deleteGefen(id) {
+    var arr = data.gefen.records;
+    for (var i = 0; i < arr.length; i++) if (arr[i].id === id) {
+      arr[i] = { id: id, deleted: true, updatedAt: nowISO() };
+      break;
+    }
+    save('gefen');
+  }
+  // סה"כ תקציב גפ"ן — מוזן ידנית לכל שנה (לא נגזר מהתקציב: ההקצאה מגיעה מהפורטל)
+  function gefenBudgetFor(year) { return knum((data.gefen.budget || {})[year]); }
+  function setGefenBudget(year, amount) {
+    if (!data.gefen.budget) data.gefen.budget = {};
+    data.gefen.budget[year] = knum(amount);
+    save('gefen');
+  }
+
+  // חשבוניות גפ"ן מאפליקציית התקציב — כמו בקולות קוראים, לפי הקטגוריה הראשית
+  var GEFEN_MAINS = { 'גפן': 1, 'גפ"ן': 1, 'גפ״ן': 1 };
+  function budgetGefenInvoices() {
+    var st = budgetState();
+    if (!st || !st.transactions) return [];
+    return st.transactions.filter(function (t) { return t && GEFEN_MAINS[String(t.main || '').trim()]; })
+      .map(function (t) {
+        return {
+          id: t.id, date: t.date || '', sub: t.sub || '', amount: knum(t.amount),
+          supplier: t.supplier || t.employee || '', invoiceNo: t.invoiceNo || '',
+          description: t.description || t.purpose || '', kind: t.kind || 'invoice'
+        };
+      })
+      .sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
+  }
+  function gefenInvoiceDecisions() { return data.gefen.invoices || (data.gefen.invoices = {}); }
+  function setGefenInvoiceDecision(txId, patch) {
+    var map = gefenInvoiceDecisions();
+    map[txId] = Object.assign({}, map[txId] || {}, patch, { at: nowISO() });
+    save('gefen');
+    return map[txId];
+  }
+  function gefenPendingInvoices() {
+    var dec = gefenInvoiceDecisions();
+    return budgetGefenInvoices().filter(function (inv) { return !dec[inv.id]; });
+  }
+  function gefenInvoicesFor(rec) {
+    var dec = gefenInvoiceDecisions();
+    return budgetGefenInvoices().filter(function (inv) {
+      var d = dec[inv.id];
+      return d && d.status === 'approved' && d.rowId === rec.id;
     });
   }
 
@@ -2068,6 +2151,16 @@
     kkDocToTasks: kkDocToTasks,
     kkInvoicesFor: kkInvoicesFor,
     kkPendingInvoices: kkPendingInvoices,
+    gefenAll: gefenAll,
+    gefenById: gefenById,
+    upsertGefen: upsertGefen,
+    deleteGefen: deleteGefen,
+    gefenBudgetFor: gefenBudgetFor,
+    setGefenBudget: setGefenBudget,
+    budgetGefenInvoices: budgetGefenInvoices,
+    gefenPendingInvoices: gefenPendingInvoices,
+    gefenInvoicesFor: gefenInvoicesFor,
+    setGefenInvoiceDecision: setGefenInvoiceDecision,
     kkInvoiceDecisions: kkInvoiceDecisions,
     setKkInvoiceDecision: setKkInvoiceDecision,
     // גשר לאפליקציית התקציב
