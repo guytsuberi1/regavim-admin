@@ -35,6 +35,10 @@
   function stepsOf(rec, stage) {
     if (!rec.steps) rec.steps = {};
     if (!rec.steps[stage]) rec.steps[stage] = [];
+    // הגרירה מזהה שורות לפי id — משימה ותיקה בלי id הייתה "קופצת" בחזרה
+    rec.steps[stage].forEach(function (t, i) {
+      if (!t.id) t.id = 'st' + i + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    });
     return rec.steps[stage];
   }
   function stepCount(rec, stage) {
@@ -410,11 +414,68 @@
     }));
   }
 
+  // ---------- גרירה חיה לסידור המשימות ----------
+  // השורה עצמה זזה עם העכבר/האצבע (העדפה מפורשת של גיא), לא "גרור ושחרר" עם קו יעד יבש.
+  // pointer events — עובד גם בעכבר וגם במגע; touch-action:none על הידית מונע גלילת עמוד תוך כדי.
+  function applyDrag(row, grip, container, onDrop) {
+    grip.addEventListener('pointerdown', function (e) {
+      if (e.button != null && e.button !== 0) return;
+      e.preventDefault();
+      var moved = false;
+      row.classList.add('kk-dragging');
+      document.body.style.userSelect = 'none';
+
+      function onMove(ev) {
+        var rows = Array.prototype.slice.call(container.querySelectorAll('.kk-task'));
+        for (var i = 0; i < rows.length; i++) {
+          var r = rows[i];
+          if (r === row) continue;
+          var b = r.getBoundingClientRect(), mid = b.top + b.height / 2;
+          var pos = r.compareDocumentPosition(row);
+          if (ev.clientY < mid && (pos & Node.DOCUMENT_POSITION_FOLLOWING)) {
+            container.insertBefore(row, r); moved = true; break;
+          }
+          if (ev.clientY > mid && (pos & Node.DOCUMENT_POSITION_PRECEDING)) {
+            container.insertBefore(row, r.nextSibling); moved = true; break;
+          }
+        }
+      }
+      function onUp() {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        document.removeEventListener('pointercancel', onUp);
+        row.classList.remove('kk-dragging');
+        document.body.style.userSelect = '';
+        if (moved) onDrop();
+      }
+      // המאזינים על document ולא על הידית: הזזת השורה ב-DOM היא הסרה+הכנסה,
+      // וזה משחרר את pointer capture — הגרירה נעצרה אחרי צעד אחד והשמירה לא רצה.
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+      document.addEventListener('pointercancel', onUp);
+    });
+  }
+  // הסדר החדש נקרא מה-DOM ונשמר. מה שלא נמצא ב-DOM נשאר בסוף — לא נאבד משימה.
+  function reorderFromDom(rec, stage, container) {
+    var ids = Array.prototype.slice.call(container.querySelectorAll('.kk-task'))
+      .map(function (n) { return n.getAttribute('data-id'); });
+    var list = stepsOf(rec, stage), by = {};
+    list.forEach(function (t) { by[t.id] = t; });
+    var out = [];
+    ids.forEach(function (id) { if (by[id]) { out.push(by[id]); delete by[id]; } });
+    list.forEach(function (t) { if (by[t.id]) out.push(t); });
+    rec.steps[stage] = out;
+    saveKk(rec);
+    U.toast('הסדר נשמר');
+  }
+
   // ---------- צ'ק-ליסט של שלב ----------
-  function stepRow(rec, stage, t) {
+  function stepRow(rec, stage, t, container) {
     var openHelp = false;
     var row;
     function save() { saveKk(rec); }
+
+    function hasHelp() { return !!(t.help || t.form || t.link || t.file); }
 
     var cb = U.el('input', { type: 'checkbox' });
     cb.checked = !!t.done;
@@ -489,7 +550,10 @@
       return a;
     }
 
-    var helpBtn = U.el('button', { class: 'm-iconbtn', title: 'עזרה, קישור וטופס', text: (t.help || t.form || t.link || t.file) ? 'ⓘ' : '＋' });
+    // אייקון SVG של האפליקציה — התו ⓘ נראה מרוט ולא בסגנון שאר האייקונים.
+    // כשיש כבר תוכן, האייקון נצבע בצבע המותג במקום להתחלף בתו אחר.
+    var helpBtn = U.el('button', { class: 'm-iconbtn' + (hasHelp() ? ' has' : ''),
+      title: 'עזרה, קישור וטופס', html: U.ICO.info });
     helpBtn.addEventListener('click', function () {
       openHelp = !openHelp;
       if (openHelp) fillHelp();
@@ -504,8 +568,9 @@
       save(); App.render();
     });
 
+    var grip = U.el('span', { class: 'kk-grip', title: 'גרירה לשינוי הסדר', html: U.ICO.grip });
     var head = U.el('div', { class: 'kk-task-head' }, [
-      cb, title, formChip(), linkChip(), fileChip(),
+      grip, cb, title, formChip(), linkChip(), fileChip(),
       U.el('span', { class: 'spacer' }),
       helpBtn, del
     ].filter(Boolean));
@@ -514,14 +579,15 @@
       Array.prototype.slice.call(head.querySelectorAll('.kk-chip, .kk-chip-s')).forEach(function (n) { n.remove(); });
       var sp = head.querySelector('.spacer');
       [formChip(), linkChip(), fileChip()].filter(Boolean).forEach(function (n) { head.insertBefore(n, sp); });
-      helpBtn.textContent = (t.help || t.form || t.link || t.file) ? 'ⓘ' : '＋';
+      helpBtn.classList.toggle('has', hasHelp());
     }
 
-    row = U.el('div', { class: 'kk-task' + (t.done ? ' done' : '') }, [
+    row = U.el('div', { class: 'kk-task' + (t.done ? ' done' : ''), 'data-id': t.id }, [
       head,
       t.help ? U.el('div', { class: 'kk-task-hint', text: t.help }) : null,
       help
     ].filter(Boolean));
+    if (container) applyDrag(row, grip, container, function () { reorderFromDom(rec, stage, container); });
     return row;
   }
 
@@ -536,7 +602,8 @@
       c.total ? U.el('span', { class: 'kk-prog' }, U.el('span', { style: 'width:' + pct + '%;' })) : null
     ].filter(Boolean));
 
-    var rows = U.el('div', { class: 'kk-tasks' }, list.map(function (t) { return stepRow(rec, stage, t); }));
+    var rows = U.el('div', { class: 'kk-tasks' });
+    list.forEach(function (t) { rows.appendChild(stepRow(rec, stage, t, rows)); });
 
     var add = U.el('input', { class: 'm-addinput', placeholder: '＋ הוסף משימה — כתוב ולחץ Enter' });
     add.addEventListener('keydown', function (e) {
