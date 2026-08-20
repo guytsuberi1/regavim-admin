@@ -12,7 +12,7 @@
     // ולכן המשתמש ממשיך לטעון את הגרסה הישנה גם אחרי שהפריסה עברה.
     // כאן קוראים את version.json בלי cache ומרעננים פעם אחת אם הגרסה החיה שונה.
     (function () {
-      var LOCAL = 134;                       // חייב להיות זהה ל-?v= בכל התגיות למטה
+      var LOCAL = 135;                       // חייב להיות זהה ל-?v= בכל התגיות למטה
       window.APP_VERSION = LOCAL;
       if (location.protocol === 'file:') return;
       fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -31,7 +31,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Noto+Sans+Hebrew:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=134" />
+  <link rel="stylesheet" href="styles.css?v=135" />
   <style>
     /* תג "ממתינים לאישור" על טאב בתפריט */
     .tab-badge {
@@ -116,30 +116,30 @@
   <!-- ספריות ומודולים (סקריפטים קלאסיים — עובד גם מ-file://) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="vendor/xlsx.full.min.js"></script>
-  <script src="js/util.js?v=134"></script>
-  <script src="js/store.js?v=134"></script>
-  <script src="js/emp.js?v=134"></script>
-  <script src="js/week.js?v=134"></script>
-  <script src="js/recruit.js?v=134"></script>
-  <script src="js/queue.js?v=134"></script>
-  <script src="js/status.js?v=134"></script>
-  <script src="js/lc.js?v=134"></script>
-  <script src="js/sub.js?v=134"></script>
-  <script src="js/abs.js?v=134"></script>
-  <script src="js/sign.js?v=134"></script>
-  <script src="js/pdf.js?v=134"></script>
-  <script src="js/tasks.js?v=134"></script>
-  <script src="js/projects.js?v=134"></script>
-  <script src="js/events.js?v=134"></script>
-  <script src="js/budget.js?v=134"></script>
-  <script src="js/kk.js?v=134"></script>
-  <script src="js/safety.js?v=134"></script>
-  <script src="js/base.js?v=134"></script>
-  <script src="js/bcats.js?v=134"></script>
-  <script src="js/users.js?v=134"></script>
-  <script src="js/settings.js?v=134"></script>
-  <script src="js/dash.js?v=134"></script>
-  <script src="js/app.js?v=134"></script>
+  <script src="js/util.js?v=135"></script>
+  <script src="js/store.js?v=135"></script>
+  <script src="js/emp.js?v=135"></script>
+  <script src="js/week.js?v=135"></script>
+  <script src="js/recruit.js?v=135"></script>
+  <script src="js/queue.js?v=135"></script>
+  <script src="js/status.js?v=135"></script>
+  <script src="js/lc.js?v=135"></script>
+  <script src="js/sub.js?v=135"></script>
+  <script src="js/abs.js?v=135"></script>
+  <script src="js/sign.js?v=135"></script>
+  <script src="js/pdf.js?v=135"></script>
+  <script src="js/tasks.js?v=135"></script>
+  <script src="js/projects.js?v=135"></script>
+  <script src="js/events.js?v=135"></script>
+  <script src="js/budget.js?v=135"></script>
+  <script src="js/kk.js?v=135"></script>
+  <script src="js/safety.js?v=135"></script>
+  <script src="js/base.js?v=135"></script>
+  <script src="js/bcats.js?v=135"></script>
+  <script src="js/users.js?v=135"></script>
+  <script src="js/settings.js?v=135"></script>
+  <script src="js/dash.js?v=135"></script>
+  <script src="js/app.js?v=135"></script>
   <script>
     (function () {
       var sb = document.getElementById('sidebar'), tg = document.getElementById('sbToggle');

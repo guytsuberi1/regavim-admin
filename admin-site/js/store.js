@@ -138,7 +138,10 @@
       // קולות קוראים. רשומה: { id, num:'KK-001', name, funder, category, budgetSub (תת-קטגוריה
       //   באפליקציית התקציב — מפתח החיבור), status, year, publishedAt, deadline, submittedAt,
       //   approvedAt, amountFunder, amountSelf, spendDeadline, reportDate, reportStatus, owner,
-      //   planned:[{id,desc,supplier,amount,date,note}], docs:[{name,path,at}], note, createdAt, updatedAt, deleted }
+      //   planned:[{id,desc,supplier,amount,date,note}], docs:[{name,path,at}], note, createdAt, updatedAt, deleted,
+      //   doc:{path,name,at} — המסמך הרשמי של הקול הקורא (מקור המשימות),
+      //   steps:{ submit:[{id,title,help,form,done,note}], report:[…] } — צ'ק-ליסט לכל שלב במסלול,
+      //   aiAt — מתי נבנו המשימות מהמסמך }
       // invoices — הכרעות על חשבוניות שהגיעו מאפליקציית התקציב:
       //   { txId: { status:'approved'|'rejected', kkId, at, note } }
       kk: { records: [], seq: 0, invoices: {}, meta: newMeta() },
@@ -897,6 +900,9 @@
     if (!rec.id) { rec.id = uid(); rec.num = rec.num || nextKkNum(); rec.createdAt = nowISO(); }
     if (!rec.planned) rec.planned = [];
     if (!rec.docs) rec.docs = [];
+    if (!rec.steps) rec.steps = { submit: [], report: [] };
+    if (!rec.steps.submit) rec.steps.submit = [];
+    if (!rec.steps.report) rec.steps.report = [];
     rec.updatedAt = nowISO();
     var arr = data.kk.records, found = false;
     for (var i = 0; i < arr.length; i++) if (arr[i].id === rec.id) { arr[i] = rec; found = true; break; }
@@ -913,6 +919,46 @@
     }
     save('kk');
   }
+  // ---------- המסמך הרשמי של הקול הקורא + בניית המשימות ממנו ----------
+  // המסמך יושב בדלי task-files הקיים (יש לו כבר מדיניות RLS למשתמש מחובר),
+  // כדי לא לדרוש מגיא ליצור דלי חדש ולהגדיר לו מדיניות.
+  function uploadKkDoc(rec, file) {
+    return uploadTaskFile(file).then(function (up) {
+      var old = rec.doc && rec.doc.path;
+      rec.doc = { path: up.path, name: up.name, at: nowISO() };
+      upsertKk(rec);
+      // המסמך הישן נמחק רק אחרי שהחדש נשמר — אחרת תקלה משאירה את הרשומה בלי מסמך כלל
+      if (old && old !== up.path) deleteTaskFile(old).catch(function () {});
+      return rec.doc;
+    });
+  }
+  function kkDocUrl(rec) {
+    return taskFileUrl(rec && rec.doc && rec.doc.path);
+  }
+  function removeKkDoc(rec) {
+    var path = rec.doc && rec.doc.path;
+    rec.doc = null;
+    upsertKk(rec);
+    return path ? deleteTaskFile(path).catch(function () {}) : Promise.resolve();
+  }
+  // שליחת המסמך ל-Edge Function שקוראת אותו ומחזירה משימות + טפסים לכל שלב
+  function kkDocToTasks(payload) {
+    if (!sb) return Promise.reject(new Error('נדרשת התחברות לענן'));
+    return sb.functions.invoke('kk-doc-to-tasks', { body: payload }).then(function (res) {
+      if (res.error) {
+        // Supabase מחזיר הודעה כללית ב-non-2xx; שולפים את הסיבה האמיתית מגוף התגובה
+        var ctx = res.error.context;
+        if (ctx && typeof ctx.json === 'function') {
+          return ctx.json().then(function (b) { throw new Error((b && b.error) || res.error.message); },
+            function () { throw new Error(res.error.message || 'שגיאה מהשרת'); });
+        }
+        throw new Error(res.error.message || 'שגיאה מהשרת');
+      }
+      if (res.data && res.data.error) throw new Error(res.data.error);
+      return res.data || {};
+    });
+  }
+
   // הכרעות על חשבוניות שהגיעו מאפליקציית התקציב
   function kkInvoiceDecisions() { return data.kk.invoices || (data.kk.invoices = {}); }
   function setKkInvoiceDecision(txId, patch) {
@@ -2016,6 +2062,10 @@
     upsertKk: upsertKk,
     deleteKk: deleteKk,
     kkMoney: kkMoney,
+    uploadKkDoc: uploadKkDoc,
+    kkDocUrl: kkDocUrl,
+    removeKkDoc: removeKkDoc,
+    kkDocToTasks: kkDocToTasks,
     kkInvoicesFor: kkInvoicesFor,
     kkPendingInvoices: kkPendingInvoices,
     kkInvoiceDecisions: kkInvoiceDecisions,
