@@ -357,13 +357,28 @@
           $('success').classList.remove('hidden');
           window.scrollTo(0, 0);
         }).catch(function (e) {
+          console.error('report submit failed:', e);
           var msg = (e && e.message) ? e.message : 'שגיאה לא ידועה';
           // הודעת הטיימאאוט כבר פותחת ב"השליחה נכשלה" — לא לחזור על זה פעמיים
           if (msg.indexOf('השליחה נכשלה') !== 0 && msg.indexOf('העלאת הקובץ') !== 0) {
             msg = 'השליחה נכשלה — ' + msg;
           }
-          err.innerHTML = msg +
-            '<br>הפרטים שמילאתם נשארו — עברו למקום עם קליטה טובה יותר (או Wi-Fi) ולחצו שוב על הכפתור.';
+          var hint = 'הפרטים שמילאתם נשארו — לחצו שוב על הכפתור.';
+          if (msg.indexOf('הרשת איטית מדי') !== -1) {
+            // טיימאאוט ≠ בהכרח רשת חלשה. בדיקת חיבור קצרה מכריעה אם האשמה ברשת
+            // או בשרת — כדי לא להאשים את האינטרנט של העובד כשהוא תקין. (קרה בפועל.)
+            err.innerHTML = msg + '<br>' + hint;
+            withTimeout(sb.from('admin_state').select('id').eq('id', 'portal').maybeSingle(), 7000, 'בדיקה')
+              .then(function () {
+                err.innerHTML = 'השליחה לא אושרה בזמן, אבל <b>החיבור לאינטרנט תקין</b> — כנראה עומס רגעי בשרת.<br>' +
+                  'ייתכן שהדיווח בכל זאת נקלט. הפרטים נשארו — המתינו רגע ולחצו שוב, ' +
+                  'ואם זה חוזר שלחו לגיא צילום מסך.';
+              }, function () {
+                err.innerHTML = msg + '<br>נראה שאין כרגע חיבור לשרת — עברו למקום עם קליטה טובה יותר (או Wi-Fi) ולחצו שוב. הפרטים שמילאתם נשארו.';
+              });
+          } else {
+            err.innerHTML = msg + '<br>' + hint + ' אם זה חוזר — שלחו לגיא צילום מסך של ההודעה.';
+          }
         }).finally(function () {
           btn.disabled = false;
           btn.textContent = 'שליחת הדיווח';
