@@ -357,8 +357,13 @@
           $('success').classList.remove('hidden');
           window.scrollTo(0, 0);
         }).catch(function (e) {
-          err.innerHTML = 'השליחה נכשלה — ' + (e && e.message ? e.message : 'שגיאה לא ידועה') +
-            '<br>בדקו את החיבור לאינטרנט ונסו שוב.';
+          var msg = (e && e.message) ? e.message : 'שגיאה לא ידועה';
+          // הודעת הטיימאאוט כבר פותחת ב"השליחה נכשלה" — לא לחזור על זה פעמיים
+          if (msg.indexOf('השליחה נכשלה') !== 0 && msg.indexOf('העלאת הקובץ') !== 0) {
+            msg = 'השליחה נכשלה — ' + msg;
+          }
+          err.innerHTML = msg +
+            '<br>הפרטים שמילאתם נשארו — עברו למקום עם קליטה טובה יותר (או Wi-Fi) ולחצו שוב על הכפתור.';
         }).finally(function () {
           btn.disabled = false;
           btn.textContent = 'שליחת הדיווח';
