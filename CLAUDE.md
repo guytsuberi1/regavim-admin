@@ -214,6 +214,8 @@
   אותה תבנית וסודות כמו regavim-agriculture) · `deploy-pages.yml` → `gh-pages` (הישן).
   אחרי אימות שהאתר חי ב-Cloudflare ועדכון CORS ב-manage-users: לכבות Pages, למחוק את
   `deploy-pages.yml`, ולהפוך את הריפו לפרטי. Direct Upload ממשיך לעבוד גם בריפו פרטי.
+  **החלטת גיא (08.2026): רק הריפו הזה עובר. `regavim-budget` נשאר ציבורי על GitHub Pages —
+  אסור להפוך אותו לפרטי, זה יפיל את האתר של המזכירה.**
 - **מוסכמת cache**: אחרי כל שינוי ב-JS/CSS — להעלות את `?v=N` בכל התגיות ב-index.html.
 
 ## מודל הנתונים (טבלת `admin_state`, שורות JSONB)
