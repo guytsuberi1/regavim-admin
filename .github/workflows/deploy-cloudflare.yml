@@ -1,0 +1,50 @@
+# פריסה ל-Cloudflare Pages בהעלאה ישירה (Direct Upload) — אותה תבנית כמו regavim-agriculture.
+#
+# למה העלאה ישירה ולא חיבור Git: כך Cloudflare לא מקבל הרשאת קריאה לריפו —
+# ה-Action דוחף רק את הקבצים הסופיים, והריפו יכול להיות פרטי.
+#
+# דורש שני Secrets בריפו (זהים לאלה שב-regavim-agriculture):
+#   CLOUDFLARE_ACCOUNT_ID · CLOUDFLARE_API_TOKEN (Custom token, Account · Cloudflare Pages · Edit)
+#
+# שם הפרויקט קובע את הכתובת: https://regavim-tiful.pages.dev
+# הצעד "יצירת הפרויקט" רץ בכל פעם ונכשל בשקט אם הפרויקט כבר קיים — כך אין הקמה ידנית.
+
+name: Deploy admin site to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'admin-site/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: בדיקת תחביר לכל קובצי ה-JS
+        run: for f in admin-site/js/*.js; do node -c "$f" || exit 1; done
+
+      - name: יצירת הפרויקט אם אינו קיים
+        uses: cloudflare/wrangler-action@v3
+        continue-on-error: true
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages project create regavim-tiful --production-branch=main
+
+      - name: פריסה ל-Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy admin-site --project-name=regavim-tiful --branch=main

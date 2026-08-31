@@ -209,7 +209,11 @@
 ## ארכיטקטורה
 - Vanilla HTML/CSS/JS, **בלי build**. `admin-site/` = כל האתר. סקריפטים קלאסיים (לא modules).
 - Supabase (אותו פרויקט כמו שאר אפליקציות רגבים) — Auth, PostgreSQL, Realtime, Storage.
-- פריסה: push ל-`main` → GitHub Actions → ענף `gh-pages`.
+- פריסה: push ל-`main` → GitHub Actions. **שתי פריסות במקביל בזמן המעבר**:
+  `deploy-cloudflare.yml` → Cloudflare Pages (פרויקט `regavim-tiful`, Direct Upload —
+  אותה תבנית וסודות כמו regavim-agriculture) · `deploy-pages.yml` → `gh-pages` (הישן).
+  אחרי אימות שהאתר חי ב-Cloudflare ועדכון CORS ב-manage-users: לכבות Pages, למחוק את
+  `deploy-pages.yml`, ולהפוך את הריפו לפרטי. Direct Upload ממשיך לעבוד גם בריפו פרטי.
 - **מוסכמת cache**: אחרי כל שינוי ב-JS/CSS — להעלות את `?v=N` בכל התגיות ב-index.html.
 
 ## מודל הנתונים (טבלת `admin_state`, שורות JSONB)

@@ -23,6 +23,7 @@ const supa = createClient(SUPABASE_URL, SERVICE_KEY);
 // ("Failed to send a request to the Edge Function"), ולכן הרשימה כאן חשובה.
 const ORIGIN_PATTERNS = [
   /^https:\/\/guytsuberi1\.github\.io$/,
+  /^https:\/\/([a-z0-9-]+\.)?regavim-tiful\.pages\.dev$/,
   /^http:\/\/localhost(:\d+)?$/,
   /^http:\/\/127\.0\.0\.1(:\d+)?$/,
 ];
