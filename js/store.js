@@ -900,6 +900,7 @@
   // ---------- קולות קוראים ----------
   function knum(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
   function kkAll() {
+    ensureKkYears();
     return (data.kk.records || []).filter(function (r) { return !r.deleted; });
   }
   function kkById(id) {
@@ -974,6 +975,7 @@
 
   // ---------- דיווח גפ"ן ----------
   function gefenAll() {
+    ensureGefenYears();
     return (data.gefen.records || []).filter(function (r) { return r && !r.deleted; });
   }
   function gefenById(id) {
@@ -1053,12 +1055,73 @@
 
   // סנכרון אוטומטי: כל קטגוריית "קולות קוראים" בתקציב מקבלת רשומה כאן.
   // אידמפוטנטי — מזוהה לפי budgetSub, כך שריצה חוזרת לא יוצרת כפילויות.
+  function fyLabelOfYear(y) { return y + '/' + String(y + 1).slice(2); }
+  function activeFyLabel() { return fyLabelOfYear(budgetCurrentFy().year); }
+  // הטבעה חד-פעמית של שנת כספים ברשומות ותיקות שנשמרו בלי שדה year.
+  // בלעדיה, במעבר שנה (1/9) כל רשומות "בלי שנה = הפעילה" נודדות לשנה החדשה.
+  // (קרה בפועל: קולות קוראים של 25/26 הופיעו תחת 26/27 יום אחרי המעבר.)
+  function ensureKkYears() {
+    var changed = false;
+    (data.kk.records || []).forEach(function (r) {
+      if (!r || r.deleted || (r.year && String(r.year).trim())) return;
+      var y = budgetFyOf(String(r.createdAt || '').slice(0, 10));
+      r.year = fyLabelOfYear(y != null ? y : budgetCurrentFy().year);
+      changed = true;
+    });
+    if (changed) save('kk');
+  }
+  function ensureGefenYears() {
+    var changed = false;
+    (data.gefen.records || []).forEach(function (r) {
+      if (!r || r.deleted || (r.year && String(r.year).trim())) return;
+      var y = budgetFyOf(String(r.createdAt || '').slice(0, 10));
+      r.year = fyLabelOfYear(y != null ? y : budgetCurrentFy().year);
+      changed = true;
+    });
+    if (changed) save('gefen');
+  }
+
+  // העתקת קולות קוראים משנה קודמת — התחלה נקייה: אותם שמות וצ'ק-ליסטים,
+  // בלי סכומים, בלי חשבוניות, בלי סימוני "בוצע" ובלי המסמך של השנה שעברה.
+  function copyKkFromYear(fromLabel, toLabel, ids) {
+    var pick = {};
+    (ids || []).forEach(function (id) { pick[id] = 1; });
+    var copied = 0;
+    (data.kk.records || []).forEach(function (r) {
+      if (!r || r.deleted || String(r.year || '') !== String(fromLabel)) return;
+      if (ids && !pick[r.id]) return;
+      function freshSteps(list) {
+        return (list || []).map(function (t) {
+          return { id: 'st' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                   title: t.title || '', help: t.help || '', form: t.form || '',
+                   link: t.link || '', file: t.file || null, done: false, note: '' };
+        });
+      }
+      upsertKk({
+        name: r.name, funder: r.funder || '', owner: r.owner || '',
+        budgetSub: r.budgetSub || '', note: r.note || '',
+        status: 'published', year: toLabel,
+        amountFunder: '', amountSelf: '',
+        planned: [], docs: [],
+        steps: { submit: freshSteps(r.steps && r.steps.submit), report: freshSteps(r.steps && r.steps.report) }
+      });
+      copied++;
+    });
+    return copied;
+  }
+
   function syncKkFromBudget() {
     var subs = budgetKkSubs();
     if (!subs.length) return 0;
+    ensureKkYears();
+    var active = activeFyLabel();
     var bySub = {};
-    // כולל רשומות שנמחקו — מחיקה מכוונת לא צריכה לחזור בסנכרון הבא
-    (data.kk.records || []).forEach(function (r) { if (r && r.budgetSub) bySub[r.budgetSub] = r; });
+    // רק רשומות השנה הפעילה — הקטגוריות בתקציב הן של השנה הפעילה, וסנכרון מולן
+    // לא צריך לגעת (או להיחסם ע"י) קולות קוראים של שנים קודמות.
+    // כולל רשומות שנמחקו — מחיקה מכוונת לא צריכה לחזור בסנכרון הבא.
+    (data.kk.records || []).forEach(function (r) {
+      if (r && r.budgetSub && String(r.year || active) === active) bySub[r.budgetSub] = r;
+    });
     var added = 0;
     subs.forEach(function (c) {
       var existing = bySub[c.sub];
@@ -1082,7 +1145,8 @@
         name: c.sub, budgetSub: c.sub,
         amountFunder: c.annualBudget || '', amountSelf: '',
         status: c.annualBudget ? 'approved' : 'published',
-        planned: [], docs: [], fromBudget: true
+        planned: [], docs: [], fromBudget: true,
+        year: active
       });
       added++;
     });
@@ -2145,6 +2209,7 @@
     upsertKk: upsertKk,
     deleteKk: deleteKk,
     kkMoney: kkMoney,
+    copyKkFromYear: copyKkFromYear,
     uploadKkDoc: uploadKkDoc,
     kkDocUrl: kkDocUrl,
     removeKkDoc: removeKkDoc,
