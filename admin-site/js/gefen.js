@@ -244,7 +244,7 @@
             answerName: name, supplier: val('supplier'), invoiceNo: val('invoiceNo'),
             budget: U.num(val('budget').replace(/[^0-9.-]/g, ''), 0),
             invStatus: 'אין', subStatus: '', due: '', note: '',
-            year: year === String((Store.budgetCurrentFy() || {}).year) ? '' : yearLabel
+            year: yearLabel
           });
           added++;
         }
@@ -374,7 +374,7 @@
       Store.upsertGefen({
         track: '', code: '', answerType: '', answerName: v, supplier: '', invoiceNo: '',
         budget: 0, invStatus: 'אין', subStatus: '', due: '', note: '',
-        year: year === String((Store.budgetCurrentFy() || {}).year) ? '' : fyLabel()
+        year: fyLabel()
       });
       App.render();
     });

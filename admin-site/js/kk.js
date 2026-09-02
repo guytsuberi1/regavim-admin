@@ -768,6 +768,55 @@
     ]);
   }
 
+  // העתקת קולות קוראים משנה קודמת — לשנה חדשה שמתחילה נקייה.
+  // מעתיקים שם/גוף מממן/אחראי/צ'ק-ליסטים; לא סכומים, לא חשבוניות ולא את המסמך.
+  function openCopyFromPrev() {
+    var shownY = global.App && App.currentFy ? App.currentFy() : null;
+    if (shownY == null) { U.toast('לא נטענה שנת כספים', 'error'); return; }
+    var prevLabel = (shownY - 1) + '/' + String(shownY).slice(2);
+    var shownLabel = fyLabel();
+    var existing = {};
+    Store.kkAll().forEach(function (r) {
+      if (String(r.year || '') === shownLabel) existing[String(r.name || '').trim()] = 1;
+    });
+    var prev = Store.kkAll().filter(function (r) { return String(r.year || '') === prevLabel; });
+    if (!prev.length) { U.toast('לא נמצאו קולות קוראים בשנת ' + prevLabel, 'error'); return; }
+
+    var picked = {};
+    var rows = prev.map(function (r) {
+      var already = existing[String(r.name || '').trim()];
+      var cb = U.el('input', { type: 'checkbox' });
+      // ברירת מחדל: הכול מסומן חוץ ממה שלא אושר וממה שכבר קיים בשנה החדשה
+      cb.checked = !already && r.status !== 'rejected';
+      picked[r.id] = cb.checked;
+      cb.addEventListener('change', function () { picked[r.id] = cb.checked; });
+      if (already) cb.disabled = true;
+      return U.el('label', { style: 'display:flex;align-items:center;gap:9px;padding:7px 2px;border-bottom:1px solid var(--border);cursor:pointer;' + (already ? 'opacity:.55;' : '') }, [
+        cb,
+        U.el('span', { style: 'flex:1;font-size:14px;', text: r.name || '(ללא שם)' }),
+        already ? U.el('span', { class: 'tag', text: 'כבר קיים' })
+                : U.el('span', { class: 'muted', style: 'font-size:12px;', text: stDef(r.status).label })
+      ]);
+    });
+    var body = U.el('div', null, [
+      U.el('div', { class: 'muted', style: 'font-size:13px;margin-bottom:10px;',
+        text: 'ההעתקה יוצרת התחלה נקייה לשנת ' + shownLabel + ': שם, גוף מממן, אחראי וצ\'ק-ליסט המשימות. ' +
+              'בלי סכומים, בלי חשבוניות ובלי המסמך של השנה שעברה.' }),
+      U.el('div', { style: 'max-height:52vh;overflow-y:auto;' }, rows)
+    ]);
+    Modal.open('העתקה משנת ' + prevLabel, body, [
+      { label: 'ביטול', class: 'secondary' },
+      { label: 'העתקה', onClick: function (close) {
+        var ids = Object.keys(picked).filter(function (id) { return picked[id]; });
+        if (!ids.length) { U.toast('לא נבחר אף קול קורא', 'error'); return; }
+        var n = Store.copyKkFromYear(prevLabel, shownLabel, ids);
+        close();
+        U.toast(n + ' קולות קוראים הועתקו לשנת ' + shownLabel);
+        App.render();
+      } }
+    ]);
+  }
+
   // ---------- מסך פירוט של קול קורא בודד ----------
   function detail(view, rec) {
     var st = stDef(rec.status);
@@ -1047,6 +1096,9 @@
       U.el('h2', { text: 'קולות קוראים' }),
       ySel || null,
       U.el('span', { class: 'spacer' }),
+      U.el('button', { class: 'btn secondary', html: U.ICO.copy + ' העתקה משנה קודמת',
+        title: 'יצירת קולות קוראים לשנה המוצגת על בסיס אלה של השנה שעברה',
+        onclick: openCopyFromPrev }),
       U.el('button', { class: 'btn secondary', html: U.ICO.refresh + ' רענון מהתקציב', onclick: function () {
         Store.budgetLoad(true).then(function () {
           var added = Store.syncKkFromBudget();
